@@ -1,0 +1,116 @@
+using System; using System.Collections.Generic; using System.Drawing; using System.Drawing.Imaging;
+namespace NexusPen {
+static class Tests {
+  static int fails = 0;
+  static void Check(bool ok, string name) { Console.WriteLine((ok ? "OK    " : "FOUT  ") + name); if (!ok) fails++; }
+  static int Main() {
+    // 1. Sneltoetsen inlezen (dit ging mis in versie 1.0)
+    int mods, vk;
+    Check(Settings.ParseHotkey("Ctrl+Shift+D", out mods, out vk) && mods == 6 && vk == 68, "Sneltoets Ctrl+Shift+D");
+    Check(Settings.ParseHotkey("ctrl + alt + F9", out mods, out vk) && mods == 3 && vk == 0x78, "Sneltoets Ctrl+Alt+F9");
+    Check(!Settings.ParseHotkey("Ctrl+Bestaatniet", out mods, out vk), "Ongeldige sneltoets wordt geweigerd");
+    Check(!Settings.ParseHotkey("", out mods, out vk), "Lege sneltoets wordt geweigerd");
+
+    // 2. Opslaan en terugladen
+    var list = new List<Stroke>();
+    foreach (Tool t in new[]{Tool.Pen,Tool.Marker,Tool.Line,Tool.Arrow,Tool.Rect,Tool.Ellipse,Tool.Text}) {
+      Stroke s = new Stroke(); s.Tool=t; s.Color=Color.FromArgb(255,232,17,35); s.Width=4.5f; s.FontSize=22;
+      s.Pts.Add(new PointF(10.25f,20)); s.Pts.Add(new PointF(300,400.5f)); s.Pts.Add(new PointF(150,60));
+      if (t==Tool.Text) s.Text = "Héél goed! | ✓ één, twee\nregel 2";
+      list.Add(s);
+    }
+    string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np_test.dat");
+    StrokeStore.Save(list, path); StrokeStore.Save(list, path); // twee keer: test ook vervangen
+    var back = StrokeStore.Load(path);
+    Check(back.Count == list.Count, "Aantal lijnen terug na opslaan: " + back.Count);
+    Check(back[6].Text == list[6].Text, "Tekst met accenten, | en nieuwe regel blijft gelijk");
+    Check(back[0].Color.ToArgb() == list[0].Color.ToArgb() && Math.Abs(back[0].Width-4.5f) < 0.01, "Kleur en dikte blijven gelijk");
+    Check(Math.Abs(back[3].Pts[1].Y-400.5f) < 0.06 && back[3].Tool == Tool.Arrow, "Punten en gereedschap blijven gelijk");
+    System.IO.File.AppendAllText(path, "rommel|zonder|zin\nPen|x|y|z|w|1,2\n");
+    Check(StrokeStore.Load(path).Count == list.Count, "Kapotte regels worden overgeslagen zonder crash");
+    Check(StrokeStore.Load(path + ".bestaatniet").Count == 0, "Ontbrekend bestand geeft lege tekening");
+
+    // 3. Gum raakt de goede lijnen
+    var line = new Stroke{Tool=Tool.Line, Width=4}; line.Pts.Add(new PointF(0,0)); line.Pts.Add(new PointF(100,0));
+    Check(Render.Hit(line, new PointF(50,5), 8), "Gum raakt lijn dichtbij");
+    Check(!Render.Hit(line, new PointF(50,40), 8), "Gum raakt lijn ver weg niet");
+    var dot = new Stroke{Tool=Tool.Pen, Width=6}; dot.Pts.Add(new PointF(10,10));
+    Check(Render.Hit(dot, new PointF(14,10), 8) && !Render.Hit(dot, new PointF(60,60), 8), "Gum en losse stip");
+
+    // 4. Alles tekenen op een doorzichtig vlak (zoals de echte tekenlaag), ook rare gevallen
+    using (var bmp = new Bitmap(800, 600, PixelFormat.Format32bppPArgb))
+    using (var g = Graphics.FromImage(bmp)) {
+      Render.Setup(g);
+      bool ok = true;
+      try {
+        foreach (var s in back) Render.Draw(g, s, 1f);
+        var laser = new Stroke{Tool=Tool.Laser, Color=Color.Red, Width=4}; laser.Pts.Add(new PointF(5,5)); laser.Pts.Add(new PointF(90,90)); laser.Pts.Add(new PointF(200,30));
+        Render.Draw(g, laser, 0.37f); Render.Draw(g, laser, 0f);
+        var zero = new Stroke{Tool=Tool.Rect, Color=Color.Blue, Width=2}; zero.Pts.Add(new PointF(50,50)); zero.Pts.Add(new PointF(50,50)); Render.Draw(g, zero, 1f);
+        var arrow0 = new Stroke{Tool=Tool.Arrow, Color=Color.Blue, Width=2}; arrow0.Pts.Add(new PointF(50,50)); arrow0.Pts.Add(new PointF(51,50)); Render.Draw(g, arrow0, 1f);
+        var ell0 = new Stroke{Tool=Tool.Ellipse, Color=Color.Blue, Width=60}; ell0.Pts.Add(new PointF(5,5)); ell0.Pts.Add(new PointF(5,5)); Render.Draw(g, ell0, 1f);
+      } catch (Exception ex) { ok = false; Console.WriteLine(ex); }
+      Check(ok, "Alle gereedschappen tekenen zonder fout, ook vormen van 0 pixels");
+      Color px = bmp.GetPixel(300, 400);
+      Check(bmp.GetPixel(799, 599).A == 0, "Lege plek blijft doorzichtig");
+      bmp.Save(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np_render_test.png"), ImageFormat.Png);
+    }
+
+    // 5. Nieuw in 1.2: oud bestand (1.1) blijft leesbaar
+    string oldPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np_oud.dat");
+    System.IO.File.WriteAllText(oldPath, "NEXUSPEN1\nPen|-1497051|4|0||10,10 20,20 30,25\nText|-16777216|4|22|" + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("Hallo")) + "|5,5\n");
+    var old = StrokeStore.Load(oldPath);
+    Check(old.Count == 2 && old[1].Text == "Hallo" && !old[1].Outline, "Tekening uit versie 1.1 laadt nog");
+
+    // 6. Lettertype, zwarte rand en stempel blijven bewaard
+    var t2 = new Stroke{Tool=Tool.Text, Color=Color.Yellow, Width=4, FontSize=30, Text="Rand", Outline=true, FontName="Andika"}; t2.Pts.Add(new PointF(40,40));
+    var st = new Stroke{Tool=Tool.Stamp, Color=Color.Lime, Width=6, FontSize=Render.StampSize(6)}; st.Pts.Add(new PointF(400,300));
+    StrokeStore.Save(new List<Stroke>{t2, st}, path);
+    var b2 = StrokeStore.Load(path);
+    Check(b2.Count == 2 && b2[0].Outline && b2[0].FontName == "Andika" && b2[1].Tool == Tool.Stamp, "Rand, lettertype en stempel blijven bewaard");
+
+    // 7. Kopie bij verplaatsen: ongedaan maken houdt de oude plek
+    var orig = new Stroke{Tool=Tool.Pen, Width=4}; orig.Pts.Add(new PointF(1,1)); orig.Pts.Add(new PointF(5,5));
+    var copy = orig.Clone(); Render.Move(copy, 100, 0);
+    Check(orig.Pts[0].X == 1 && copy.Pts[0].X == 101, "Verplaatsen raakt het origineel niet (ongedaan maken klopt)");
+    Check(Render.Hit(st, new PointF(405,305), 4) && !Render.Hit(st, new PointF(600,300), 4), "Stempel is te selecteren");
+
+    // 8. Instellingen met thema bewaren en terugladen
+    string ini = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np_test.ini");
+    var cfg = new Settings(); cfg.ThemeIndex = Theme.Custom; cfg.CustomAccent = Color.FromArgb(255, 0x12, 0x34, 0x56); cfg.Vertical = true; cfg.SizeIndex = 2; cfg.TextOutline = true; cfg.FontName = "Nunito"; cfg.PaletteIndex = 1; cfg.ColorIndex = 9;
+    cfg.Save(ini);
+    var c2 = Settings.Load(ini);
+    Check(c2.ThemeIndex == Theme.Custom && c2.CustomAccent.ToArgb() == cfg.CustomAccent.ToArgb() && c2.Vertical && c2.SizeIndex == 2 && c2.TextOutline && c2.FontName == "Nunito" && c2.PaletteIndex == 1 && c2.ColorIndex == 9, "Thema en werkbalk-instellingen blijven bewaard");
+    Check(Theme.Get(c2).Accent.ToArgb() == cfg.CustomAccent.ToArgb(), "Eigen accentkleur wordt gebruikt");
+    System.IO.File.WriteAllText(ini, "thema=99\ngrootte=-4\nkleur=55\n");
+    var c3 = Settings.Load(ini);
+    Check(c3.ThemeIndex == Theme.All.Length - 1 && c3.SizeIndex == 0 && c3.ColorIndex == 9, "Rare waarden in instellingen geven geen crash");
+    Check(Theme.All.Length == 10 && Theme.All[0].Name == "Nexus" && Theme.All[0].Accent.ToArgb() == Color.FromArgb(255, 0xFF, 0x80, 0x00).ToArgb(), "Nexus is het eerste thema met NOL-oranje");
+
+    // 9. Icoontjes uit het ontwerp worden goed gelezen (ook bogen als 'a2 2 0 01-2 2')
+    bool icOk = true;
+    foreach (string ic in new[]{"muis","pen","markeer","laser","vormen","tekst","stempel","focus","gum","undo","bord","foto","oog","oogopen","instellingen","selecteer","opslaan","prullenbak","map","vraag","dupliceer"}) {
+      using (var bmp = new Bitmap(48, 48, PixelFormat.Format32bppPArgb)) using (var g = Graphics.FromImage(bmp)) {
+        try { Icons.Draw(g, ic, new RectangleF(0,0,48,48), 48, Color.White, 1.8f); } catch (Exception ex) { icOk = false; Console.WriteLine(ic + ": " + ex.Message); }
+      }
+    }
+    Check(icOk, "Alle icoontjes tekenen zonder fout");
+    using (var gp = Svg.Path("M4 9h10a6 6 0 010 12h-3")) { RectangleF bb = gp.GetBounds(); Check(Math.Abs(bb.Right - 20) < 0.3 && Math.Abs(bb.Bottom - 21) < 0.3, "Boog in het ongedaan-icoon heeft de goede maat (" + bb + ")"); }
+    using (var gp = Svg.Path("M19.4 15a1.65 1.65 0 00.33 1.82l.06.06")) { RectangleF bb = gp.GetBounds(); Check(bb.Right < 19.9 && bb.Right > 19.6, "Aan elkaar geschreven boogvlaggen ('00.33') kloppen"); }
+
+    // 10. Het logo: tegel in de accentkleur, N wit (of donker op een heel lichte kleur)
+    using (var lb = Logo.Bitmap(256, Color.FromArgb(255, 0x38, 0xBD, 0xF8), Color.White)) {
+      Color corner = lb.GetPixel(30, 128), stem = lb.GetPixel(176, 100), wood = lb.GetPixel(70, 170), tipC = lb.GetPixel(78, 196);
+      Check(corner.B > 240 && corner.R < 70, "Logotegel krijgt de accentkleur van het thema");
+      Check(stem.R > 240 && stem.G > 240 && stem.B > 240, "N is wit");
+      Check(wood.R > 230 && wood.G > 180 && wood.B < 220, "Potloodpunt is hout");
+      Check(tipC.R < 90 && tipC.G < 70, "Grafietpunt is donker");
+      lb.Save(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np_logo_test.png"), ImageFormat.Png);
+    }
+    Check(Logo.LetterColor(Color.FromArgb(255, 0xFF, 0xE6, 0x00), Color.Black).ToArgb() == Color.Black.ToArgb(), "Op geel wordt de N donker");
+    Check(Logo.LetterColor(Color.FromArgb(255, 0xFF, 0x80, 0x00), Color.Black).ToArgb() == Color.White.ToArgb(), "Op oranje blijft de N wit");
+    using (var sm = Logo.Bitmap(16, Color.FromArgb(255, 0xFF, 0x80, 0x00), Color.White)) Check(sm.GetPixel(8, 1).R > 200, "Klein logo (16 px) tekent");
+    Console.WriteLine(fails == 0 ? "\nALLE TESTS GESLAAGD" : "\n" + fails + " TEST(S) MISLUKT");
+    return fails;
+  }
+}}

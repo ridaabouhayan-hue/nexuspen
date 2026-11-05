@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>NexusPen: timer (werkend concept)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Atkinson+Hyperlegible:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#A3E635}a:hover{color:#C5F57A}
+.tc{height:32px;min-width:52px;padding:0 10px;border:0;border-radius:8px;background:#27272A;color:#E4E4E7;font-family:Inter,'Segoe UI',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.ib{width:40px;height:40px;border:0;border-radius:10px;background:#27272A;color:#E4E4E7;display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer;flex-shrink:0}
+.ib svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.num{width:64px;height:40px;box-sizing:border-box;border:1px solid #3F3F46;border-radius:10px;background:#0F0F12;color:#FAFAFA;font-family:Inter,sans-serif;font-size:20px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums}
+.num:focus{outline:2px solid #A3E635;outline-offset:1px}
+@keyframes np-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+</style>
+</helmet>
+<div style="width: 1280px; height: 800px; position: relative; overflow: hidden; background: #2B323C; font-family: Inter, 'Segoe UI', system-ui, sans-serif">
+
+  <!-- Lesdia erachter -->
+  <div aria-hidden="true" style="position: absolute; left: 120px; top: 90px; width: 760px; height: 620px; background: #FFFFFF; border-radius: 10px; box-shadow: 0 20px 50px rgba(0,0,0,0.25); padding: 56px 64px; box-sizing: border-box; font-family: 'Atkinson Hyperlegible', sans-serif; color: #1B2430">
+    <p style="margin: 0; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: #5B6675">Opdracht · in tweetallen</p>
+    <h1 style="margin: 8px 0 32px; font-size: 40px; line-height: 1.15">Vraag de weg naar het station</h1>
+    <div style="display: flex; flex-direction: column; gap: 18px; font-size: 24px; line-height: 1.4">
+      <p style="margin: 0">1. Persoon A vraagt de weg.</p>
+      <p style="margin: 0">2. Persoon B legt uit: rechtdoor, links, rechts.</p>
+      <p style="margin: 0">3. Wissel van rol.</p>
+    </div>
+  </div>
+
+  <!-- Normaal: zwevend kaartje, versleepbaar aan de bovenrand -->
+  <sc-if value="{{card}}" hint-placeholder-val="{{ true }}">
+    <div role="timer" aria-label="Timer" style="position: absolute; left: {{x}}px; top: {{y}}px; width: 300px; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 0 18px 18px; background: #18181B; border: 1px solid #27272A; border-radius: 18px; box-shadow: 0 16px 40px rgba(0,0,0,0.4); box-sizing: border-box; animation: {{pulse}}">
+      <div onPointerDown="{{dragStart}}" onPointerMove="{{dragMove}}" onPointerUp="{{dragEnd}}" style="width: calc(100% + 36px); height: 44px; margin: 0 -18px; padding: 0 12px 0 18px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; cursor: grab; touch-action: none; border-bottom: 1px solid #232327">
+        <span style="display: flex; align-items: center; gap: 10px"><span aria-hidden="true" style="display: grid; grid-template-columns: repeat(2, 4px); grid-template-rows: repeat(3, 4px); gap: 3px"><span style="display: block; width: 4px; height: 4px; border-radius: 50%; background: #71717A"></span><span style="display: block; width: 4px; height: 4px; border-radius: 50%; background: #71717A"></span><span style="display: block; width: 4px; height: 4px; border-radius: 50%; background: #71717A"></span><span style="display: block; width: 4px; height: 4px; border-radius: 50%; background: #71717A"></span><span style="display: block; width: 4px; height: 4px; border-radius: 50%; background: #71717A"></span><span style="display: block; width: 4px; height: 4px; border-radius: 50%; background: #71717A"></span></span><span style="font-size: 12px; font-weight: 600; color: #A1A1AA; letter-spacing: 0.04em; text-transform: uppercase">Timer</span></span>
+        <span style="display: flex; gap: 4px">
+          <button class="ib" aria-label="{{soundLabel}}" onClick="{{toggleSound}}" style="width: 30px; height: 30px; background: transparent; color: {{soundColor}}">
+            <sc-if value="{{sound}}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/> <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg></sc-if>
+            <sc-if value="{{mute}}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/> <path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742"/> <path d="m2 2 20 20"/> <path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05"/></svg></sc-if>
+          </button>
+          <button class="ib" aria-label="Groot in beeld" onClick="{{toggleBig}}" style="width: 30px; height: 30px; background: transparent"><svg viewBox="0 0 24 24"><path d="M15 3h6v6"/> <path d="m21 3-7 7"/> <path d="m3 21 7-7"/> <path d="M9 21H3v-6"/></svg></button>
+          <button class="ib" aria-label="Verbergen (timer loopt door)" onClick="{{hide}}" style="width: 30px; height: 30px; background: transparent"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+        </span>
+      </div>
+
+      <div style="position: relative; width: 200px; height: 200px">
+        <svg viewBox="0 0 200 200" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 200px; height: 200px; transform: rotate(-90deg)">
+          <circle cx="100" cy="100" r="86" fill="none" stroke="#27272A" stroke-width="12"/>
+          <circle cx="100" cy="100" r="86" fill="none" stroke="{{ringColor}}" stroke-width="12" stroke-linecap="round" stroke-dasharray="540.35" stroke-dashoffset="{{dashSmall}}"/>
+        </svg>
+        <div style="position: absolute; left: 0; top: 0; width: 200px; height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px">
+          <span style="font-size: 52px; font-weight: 800; color: #FAFAFA; font-variant-numeric: tabular-nums; letter-spacing: -0.02em">{{display}}</span>
+          <sc-if value="{{hasStatus}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; font-weight: 700; color: {{statusColor}}">{{status}}</span></sc-if>
+        </div>
+      </div>
+
+      <!-- Zelf een tijd invullen -->
+      <div style="display: flex; align-items: center; gap: 8px">
+        <label style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: #A1A1AA">Min<input class="num" type="number" min="0" max="99" inputmode="numeric" value="{{minIn}}" onChange="{{onMin}}" disabled="{{running}}"></label>
+        <span style="font-size: 22px; font-weight: 800; color: #71717A; padding-top: 16px">:</span>
+        <label style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: #A1A1AA">Sec<input class="num" type="number" min="0" max="59" inputmode="numeric" value="{{secIn}}" onChange="{{onSec}}" disabled="{{running}}"></label>
+      </div>
+
+      <div style="display: flex; gap: 6px">
+        <sc-for list="{{presets}}" as="p" hint-placeholder-count="4">
+          <button class="tc" onClick="{{p.pick}}" style="{{p.style}}">{{p.label}}</button>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px">
+        <button class="ib" aria-label="Een minuut minder" onClick="{{minus}}"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+        <button onClick="{{startStop}}" style="height: 44px; min-width: 120px; padding: 0 18px; border: 0; border-radius: 12px; background: {{accent}}; color: #111407; font-family: Inter, sans-serif; font-size: 15px; font-weight: 800; cursor: pointer">{{startLabel}}</button>
+        <button class="ib" aria-label="Een minuut erbij" onClick="{{plus}}"><svg viewBox="0 0 24 24"><path d="M5 12h14"/> <path d="M12 5v14"/></svg></button>
+        <button class="ib" aria-label="Opnieuw beginnen" onClick="{{reset}}"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/> <path d="M3 3v5h5"/></svg></button>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- Verborgen: klein pilletje, timer loopt door. Klik om terug te halen -->
+  <sc-if value="{{pill}}" hint-placeholder-val="{{ false }}">
+    <button onClick="{{show}}" aria-label="Timer tonen" style="position: absolute; left: {{x}}px; top: {{y}}px; height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 14px 0 8px; border: 1px solid #27272A; border-radius: 22px; background: #18181B; box-shadow: 0 10px 26px rgba(0,0,0,0.35); cursor: pointer; animation: {{pulse}}">
+      <svg viewBox="0 0 36 36" aria-hidden="true" style="width: 30px; height: 30px; transform: rotate(-90deg)"><circle cx="18" cy="18" r="14" fill="none" stroke="#27272A" stroke-width="4"/><circle cx="18" cy="18" r="14" fill="none" stroke="{{ringColor}}" stroke-width="4" stroke-linecap="round" stroke-dasharray="87.96" stroke-dashoffset="{{dashPill}}"/></svg>
+      <span style="font-size: 18px; font-weight: 800; color: #FAFAFA; font-variant-numeric: tabular-nums">{{display}}</span>
+    </button>
+  </sc-if>
+
+  <!-- Groot in beeld: scherm wordt gedimd, ring in het midden. Geen echt volledig scherm: je lesmateriaal blijft erachter staan -->
+  <sc-if value="{{big}}" hint-placeholder-val="{{ false }}">
+    <div aria-hidden="true" onClick="{{toggleBig}}" style="position: absolute; left: 0; top: 0; width: 1280px; height: 800px; background: rgba(12,12,14,0.72)"></div>
+    <div role="timer" aria-label="Timer groot" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 28px">
+      <div style="position: relative; width: 460px; height: 460px; animation: {{pulse}}">
+        <svg viewBox="0 0 460 460" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 460px; height: 460px; transform: rotate(-90deg)">
+          <circle cx="230" cy="230" r="200" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="22"/>
+          <circle cx="230" cy="230" r="200" fill="none" stroke="{{ringColor}}" stroke-width="22" stroke-linecap="round" stroke-dasharray="1256.64" stroke-dashoffset="{{dashBig}}"/>
+        </svg>
+        <div style="position: absolute; left: 0; top: 0; width: 460px; height: 460px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px">
+          <span style="font-size: 132px; font-weight: 800; color: #FFFFFF; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1">{{display}}</span>
+          <sc-if value="{{hasStatus}}" hint-placeholder-val="{{ false }}"><span style="font-size: 22px; font-weight: 700; color: {{statusColor}}">{{status}}</span></sc-if>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 8px; background: #18181B; border: 1px solid #27272A; border-radius: 16px">
+        <button class="ib" aria-label="Een minuut minder" onClick="{{minus}}"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+        <button onClick="{{startStop}}" style="height: 44px; min-width: 130px; padding: 0 18px; border: 0; border-radius: 12px; background: {{accent}}; color: #111407; font-family: Inter, sans-serif; font-size: 15px; font-weight: 800; cursor: pointer">{{startLabel}}</button>
+        <button class="ib" aria-label="Een minuut erbij" onClick="{{plus}}"><svg viewBox="0 0 24 24"><path d="M5 12h14"/> <path d="M12 5v14"/></svg></button>
+        <button class="ib" aria-label="Opnieuw beginnen" onClick="{{reset}}"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/> <path d="M3 3v5h5"/></svg></button>
+        <button class="ib" aria-label="Klein maken" onClick="{{toggleBig}}"><svg viewBox="0 0 24 24"><path d="m14 10 7-7"/> <path d="M20 10h-6V4"/> <path d="m3 21 7-7"/> <path d="M4 14h6v6"/></svg></button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#A3E635","options":["#A3E635","#38BDF8","#FB923C","#F472B6"]},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { total: 180000, remaining: 180000, running: false, endAt: 0, sound: true, big: false, hidden: false, done: false,
+                   minIn: '3', secIn: '0', x: 940, y: 90 };
+  }
+  componentDidMount() {
+    this.iv = setInterval(() => {
+      if (!this.state.running) return;
+      const left = Math.max(0, this.state.endAt - Date.now());
+      if (left <= 0) {
+        this.setState({ remaining: 0, running: false, done: true });
+        if (this.state.sound) this.chime();
+      } else {
+        this.setState({ remaining: left });
+      }
+    }, 200);
+  }
+  componentWillUnmount() { clearInterval(this.iv); }
+  chime() {
+    try {
+      const ctx = this.ctx || (this.ctx = new (window.AudioContext || window.webkitAudioContext)());
+      [0, 0.45, 0.9].forEach((t) => {
+        [880, 1320].forEach((f, i) => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = 'sine'; o.frequency.value = f;
+          const s = ctx.currentTime + t;
+          g.gain.setValueAtTime(0.0001, s);
+          g.gain.exponentialRampToValueAtTime(i === 0 ? 0.25 : 0.08, s + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, s + 0.8);
+          o.connect(g); g.connect(ctx.destination); o.start(s); o.stop(s + 0.85);
+        });
+      });
+    } catch (e) {}
+  }
+  setTotal(ms) {
+    ms = Math.max(5000, Math.min(99 * 60000 + 59000, ms));
+    const s = Math.round(ms / 1000);
+    this.setState({ total: ms, remaining: ms, running: false, done: false, minIn: String(Math.floor(s / 60)), secIn: String(s % 60) });
+  }
+  fromInputs(minStr, secStr) {
+    const m = Math.max(0, Math.min(99, parseInt(minStr, 10) || 0));
+    const s = Math.max(0, Math.min(59, parseInt(secStr, 10) || 0));
+    const ms = (m * 60 + s) * 1000;
+    if (ms > 0) this.setState({ total: ms, remaining: ms, done: false });
+  }
+  renderVals() {
+    const st = this.state;
+    const accent = this.props.accent ?? '#A3E635';
+    const secs = Math.ceil(st.remaining / 1000);
+    const mm = Math.floor(secs / 60), ss = secs % 60;
+    const frac = st.total > 0 ? st.remaining / st.total : 0;
+    const last10 = st.running && secs <= 10;
+    const paused = !st.running && !st.done && st.remaining < st.total;
+    const presetMs = [60000, 180000, 300000, 600000];
+    return {
+      accent: accent,
+      x: st.x, y: st.y,
+      display: (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss,
+      hasStatus: st.done || paused,
+      status: st.done ? 'Tijd is om!' : 'Gepauzeerd',
+      statusColor: st.done ? '#FB923C' : '#A1A1AA',
+      ringColor: st.done ? '#FB923C' : (last10 ? '#F87171' : accent),
+      dashSmall: (540.35 * (1 - frac)).toFixed(2),
+      dashBig: (1256.64 * (1 - frac)).toFixed(2),
+      dashPill: (87.96 * (1 - frac)).toFixed(2),
+      pulse: st.done ? 'np-pulse 0.9s ease-in-out 4' : 'none',
+      startLabel: st.running ? 'Pauze' : (st.done ? 'Opnieuw' : (paused ? 'Verder' : 'Start')),
+      card: !st.big && !st.hidden, pill: !st.big && st.hidden, big: st.big,
+      running: st.running,
+      minIn: st.minIn, secIn: st.secIn,
+      onMin: (e) => { const v = e.target.value; this.setState({ minIn: v }); this.fromInputs(v, st.secIn); },
+      onSec: (e) => { const v = e.target.value; this.setState({ secIn: v }); this.fromInputs(st.minIn, v); },
+      sound: st.sound, mute: !st.sound,
+      soundLabel: st.sound ? 'Geluid aan' : 'Geluid uit',
+      soundColor: st.sound ? accent : '#71717A',
+      presets: presetMs.map((ms) => ({
+        label: (ms / 60000) + ' min',
+        style: ms === st.total ? 'background: #3F3F46; box-shadow: inset 0 0 0 1.5px ' + accent : '',
+        pick: () => this.setTotal(ms)
+      })),
+      startStop: () => {
+        if (st.running) this.setState({ running: false, remaining: Math.max(0, st.endAt - Date.now()) });
+        else if (st.done) this.setState({ remaining: st.total, done: false, running: true, endAt: Date.now() + st.total });
+        else this.setState({ running: true, endAt: Date.now() + st.remaining });
+        if (!this.ctx && st.sound) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+      },
+      plus: () => st.running ? this.setState({ endAt: st.endAt + 60000, total: st.total + 60000 }) : this.setTotal(st.remaining + 60000),
+      minus: () => st.running ? this.setState({ endAt: Math.max(Date.now() + 1000, st.endAt - 60000) }) : this.setTotal(st.remaining - 60000),
+      reset: () => this.setState({ remaining: st.total, running: false, done: false }),
+      toggleSound: () => this.setState({ sound: !st.sound }),
+      toggleBig: () => this.setState({ big: !st.big }),
+      hide: () => this.setState({ hidden: true }),
+      show: () => this.setState({ hidden: false }),
+      dragStart: (e) => {
+        if (e.target.closest && e.target.closest('button')) return;
+        this.drag = { px: e.clientX, py: e.clientY, x: st.x, y: st.y };
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+      },
+      dragMove: (e) => {
+        if (!this.drag) return;
+        const nx = Math.max(0, Math.min(1280 - 300, this.drag.x + e.clientX - this.drag.px));
+        const ny = Math.max(0, Math.min(800 - 120, this.drag.y + e.clientY - this.drag.py));
+        this.setState({ x: nx, y: ny });
+      },
+      dragEnd: () => { this.drag = null; }
+    };
+  }
+}
+</script>
+</body>
+</html>
