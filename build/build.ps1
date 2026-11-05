@@ -7,8 +7,8 @@ if (-not (Test-Path $csc)) { $csc = Join-Path $env:WINDIR "Microsoft.NET\Framewo
 $out = Join-Path $root "out"
 New-Item -ItemType Directory -Force -Path $out | Out-Null
 
-$src = Get-ChildItem (Join-Path $root "src") -Filter *.cs -Recurse | ForEach-Object { $_.FullName }
-$res = Get-ChildItem (Join-Path $root "assets\fonts") -Filter *.ttf | ForEach-Object { "/resource:$($_.FullName),$($_.Name)" }
+$src = @(Get-ChildItem (Join-Path $root "src") -Filter *.cs -Recurse | ForEach-Object { $_.FullName })
+$res = @(Get-ChildItem (Join-Path $root "assets\fonts") -Filter *.ttf | ForEach-Object { "/resource:$($_.FullName),$($_.Name)" })
 $refs = "/r:System.dll", "/r:System.Core.dll", "/r:System.Drawing.dll", "/r:System.Windows.Forms.dll"
 
 Write-Host "NexusPen.exe bouwen..."
@@ -18,7 +18,7 @@ Write-Host "NexusPen.exe bouwen..."
 if ($LASTEXITCODE -ne 0) { throw "Bouwen van NexusPen.exe mislukt" }
 
 Write-Host "Tests bouwen..."
-$tests = Get-ChildItem (Join-Path $root "tests") -Filter *.cs | ForEach-Object { $_.FullName }
+$tests = @(Get-ChildItem (Join-Path $root "tests") -Filter *.cs | ForEach-Object { $_.FullName })
 & $csc /nologo /target:exe /platform:anycpu /main:NexusPen.Tests "/out:$out\NexusPen.Tests.exe" @refs @res @src @tests
 if ($LASTEXITCODE -ne 0) { throw "Bouwen van de tests mislukt" }
 
