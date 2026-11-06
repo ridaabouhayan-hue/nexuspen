@@ -24,7 +24,7 @@ NexusPen is een lichtgewicht tekenprogramma over je scherm (vervanger van Epic P
 ## GitHub
 - Privé repository `nexuspen`.
 - GitHub Actions op `windows-latest`: bouwen, tests draaien en een installer maken (NexusPen-Setup.exe, bijvoorbeeld met Inno Setup, zonder beheerdersrechten, in %LOCALAPPDATA%\Programs\NexusPen).
-- Bij een versietag (v1.2.0) een GitHub Release maken met NexusPen-Setup.exe en een losse NexusPen.exe.
+- Release gaat vanzelf: staat er een nieuw versienummer op main (`Version` in `src/Program.cs`) en is alles groen, dan maakt GitHub Actions tag vX.Y.Z en een Release met NexusPen-Setup.exe en NexusPen.exe, met `docs/RELEASE.md` als tekst. Verhoog het versienummer dus pas als een versie klaar en nagekeken is, en werk `docs/RELEASE.md` dan bij.
 - Na elke versie: een aparte code-review (veiligheid, stabiliteit, snelheid) voordat Rida hem krijgt.
 
 ## Gebruik

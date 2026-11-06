@@ -41,7 +41,10 @@ jobs:
         id: versie
         shell: pwsh
         run: |
-          if ("${{ github.ref }}" -like "refs/tags/v*") { $v = "${{ github.ref_name }}".TrimStart("v") } else { $v = "1.2.3" }
+          # het versienummer staat in src/Program.cs (Version = "1.2.3"); bij een versietag telt de tag
+          if ("${{ github.ref }}" -like "refs/tags/v*") { $v = "${{ github.ref_name }}".TrimStart("v") }
+          else { $v = (Select-String -Path src\Program.cs -Pattern 'Version = "([0-9.]+)"').Matches[0].Groups[1].Value }
+          if (-not $v) { throw "Versienummer niet gevonden in src\Program.cs" }
           "nummer=$v" >> $env:GITHUB_OUTPUT
 
       - name: Installer maken (Inno Setup)
@@ -95,25 +98,44 @@ jobs:
           git commit -q -m "Schermen van ${{ github.sha }}"
           git push -q -f "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" zelftest-schermen
 
-  # Bij een versietag (bijvoorbeeld v1.2.1): een Release met de setup en de losse exe
+  # Een Release met de setup en de losse exe. Vanzelf zodra er een nieuw versienummer op main staat en alles groen is,
+  # of bij een versietag. Staat die versie er al, dan gebeurt er niets.
   release:
     needs: windows
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: needs.windows.result == 'success' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: write
     steps:
+      - name: Bestaat deze versie al?
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUMMER: ${{ needs.windows.outputs.nummer }}
+        run: |
+          if gh release view "v${NUMMER}" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            echo "Versie ${NUMMER} staat er al, geen nieuwe Release"
+            echo "nieuw=nee" >> "$GITHUB_OUTPUT"
+          else
+            echo "Nieuwe versie ${NUMMER}: Release maken"
+            echo "nieuw=ja" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        if: steps.check.outputs.nieuw == 'ja'
         with:
           persist-credentials: false
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: steps.check.outputs.nieuw == 'ja'
         with:
           name: NexusPen-${{ needs.windows.outputs.nummer }}
           path: out
       - name: Release maken
+        if: steps.check.outputs.nieuw == 'ja'
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
+          tag_name: v${{ needs.windows.outputs.nummer }}
+          target_commitish: ${{ github.sha }}
           name: NexusPen ${{ needs.windows.outputs.nummer }}
           body_path: docs/RELEASE.md
           files: |
