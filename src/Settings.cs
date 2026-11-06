@@ -36,7 +36,8 @@ namespace NexusPen
         public int FocusShape = 0;              // spotlicht: 0 rond, 1 rechthoek (om zinnen te lezen)
         public int FadeSeconds = 5;             // vervagen na 3, 5, 7 of 12 seconden
         public float StampPx = 0;               // eigen stempelgrootte (muiswiel); 0 = S, M of L
-        public int BoardScale = 1;              // lijnen en ruitjes: klein, normaal, groot, extra groot
+        public int BoardScale = 1;              // (oud, niet meer gebruikt)
+        public float BoardZoom = 1;             // lijnen en ruitjes: van 0,5 (veel kleine regels) tot 6 (een grote regel)
         // tekst
         public string FontName = "Andika";
         public bool TextOutline = true;
@@ -46,7 +47,8 @@ namespace NexusPen
         public int StampKind = 0, StampSize = 1, StampNext = 1, BoardBg = 0;
         // algemeen
         public string Language = "nl";
-        public bool ShowInTaskbar = true, UpdateCheck = true;
+        public bool ShowInTaskbar = true, UpdateCheck = true;   // ShowInTaskbar: oud, niet meer gebruikt
+        public bool InTaakbalk = false;         // als programma in de taakbalk; standaard alleen het icoon bij de klok
         public int KeepDrawing = 1;             // nooit, na Opslaan, altijd
         // sneltoetsen
         public string HotkeyDraw = "Ctrl+Shift+D", HotkeyHide = "Ctrl+Shift+H";
@@ -60,6 +62,7 @@ namespace NexusPen
         public const float MaxWidth = 68;
         public static readonly int[] FadeChoices = { 3, 5, 7, 12 };
         public static readonly float[] BoardScales = { 0.75f, 1f, 1.4f, 2f };
+        public const float MinZoom = 0.5f, MaxZoom = 6f;
 
         public static bool ParseHotkey(string text, out int mods, out int vk)
         {
@@ -168,10 +171,12 @@ namespace NexusPen
             if (float.IsNaN(StampPx) || StampPx < 0) StampPx = 0;
             StampPx = Math.Min(200, StampPx);
             BoardScale = Math.Max(0, Math.Min(3, BoardScale));
+            if (float.IsNaN(BoardZoom) || float.IsInfinity(BoardZoom)) BoardZoom = 1;
+            BoardZoom = Math.Max(MinZoom, Math.Min(MaxZoom, BoardZoom));
             FocusRadius = Math.Max(60, Math.Min(700, FocusRadius));
             OutlineWidth = Math.Max(0, Math.Min(2, OutlineWidth));
             OutlineColor = Math.Max(0, Math.Min(2, OutlineColor));
-            TextSize = Math.Max(12, Math.Min(160, TextSize));
+            TextSize = Math.Max(12, Math.Min(300, TextSize));
             StampKind = Math.Max(0, Math.Min(Render.StampKinds.Length - 1, StampKind));
             StampSize = Math.Max(0, Math.Min(2, StampSize));
             StampNext = Math.Max(1, Math.Min(999, StampNext));

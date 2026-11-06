@@ -12,7 +12,7 @@ namespace NexusPen
     // zodat je ze in Instellingen kunt slepen en met rechtsklik kunt verbergen.
     class Toolbar : BarForm
     {
-        public const string DefaultLayout = "muis,selecteer|pen,krijt,markeer,laser|vormen,tekst,gum|kleur,stempel,focus|undo,bord,foto|opslaan,oog,instellingen,afsluiten,weg";
+        public const string DefaultLayout = "muis,selecteer|pen,markeer,laser|vormen,tekst,gum|kleur,stempel,focus|undo,bord,foto|opslaan,oog,wis,instellingen,afsluiten,weg";
 
         // alle knoppen die in de balk kunnen; de losse vormen en Opnieuw staan standaard in de bak
         public static readonly string[] Catalog = { "muis", "selecteer", "pen", "krijt", "markeer", "laser", "vormen", "lijn", "pijl", "rechthoek", "cirkel",
@@ -140,7 +140,7 @@ namespace NexusPen
             get
             {
                 CreateParams cp = base.CreateParams;
-                if (ov != null && ov.Cfg.ShowInTaskbar) { cp.ExStyle &= ~W.WS_EX_TOOLWINDOW; cp.ExStyle |= 0x40000; }
+                if (ov != null && ov.Cfg.InTaakbalk) { cp.ExStyle &= ~W.WS_EX_TOOLWINDOW; cp.ExStyle |= 0x40000; }
                 return cp;
             }
         }
@@ -212,12 +212,10 @@ namespace NexusPen
             float pos = padMain, cross = padCross;
             float thick = vertical ? bw : bh;
 
-            float gripLen = vertical ? (4 + 12 + 8) * S : (4 + 12 + 6) * S;
-            gripItem = new Item(); gripItem.R = Px(Rect(pos, cross, gripLen, thick)); gripItem.Paint = PaintGrip;
-            pos += gripLen;
-
+            // geen greep meer: met het logo versleep je de balk, en een klik op het logo klapt alles in
             float lb = vertical ? bh + 4 * S : bw;
-            logoItem = Add(Rect(pos, cross, lb, thick), L.T("Alles inklappen: balk en tekeningen even weg") + "  (" + ov.Cfg.HotkeyHide + ")", delegate { ov.CollapseAll(); });
+            logoItem = Add(Rect(pos, cross, lb, thick), L.T("Klik = alles inklappen, slepen = de balk verplaatsen") + "  (" + ov.Cfg.HotkeyHide + ")", null);
+            gripItem = logoItem;
             logoItem.Paint = PaintLogo;
             logoItem.RightClick = delegate { ShowLogoMenu(PointToScreen(new Point((int)logoItem.R.X, (int)logoItem.R.Bottom))); };
             pos += lb;
@@ -278,8 +276,8 @@ namespace NexusPen
                 case "muis": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Muis: gewoon klikken op je scherm"), "") + "  (Esc)", Tool.Mouse); break;
                 case "selecteer": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Selecteren en verplaatsen"), "selecteer"), Tool.Select); break;
                 case "pen":
-                    it = Button(r, "pen", Shortcuts.Tip(L.T("Pen"), "pen"), delegate { Use(key); ClosePopups(); o.Cfg.Chalk = false; o.Cfg.Save(); o.SetTool(Tool.Pen); o.RefreshSettingsWindow(); },
-                        delegate { return o.DrawMode && o.CurrentTool == Tool.Pen && !o.Cfg.Chalk; }, null);
+                    it = Button(r, "pen", Shortcuts.Tip(L.T("Pen"), "pen"), delegate { Use(key); ClosePopups(); if (byKey.ContainsKey("krijt")) { o.Cfg.Chalk = false; o.Cfg.Save(); } o.SetTool(Tool.Pen); o.RefreshSettingsWindow(); },
+                        delegate { return o.DrawMode && o.CurrentTool == Tool.Pen && !(o.Cfg.Chalk && byKey.ContainsKey("krijt")); }, null);
                     break;
                 case "krijt":
                     it = Button(r, "krijt", L.T("Krijt: een pen met een korrelige streep, zoals krijt op een bord"), delegate { Use(key); ClosePopups(); o.Cfg.Chalk = true; o.Cfg.Save(); o.SetTool(Tool.Pen); o.RefreshSettingsWindow(); },
@@ -293,7 +291,7 @@ namespace NexusPen
                 case "cirkel": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Cirkel"), "cirkel"), Tool.Ellipse); break;
                 case "tekst": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Tekst"), "tekst"), Tool.Text); break;
                 case "gum":
-                    it = Button(r, "gum", Shortcuts.Tip(L.T("Gum, of rechtermuisknop ingedrukt. Beweeg erover voor de grootte"), "gum"),
+                    it = Button(r, "gum", Shortcuts.Tip(L.T("Gum, of rechtermuisknop ingedrukt. Muiswiel of knijpen = groter of kleiner"), "gum"),
                         delegate { Use(key); ClosePopups(); o.SetTool(Tool.Eraser); }, delegate { return o.DrawMode && o.CurrentTool == Tool.Eraser; }, null);
                     break;
                 case "vormen":
@@ -373,7 +371,6 @@ namespace NexusPen
 
         protected override void PaintExtra(Graphics g)
         {
-            if (gripItem != null) PaintGrip(g, gripItem, false);
             using (SolidBrush b = new SolidBrush(T.Sep)) foreach (Item s in seps) g.FillRectangle(b, s.R);
             if (handleItem != null) PaintHandle(g, handleItem, hoverHandle || shortening);
         }
@@ -410,7 +407,7 @@ namespace NexusPen
         void PaintLogo(Graphics g, Item it, bool h)
         {
             Theme t = T;
-            if (h) using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(it.R, 9 * S)) g.FillPath(b, gp);
+            if (h) using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(Highlight(it.R), 7 * S)) g.FillPath(b, gp);
             float size = (float)Math.Round(BW * 26f / 38f);
             RectangleF r = new RectangleF(it.R.X + (it.R.Width - size) / 2, it.R.Y + (it.R.Height - size) / 2, size, size);
             Logo.Draw(g, r, t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
@@ -422,14 +419,13 @@ namespace NexusPen
             bool open = IsOpen(colorPopup);
             // net als de andere knoppen: alleen een achtergrond als je erover beweegt of als het venster open is
             if (h || open)
-                using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(it.R, 9 * S)) g.FillPath(b, gp);
-            // even groot als een icoontje: een ring en een gekleurd rondje binnen de maat van IconSize
-            float outer = Px(IconSize), ring = Math.Max(1, Px(1.5f * S)), gap = Math.Max(1, Px(1.5f * S));
+                using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(Highlight(it.R), 7 * S)) g.FillPath(b, gp);
+            // alleen een gekleurd rondje, ongeveer even groot als een icoontje (zonder witte ring)
+            float d = Px(IconSize * 0.85f);
             float cx = Px(it.R.X + it.R.Width / 2), cy = Px(it.R.Y + it.R.Height / 2);
-            RectangleF ro = new RectangleF(cx - outer / 2, cy - outer / 2, outer, outer);
-            using (Pen p = new Pen(t.Icon, ring)) g.DrawEllipse(p, RectangleF.Inflate(ro, -ring / 2, -ring / 2));
-            float inner = outer - 2 * (ring + gap);
-            using (SolidBrush b = new SolidBrush(ov.CurrentColor)) g.FillEllipse(b, cx - inner / 2, cy - inner / 2, inner, inner);
+            using (SolidBrush b = new SolidBrush(ov.CurrentColor)) g.FillEllipse(b, cx - d / 2, cy - d / 2, d, d);
+            if (Theme.Luma(ov.CurrentColor) < 0.15 || Theme.Luma(ov.CurrentColor) > 0.9)   // zwart of wit: een dun randje om hem te zien
+                using (Pen p = new Pen(Color.FromArgb(120, t.Icon), 1)) g.DrawEllipse(p, cx - d / 2, cy - d / 2, d, d);
         }
 
         void PaintShapeButton(Graphics g, Item it, bool h)
@@ -460,15 +456,24 @@ namespace NexusPen
             Theme t = T;
             bool open = IsOpen(overflowPopup);
             if (h || open)
-                using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(it.R, 9 * S)) g.FillPath(b, gp);
+                using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(Highlight(it.R), 7 * S)) g.FillPath(b, gp);
             Icons.Draw(g, vertical ? "neer" : "meer", it.R, IconSize, t.Icon, StrokeW);
         }
 
         // ---- inkorten met het sleeprandje
         bool hoverHandle;
 
+        bool logoDown;
+        Point logoDownAt;
+
         protected override bool OnPress(MouseEventArgs e)
         {
+            // het logo: klikken = inklappen, slepen = de balk verplaatsen
+            if (e.Button == MouseButtons.Left && logoItem != null && logoItem.R.Contains(e.Location))
+            {
+                logoDown = true; logoDownAt = e.Location; Capture = true;
+                return true;
+            }
             if (e.Button == MouseButtons.Left && handleItem != null && RectangleF.Inflate(handleItem.R, 4 * S, 4 * S).Contains(e.Location))
             {
                 shortening = true;
@@ -527,6 +532,7 @@ namespace NexusPen
         {
             base.OnMouseCaptureChanged(e);
             if (dragging && !Capture) EndDrag();
+            if (logoDown && !Capture) logoDown = false;
         }
 
         // Ligt hier geen ander scherm? Dan is dit een echte rand.
@@ -546,6 +552,16 @@ namespace NexusPen
         protected override void OnMouseMove(MouseEventArgs e)
         {
             if (dragging) { DragMove(); Cursor = Cursors.SizeAll; return; }
+            if (logoDown)
+            {
+                if (Math.Abs(e.X - logoDownAt.X) + Math.Abs(e.Y - logoDownAt.Y) > 4)
+                {
+                    logoDown = false;
+                    BeginCustomDrag(new MouseEventArgs(MouseButtons.Left, 1, logoDownAt.X, logoDownAt.Y, 0));
+                    DragMove();
+                }
+                return;
+            }
             if (shortening)
             {
                 float p = vertical ? e.Y : e.X;
@@ -566,6 +582,7 @@ namespace NexusPen
         {
             base.OnMouseUp(e);
             if (dragging) { Capture = false; if (dragging) EndDrag(); return; }
+            if (logoDown) { logoDown = false; Capture = false; if (logoItem != null && logoItem.R.Contains(e.Location)) ov.CollapseAll(); return; }
             if (!shortening) return;
             shortening = false;
             Capture = false;
@@ -691,7 +708,7 @@ namespace NexusPen
 
         void StopHoverOpen() { if (hoverOpen != null) hoverOpen.Stop(); hoverKey = null; }
 
-        static bool HasPopup(string k) { return k == "vormen" || k == "kleur" || k == "stempel" || k == "bord" || k == "gum"; }
+        static bool HasPopup(string k) { return k == "vormen" || k == "kleur" || k == "stempel" || k == "bord"; }
 
         void HoverCheck()
         {
@@ -790,6 +807,17 @@ namespace NexusPen
         {
             foreach (Form f in new Form[] { colorPopup, shapePopup, stampPopup, boardPopup, eraserPopup, overflowPopup })
                 if (IsOpen(f)) snap(f, name);
+        }
+
+        // Staat er een klein venster van de balk open (kleur, vormen, stempel, bord, verborgen knoppen)?
+        public bool AnyPopupOpen
+        {
+            get
+            {
+                foreach (Form f in new Form[] { colorPopup, shapePopup, stampPopup, boardPopup, eraserPopup, overflowPopup })
+                    if (IsOpen(f)) return true;
+                return false;
+            }
         }
 
         public void ClosePopups()
@@ -974,27 +1002,65 @@ namespace NexusPen
         }
     }
 
-    // Donkere rechtsklik-menu's in de stijl van het thema
+    // Rechtsklik-menu's in de stijl van het thema: ruim, goed leesbaar, met afgeronde hoeken
     static class Menus
     {
         public static ContextMenuStrip Make(Theme t)
         {
+            float sc = Math.Max(1f, W.UiScaleAt(Control.MousePosition));
             ContextMenuStrip m = new ContextMenuStrip();
             m.ShowImageMargin = false;
-            m.Font = UiFont.Make(13 * Math.Max(1f, W.UiScaleAt(Control.MousePosition)), true);
-            m.Renderer = new MenuRenderer(t);
+            m.Font = UiFont.Make(14 * sc, false);
+            m.Renderer = new MenuRenderer(t, sc);
             m.BackColor = t.Bar;
             m.ForeColor = t.Text;
-            m.Padding = new Padding(4);
+            m.Padding = new Padding((int)(6 * sc));
+            m.Opening += delegate
+            {
+                foreach (ToolStripItem it in m.Items)
+                {
+                    if (it is ToolStripSeparator) { it.Margin = new Padding(0, (int)(4 * sc), 0, (int)(4 * sc)); continue; }
+                    it.Padding = new Padding((int)(10 * sc), (int)(7 * sc), (int)(18 * sc), (int)(7 * sc));
+                    it.Margin = new Padding(0, (int)(1 * sc), 0, (int)(1 * sc));
+                }
+            };
             m.Closed += delegate { try { m.BeginInvoke((MethodInvoker)delegate { Font f = m.Font; m.Dispose(); f.Dispose(); }); } catch { } };
             return m;
         }
 
         class MenuRenderer : ToolStripProfessionalRenderer
         {
-            Theme t;
-            public MenuRenderer(Theme th) : base(new Colors(th)) { t = th; RoundedEdges = true; }
-            protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e) { e.TextColor = t.Text; base.OnRenderItemText(e); }
+            Theme t; float sc;
+            public MenuRenderer(Theme th, float s) : base(new Colors(th)) { t = th; sc = s; RoundedEdges = true; }
+
+            protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+            {
+                e.TextColor = e.Item.Enabled ? t.Text : t.Muted;
+                base.OnRenderItemText(e);
+            }
+
+            // de regel onder de muis: een afgerond vlakje, zoals de knoppen in de balk
+            protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
+            {
+                if (!e.Item.Selected || !e.Item.Enabled) return;
+                Graphics g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                RectangleF r = new RectangleF(2 * sc, 0, e.Item.Width - 4 * sc, e.Item.Height);
+                using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(r, 6 * sc)) g.FillPath(b, gp);
+            }
+
+            protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+            {
+                Graphics g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                using (Pen p = new Pen(t.Border, 1)) using (GraphicsPath gp = Svg.RoundRect(new RectangleF(0.5f, 0.5f, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1), 8 * sc)) g.DrawPath(p, gp);
+            }
+
+            protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
+            {
+                int y = e.Item.Height / 2;
+                using (Pen p = new Pen(t.Sep, 1)) e.Graphics.DrawLine(p, 8 * sc, y, e.Item.Width - 8 * sc, y);
+            }
         }
 
         class Colors : ProfessionalColorTable

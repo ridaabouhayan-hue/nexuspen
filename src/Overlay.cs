@@ -257,7 +257,7 @@ namespace NexusPen
             Color red = chalk ? Color.FromArgb(120, 247, 215, 116) : Color.FromArgb(150, 220, 80, 80);
             float s = W.DpiScaleAt(new Point(vs.X + w / 2, vs.Y + h / 2));
             float margin = 120 * s;
-            float z = Settings.BoardScales[Math.Max(0, Math.Min(Settings.BoardScales.Length - 1, Cfg.BoardScale))];
+            float z = Math.Max(Settings.MinZoom, Math.Min(Settings.MaxZoom, Cfg.BoardZoom));
             using (Pen pb = new Pen(blue, 1.2f * s * Math.Max(1f, z * 0.8f)))
             using (Pen pr = new Pen(red, 1.6f * s * Math.Max(1f, z * 0.8f)))
             {
@@ -397,6 +397,8 @@ namespace NexusPen
 
             // Esc werkt altijd, ook als de tekenlaag niet het actieve venster is
             bool esc = (W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0;
+            // Esc: eerst een open venstertje van de balk dicht, dan pas terug naar de muis
+            if (esc && !lastEsc && toolbar != null && toolbar.AnyPopupOpen) { toolbar.ClosePopups(); lastEsc = true; return; }
             if (esc && !lastEsc && DrawMode && typing != null) { CloseTextInput(true); lastEsc = true; return; }   // ook als het toetsenbord ergens anders zat
             if (esc && !lastEsc && DrawMode && typing == null)
             {
@@ -775,6 +777,7 @@ namespace NexusPen
             toolbar.Owner = this;
             toolbar.Show();
             SetupTray();
+            UpdateTrayIcon();
             L.Changed += delegate { SetupTrayMenu(); if (toolbar != null) toolbar.Restyle(); };
             Rebuild();
             RenderFrame();
@@ -1229,7 +1232,7 @@ namespace NexusPen
             if (old != null) old.Dispose();
         }
 
-        Icon trayIcon;
+        Icon trayIcon, barIcon;
 
         void UpdateTrayIcon()
         {
@@ -1240,6 +1243,10 @@ namespace NexusPen
                 int size = SystemInformation.SmallIconSize.Width;
                 Icon ic = Logo.MakeIcon(Math.Max(16, size), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
                 tray.Icon = ic;
+                // ook het logo voor de werkbalk, als die in de taakbalk staat (anders zie je het standaard-icoon van Windows)
+                Icon big = Logo.MakeIcon(Math.Max(32, SystemInformation.IconSize.Width), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
+                if (toolbar != null) { Icon old = toolbar.Icon; toolbar.Icon = big; if (old != null && old != big && barIcon == old) old.Dispose(); }
+                barIcon = big;
                 if (trayIcon != null) trayIcon.Dispose();
                 trayIcon = ic;
             }
@@ -1273,8 +1280,28 @@ namespace NexusPen
             base.OnFormClosed(e);
         }
 
+        // De cursor van de tekenlaag. We zetten hem alleen als de muis echt boven de tekenlaag is,
+        // anders flitst bij een klik op de werkbalk heel even de stempel of de pen op de knop.
+        Cursor overlayCursor = Cursors.Cross;
+
+        void SetOverlayCursor(Cursor c)
+        {
+            if (c == null) return;
+            overlayCursor = c;
+            try
+            {
+                Point mp = Control.MousePosition;
+                if (IsHandleCreated && W.WindowFromPoint(new W.POINT(mp.X, mp.Y)) == Handle) W.SetCursor(c.Handle);
+            }
+            catch { }
+        }
+
         protected override void WndProc(ref Message m)
         {
+            if (m.Msg == 0x0020 && (m.LParam.ToInt64() & 0xFFFF) == 1)   // WM_SETCURSOR boven de tekenlaag
+            {
+                W.SetCursor(overlayCursor.Handle); m.Result = new IntPtr(1); return;
+            }
             if (m.Msg == W.WM_DPICHANGED) { m.Result = IntPtr.Zero; return; } // de tekenlaag zelf nooit laten schalen
             if (m.Msg == W.WM_TABLET_QUERYSYSTEMGESTURESTATUS) { m.Result = new IntPtr(W.TABLET_FLAGS); return; }
             if (m.Msg == W.WM_DISPLAYCHANGE) OnDisplayChanged(this, EventArgs.Empty);
@@ -1461,7 +1488,7 @@ namespace NexusPen
         }
 
         // Vaste standen voor de grootte van tekst en stempels (zoals bij Epic Pen)
-        public static readonly float[] TextSizes = { 14, 18, 22, 26, 30, 36, 42, 48, 56, 64, 72, 84, 96, 120, 144 };
+        public static readonly float[] TextSizes = { 14, 18, 22, 26, 30, 36, 42, 48, 56, 64, 72, 84, 96, 120, 144, 170, 200, 240, 300 };
         public static readonly float[] StampPxSizes = { 20, 24, 28, 34, 40, 48, 56, 68, 80, 96, 120, 150 };
 
         static float NextSize(float[] list, float cur, int delta)
@@ -1529,9 +1556,12 @@ namespace NexusPen
         public void CycleBoard() { SetBoard(BoardMode == Board.None ? Board.White : BoardMode == Board.White ? Board.Black : BoardMode == Board.Black ? Board.Dark : Board.None); }
 
         // Lijnen en ruitjes groter of kleiner (om in te zoomen)
-        public void CycleBoardScale()
+        // In- of uitzoomen op het bord: dir +1 groter, -1 kleiner (in stapjes van 20%)
+        public void ZoomBoard(int dir)
         {
-            Cfg.BoardScale = (Cfg.BoardScale + 1) % Settings.BoardScales.Length; Cfg.Save();
+            float z = dir == 0 ? Cfg.BoardZoom : Cfg.BoardZoom * (dir > 0 ? 1.2f : 1 / 1.2f);
+            if (Math.Abs(z - 1) < 0.05f) z = 1;
+            Cfg.BoardZoom = Math.Max(Settings.MinZoom, Math.Min(Settings.MaxZoom, z)); Cfg.Save();
             if (BoardMode == Board.None) SetBoard(Board.White); else Rebuild();
         }
 
@@ -1637,8 +1667,7 @@ namespace NexusPen
                 }
             }
             catch (Exception ex) { Log.Error("Cursor", ex); }
-            Cursor want = c ?? Cursors.Cross;
-            if (Cursor != want) Cursor = want;
+            SetOverlayCursor(c ?? Cursors.Cross);
         }
 
         // ---------- ongedaan maken
@@ -1667,7 +1696,12 @@ namespace NexusPen
         public void Redo()
         {
             CloseTextInput(true);
-            if (redo.Count == 0) return;
+            if (redo.Count == 0)
+            {
+                // laten zien waarom er niets gebeurt (na iets nieuws tekenen is Opnieuw weg, net als in Word)
+                if (toolbar != null) toolbar.ShowToast(L.T("Er is niets om opnieuw te doen. Opnieuw werkt na Ongedaan maken, tot je iets nieuws tekent."), "", null);
+                return;
+            }
             Deselect();
             undo.Add(strokes);
             strokes = redo[redo.Count - 1];
@@ -2028,7 +2062,7 @@ namespace NexusPen
             if (CurrentTool == Tool.Select && !dragging)
             {
                 int corner = CornerAt(p);
-                Cursor = corner == 0 || corner == 3 ? Cursors.SizeNWSE : corner >= 0 ? Cursors.SizeNESW : selected != null && SelectionBox().Contains(p) ? Cursors.SizeAll : Cursors.Default;
+                SetOverlayCursor(corner == 0 || corner == 3 ? Cursors.SizeNWSE : corner >= 0 ? Cursors.SizeNESW : selected != null && SelectionBox().Contains(p) ? Cursors.SizeAll : Cursors.Default);
             }
             if (dragging && selected != null)
             {
@@ -2225,7 +2259,8 @@ namespace NexusPen
             return b;
         }
 
-        float HandleR { get { return 9; } }
+        float HandleR { get { return 12; } }
+        bool textHover;   // muis boven de tekst: dan pas het kader en het hoekje tonen
         PointF MoveHandle(RectangleF f) { return new PointF(f.Left - HandleR - 2, f.Top - HandleR - 2); }
         PointF SizeHandle(RectangleF f) { return new PointF(f.Right + 2, f.Bottom + 2); }
 
@@ -2292,7 +2327,8 @@ namespace NexusPen
                 : Dist2(p, MoveHandle(f)) <= grab || (RectangleF.Inflate(f, 8, 8).Contains(p) && !RectangleF.Inflate(f, -4, -4).Contains(p)) ? Cursors.SizeAll
                 : Cursors.IBeam;
             bool near = RectangleF.Inflate(f, HandleR * 2 + 4, HandleR * 2 + 4).Contains(p);
-            if (near || CurrentTool == Tool.Text) { if (Cursor != want) Cursor = want; return true; }
+            if (near != textHover) { textHover = near; RenderSoon(); }
+            if (near || CurrentTool == Tool.Text) { SetOverlayCursor(want); return true; }
             return false;
         }
 
@@ -2308,17 +2344,24 @@ namespace NexusPen
                             foreach (RectangleF r in lay.SelectionRects(ed.SelStart, ed.SelEnd)) g.FillRectangle(b, r);
                     SafeDraw(g, typing, 1f);
                     RectangleF f = TextFrame(typing);
-                    using (Pen p = new Pen(Color.FromArgb(140, 0, 0, 0), 3)) g.DrawRectangle(p, f.X, f.Y, f.Width, f.Height);
-                    using (Pen p = new Pen(Color.FromArgb(230, 255, 255, 255), 1.2f)) { p.DashPattern = new float[] { 4, 3 }; g.DrawRectangle(p, f.X, f.Y, f.Width, f.Height); }
+                    bool showFrame = textHover || textDrag != 0;
+                    if (showFrame)
+                    {
+                        using (Pen p = new Pen(Color.FromArgb(140, 0, 0, 0), 3)) g.DrawRectangle(p, f.X, f.Y, f.Width, f.Height);
+                        using (Pen p = new Pen(Color.FromArgb(230, 255, 255, 255), 1.2f)) { p.DashPattern = new float[] { 4, 3 }; g.DrawRectangle(p, f.X, f.Y, f.Width, f.Height); }
+                    }
                     // rondje met vier pijltjes: verplaatsen
                     PointF mh = MoveHandle(f); float r0 = HandleR;
                     g.FillEllipse(Brushes.White, mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0);
                     using (Pen p = new Pen(Color.FromArgb(200, 30, 30, 34), 1.2f)) g.DrawEllipse(p, mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0);
-                    Icons.Draw(g, "verplaats", new RectangleF(mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0), 14, Color.FromArgb(255, 30, 30, 34), 2f);
-                    // hoekje: groter of kleiner
+                    Icons.Draw(g, "verplaats", new RectangleF(mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0), 18, Color.FromArgb(255, 30, 30, 34), 2f);
+                    // hoekje: groter of kleiner (alleen als je met de muis bij de tekst bent)
                     PointF sh = SizeHandle(f);
-                    g.FillRectangle(Brushes.White, sh.X - 5, sh.Y - 5, 10, 10);
-                    using (Pen p = new Pen(Color.FromArgb(200, 30, 30, 34), 1.2f)) g.DrawRectangle(p, sh.X - 5, sh.Y - 5, 10, 10);
+                    if (showFrame)
+                    {
+                        g.FillRectangle(Brushes.White, sh.X - 6, sh.Y - 6, 12, 12);
+                        using (Pen p = new Pen(Color.FromArgb(200, 30, 30, 34), 1.2f)) g.DrawRectangle(p, sh.X - 6, sh.Y - 6, 12, 12);
+                    }
                     if (caretOn && !ed.HasSelection)
                     {
                         // gewoon streepje zoals in Windows: zwart met een dun wit randje, 2 pixels breed
@@ -2454,7 +2497,7 @@ namespace NexusPen
             if (typing == null) return;
             Stroke t = typing;
             typing = null;
-            ed = null; textDrag = 0;
+            ed = null; textDrag = 0; textHover = false;
             UpdateCursor();
             bool empty = string.IsNullOrEmpty(t.Text) || t.Text.Trim().Length == 0;
             if (typingOld != null)

@@ -302,8 +302,12 @@ namespace NexusPen
                 Chip(bgs[i], icons[i], Color.Empty, tips[i], delegate { return o.Cfg.BoardBg == idx; },
                     delegate { o.Cfg.BoardBg = idx; o.Cfg.Save(); if (o.BoardMode == Board.None) o.SetBoard(Board.White); else o.Rebuild(); Invalidate(); });
             }
-            string[] zn = { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") };
-            Chip(zn[Math.Max(0, Math.Min(3, o.Cfg.BoardScale))], "zoom", Color.Empty, L.T("Lijnen en ruitjes groter of kleiner. Klik om te wisselen"), null, delegate { o.CycleBoardScale(); Rebuild(); });
+            // zelf in- en uitzoomen: van heel veel kleine regels tot een grote regel
+            Chip(null, "min", Color.Empty, L.T("Lijnen en ruitjes kleiner (meer regels)"), null, delegate { o.ZoomBoard(-1); Rebuild(); });
+            Item zl = Add(new RectangleF(x, pad, 56 * S, h), L.T("Grootte van lijnen en ruitjes"), delegate { o.Cfg.BoardZoom = 1; o.Cfg.Save(); o.ZoomBoard(0); Rebuild(); });
+            zl.Paint = delegate(Graphics g, Item item, bool hv) { if (hv) PaintChip(g, item.R, false, true, null, null, Color.Empty); Label(g, Math.Round(o.Cfg.BoardZoom * 100) + "%", item.R, T.Text, 13, true, StringAlignment.Center); };
+            x += 56 * S + 6 * S;
+            Chip(null, "plus", Color.Empty, L.T("Lijnen en ruitjes groter (minder regels)"), null, delegate { o.ZoomBoard(1); Rebuild(); });
             Sep();
             Chip(null, "links", Color.Empty, L.T("Vorige pagina"), null, delegate { o.PrevPage(); Rebuild(); });
             Item pg = Add(new RectangleF(x, pad, 52 * S, h), L.T("Pagina"), null);

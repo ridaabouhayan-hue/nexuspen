@@ -329,7 +329,7 @@ namespace NexusPen
             float y = Heading(contentTop, L.T("Algemeen"), null);
             y = Section(y, L.T("Starten"));
             y = Toggle(y, L.T("Starten met Windows"), L.T("NexusPen staat klaar zodra je inlogt, ingeklapt"), delegate { return Autostart; }, delegate(bool v) { Autostart = v; });
-            y = Toggle(y, L.T("Tonen in de taakbalk"), L.T("Klik op het icoon in de taakbalk om alles in of uit te klappen"), delegate { return c.ShowInTaskbar; }, delegate(bool v) { c.ShowInTaskbar = v; });
+            y = Toggle(y, L.T("Tonen in de taakbalk"), L.T("Klik op het icoon in de taakbalk om alles in of uit te klappen"), delegate { return c.InTaakbalk; }, delegate(bool v) { c.InTaakbalk = v; });
             y = Section(y + 8 * S, L.T("Tekenen"));
             y = Toggle(y, L.T("Muiswiel en touchpad veranderen de dikte"), L.T("Knijpen op het touchpad werkt ook"), delegate { return c.WheelWidth; }, delegate(bool v) { c.WheelWidth = v; });
             y = Toggle(y, L.T("Elk gereedschap onthoudt zijn eigen dikte"), L.T("Pen dun, markeerstift dik, zonder steeds te wisselen"), delegate { return c.PerToolWidth; }, delegate(bool v) { c.PerToolWidth = v; });
@@ -682,7 +682,9 @@ namespace NexusPen
             Settings c = Cfg;
             float y = Heading(contentTop, L.T("Bord en achtergrond"), L.T("Een leeg bord over je hele scherm, met lijnen als je wilt en meerdere pagina's."));
             y = Segments(y, L.T("Achtergrond"), null, new string[] { L.T("Leeg"), L.T("Schrijflijnen"), L.T("Ruitjes"), L.T("Lijntjes") }, delegate { return c.BoardBg; }, delegate(int i) { c.BoardBg = i; });
-            y = Segments(y, L.T("Grootte van lijnen en ruitjes"), L.T("Groter is handig om in te zoomen of van ver te lezen"), new string[] { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") }, delegate { return c.BoardScale; }, delegate(int i) { c.BoardScale = i; });
+            float[] zs = { 0.6f, 1f, 2f, 4f };
+            y = Segments(y, L.T("Grootte van lijnen en ruitjes"), L.T("Fijner: met min en plus in het Bord-venster zoom je zelf in of uit"), new string[] { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") },
+                delegate { int b = -1; for (int i = 0; i < zs.Length; i++) if (Math.Abs(zs[i] - c.BoardZoom) < 0.05f) b = i; return b; }, delegate(int i) { c.BoardZoom = zs[i]; });
             y = Para(y + 12 * S, L.F("Je bord heeft nu {0} pagina's. Met de knop Bord in de werkbalk ga je naar de vorige of volgende pagina, of maak je een nieuwe.", ov.PageCount), 44 * S);
             float bx = contentX;
             bx += Button(bx, y + 6 * S, L.T("Whiteboard openen"), "bord", delegate { Close(); ov.SetBoard(Board.White); }, true) + 10 * S;

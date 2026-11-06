@@ -128,6 +128,8 @@ namespace NexusPen
         }
 
         [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);
+        [DllImport("user32.dll")] public static extern IntPtr SetCursor(IntPtr hCursor);
         [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
 
         // Staat er nu een ander programma bovenop dat zelf 'altijd bovenop' wil zijn (Knipprogramma, Win+Shift+S,

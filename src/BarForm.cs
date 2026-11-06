@@ -343,6 +343,14 @@ namespace NexusPen
 
         protected virtual void PaintExtra(Graphics g) { }
 
+        // Het vakje achter een knop (aan of eronder met de muis): iets kleiner dan de knop zelf, dan oogt de balk rustiger
+        protected RectangleF Highlight(RectangleF r)
+        {
+            float d = Px(Math.Max(1, r.Width - (IconSize + 12 * S)) / 2);
+            float dy = Px(Math.Max(1, r.Height - (IconSize + 12 * S)) / 2);
+            return RectangleF.Inflate(r, -d, -dy);
+        }
+
         protected void PaintItem(Graphics g, Item it)
         {
             Theme t = T;
@@ -351,7 +359,7 @@ namespace NexusPen
             if (it.Paint != null) { it.Paint(g, it, hov); return; }
             if (active || hov)
                 using (SolidBrush b = new SolidBrush(active ? t.Accent : t.Hover))
-                using (GraphicsPath gp = Svg.RoundRect(it.R, 9 * S))
+                using (GraphicsPath gp = Svg.RoundRect(Highlight(it.R), 7 * S))
                     g.FillPath(b, gp);
             Color c = active ? t.OnAccent : (it.Lit != null && it.Lit()) ? t.Accent : it.Muted ? t.Muted : t.Icon;
             if (it.Icon != null) Icons.Draw(g, it.Icon, it.R, IconSize, c, StrokeW);
