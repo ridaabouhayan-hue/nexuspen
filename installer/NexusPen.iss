@@ -1,6 +1,6 @@
-; NexusPen installer (Inno Setup 6). Installeert voor de huidige gebruiker, zonder beheerdersrechten.
+﻿; NexusPen installer (Inno Setup 6). Installeert voor de huidige gebruiker, zonder beheerdersrechten.
 #ifndef AppVersion
-  #define AppVersion "1.2.0"
+  #define AppVersion "1.2.1"
 #endif
 
 [Setup]
@@ -53,3 +53,25 @@ Filename: "{app}\NexusPen.exe"; Description: "NexusPen openen"; Flags: nowait po
 
 [UninstallRun]
 Filename: "{cmd}"; Parameters: "/C taskkill /IM NexusPen.exe /F"; Flags: runhidden; RunOnceId: "StopNexusPen"
+
+[CustomMessages]
+nl.AskDeleteData=Wil je ook je tekeningen, instellingen en het foutlog van NexusPen verwijderen?%n%nKies Nee als je NexusPen later weer wilt gebruiken, dan staat alles er nog.
+en.AskDeleteData=Do you also want to delete your NexusPen drawings, settings and error log?%n%nChoose No if you want to use NexusPen again later: everything will still be there.
+fr.AskDeleteData=Voulez-vous aussi supprimer vos dessins, paramètres et le journal des erreurs de NexusPen ?%n%nChoisissez Non si vous voulez réutiliser NexusPen plus tard : tout sera encore là.
+es.AskDeleteData=¿Quieres borrar también tus dibujos, ajustes y el registro de errores de NexusPen?%n%nElige No si quieres volver a usar NexusPen más adelante: todo seguirá ahí.
+
+[Code]
+// Na het verwijderen: vragen of de tekeningen en instellingen in %APPDATA%\NexusPen ook weg mogen.
+// Bij stil verwijderen (bijvoorbeeld bij bijwerken) nooit iets weggooien.
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  dataDir: String;
+begin
+  if CurUninstallStep = usPostUninstall then
+  begin
+    dataDir := ExpandConstant('{userappdata}\NexusPen');
+    if DirExists(dataDir) and (not UninstallSilent) then
+      if MsgBox(CustomMessage('AskDeleteData'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+        DelTree(dataDir, True, True, True);
+  end;
+end;

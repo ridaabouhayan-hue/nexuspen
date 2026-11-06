@@ -69,9 +69,13 @@ namespace NexusPen
         {
             base.OnHandleCreated(e);
             W.HideFromCapture(Handle, ov.Cfg.HideFromCapture);
+            // Windows 11 maakt de hoeken zelf glad rond; op Windows 10 blijft de oude vorm
+            if (W.RoundCorners(Handle, ov.Theme.Border)) { dwmCorners = true; Region = null; }
         }
 
-        public void Rebuild() { BuildItems(); Invalidate(); }
+        bool dwmCorners;
+
+        public void Rebuild() { if (dwmCorners && IsHandleCreated) W.RoundCorners(Handle, ov.Theme.Border); BuildItems(); Invalidate(); }
 
         public void ShowPage(string id)
         {
@@ -879,7 +883,11 @@ namespace NexusPen
             }, false) + 10 * S;
             Button(bx, y + 6 * S, L.T("Map met licenties"), "map", delegate { OpenFolder(Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "licenties")); }, false);
             y += 64 * S;
-            Para(y, L.T("Icoontjes: Lucide (ISC-licentie). Lettertypes Andika, Atkinson Hyperlegible, Lexend, Nunito en Patrick Hand: SIL Open Font License."), 40 * S);
+            y = Para(y, L.T("Icoontjes: Lucide (ISC-licentie). Lettertypes Andika, Atkinson Hyperlegible, Lexend, Nunito en Patrick Hand: SIL Open Font License."), 40 * S);
+            // snelheidsmeter: alleen tijden, nooit wat je tekent
+            if (Perf.Ink.Count > 0 || Perf.Click.Count > 0)
+                Para(y, L.F("Snelheid sinds het starten: inkt op het scherm na {0} ms (traagst {1} ms), een klik op een knop na {2} ms.",
+                    Perf.Ink.Percentile(0.5).ToString("0.0"), Perf.Ink.Percentile(0.95).ToString("0.0"), Perf.Click.Percentile(0.5).ToString("0.0")), 40 * S);
         }
 
         // ---- tekenen
@@ -890,12 +898,16 @@ namespace NexusPen
             Theme t = T;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            g.TextRenderingHint = TextRenderingHint.AntiAlias;
+            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;   // scherpste tekst op een gewoon venster
             g.Clear(t.Bar);
             float W0 = ClientSize.Width, H0 = ClientSize.Height, navW = 236 * S;
             using (SolidBrush b = new SolidBrush(Side)) g.FillRectangle(b, 0, 0, navW, H0);
-            using (SolidBrush b = new SolidBrush(t.Sep)) g.FillRectangle(b, navW, 0, 1 * S, H0);
-            using (Pen p = new Pen(t.Border, (t.Thick ? 2 : 1) * S)) using (GraphicsPath gp = Svg.RoundRect(new RectangleF(0.5f, 0.5f, W0 - 1.5f, H0 - 1.5f), 14 * S)) g.DrawPath(p, gp);
+            using (SolidBrush b = new SolidBrush(t.Sep)) g.FillRectangle(b, (float)Math.Round(navW), 0, Math.Max(1, (float)Math.Round(S)), H0);
+            if (!dwmCorners)
+            {
+                float bw = Math.Max(1, (float)Math.Round((t.Thick ? 2 : 1) * S));
+                using (Pen p = new Pen(t.Border, bw)) using (GraphicsPath gp = Svg.RoundRect(new RectangleF(bw / 2, bw / 2, W0 - bw, H0 - bw), 14 * S - bw / 2)) g.DrawPath(p, gp);
+            }
             Logo.Draw(g, new RectangleF(22 * S, 18 * S, 28 * S, 28 * S), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
             Txt(g, L.T("Instellingen"), new RectangleF(58 * S, 16 * S, navW - 64 * S, 32 * S), t.Text, 16, true, StringAlignment.Near, false);
             Txt(g, "NexusPen " + Program.Version + ", Nexus of Language", new RectangleF(22 * S, H0 - 34 * S, navW - 30 * S, 20 * S), t.Muted, 11, false, StringAlignment.Near, false);

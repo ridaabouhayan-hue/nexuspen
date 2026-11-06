@@ -68,6 +68,10 @@ namespace NexusPen
 
         // motorkap
         Rectangle lastTransient = Rectangle.Empty, pendingDirty = Rectangle.Empty;
+        // natte inkt: het stukje van de lijn dat net is bijgekomen, en gebieden die opnieuw moeten (gum, bewaard-regel)
+        Rectangle wetArea = Rectangle.Empty, rebuildArea = Rectangle.Empty;
+        double lastRenderAt = -100, inputAt = -1;
+        bool perfForceRender;   // zelftest: elke beweging meteen tekenen, om te meten
         bool fullDirty = true, useIndirect = true, lastEsc, needSave, restoredAfterCrash, restoredSaved;
         DateTime changedAt = DateTime.MinValue, lastErrorBalloon = DateTime.MinValue;
         int tickCount;
@@ -200,6 +204,40 @@ namespace NexusPen
             dirty = true;
         }
 
+        // Alleen een stuk van de vaste laag opnieuw tekenen (na gummen, of voor de regel "Automatisch bewaard")
+        void RebuildArea(Rectangle r)
+        {
+            if (committed == null) return;
+            r.Intersect(new Rectangle(0, 0, committed.Width, committed.Height));
+            if (r.Width <= 0 || r.Height <= 0) return;
+            using (Graphics g = Graphics.FromImage(committed))
+            {
+                g.SetClip(r);
+                g.CompositingMode = CompositingMode.SourceCopy;
+                using (SolidBrush b = new SolidBrush(Background())) g.FillRectangle(b, r);
+                g.CompositingMode = CompositingMode.SourceOver;
+                Render.Setup(g);
+                if (DrawMode && BoardMode != Board.None) DrawBoard(g);
+                if (StrokesVisible)
+                    foreach (Stroke s in strokes)
+                        if (!(lifted && s == selected) && StrokeBounds(s).IntersectsWith(r)) SafeDraw(g, s, 1f);
+            }
+            pendingDirty = U(pendingDirty, r);
+            dirty = true;
+        }
+
+        // Plek van het regeltje rechtsonder op het bord
+        Rectangle BoardInfoRect()
+        {
+            if (committed == null) return Rectangle.Empty;
+            int w = committed.Width, h = committed.Height;
+            float s = W.DpiScaleAt(new Point(vs.X + w / 2, vs.Y + h / 2));
+            Rectangle wa = Screen.FromPoint(new Point(vs.X + w - 10, vs.Y + h - 10)).WorkingArea;
+            int right = (int)Math.Ceiling(wa.Right - vs.X - 22 * s) + 4, bottom = (int)Math.Ceiling(wa.Bottom - vs.Y - 12 * s) + 4;
+            int bw = (int)(900 * s), bh = (int)(40 * s);
+            return Rectangle.FromLTRB(Math.Max(0, right - bw), Math.Max(0, bottom - bh), right, bottom);
+        }
+
         // Schrijflijnen, ruitjes of lijntjes, en rechtsonder een klein regeltje
         void DrawBoard(Graphics g)
         {
@@ -259,13 +297,17 @@ namespace NexusPen
 
         bool drawErrorLogged;
 
-        void SafeDraw(Graphics g, Stroke s, float fade)
+        void SafeDraw(Graphics g, Stroke s, float fade) { SafeDraw(g, s, fade, 1f); }
+
+        void SafeDraw(Graphics g, Stroke s, float fade, float alpha)
         {
-            try { Render.Draw(g, s, fade); }
-            catch (Exception ex)
-            {
-                if (!drawErrorLogged) { drawErrorLogged = true; Log.Error("Een lijn kon niet getekend worden (" + s.Tool + ", " + s.Pts.Count + " punten)", ex); }
-            }
+            try { Render.Draw(g, s, fade, alpha); }
+            catch (Exception ex) { SafeDrawError(s, ex); }
+        }
+
+        void SafeDrawError(Stroke s, Exception ex)
+        {
+            if (!drawErrorLogged) { drawErrorLogged = true; Log.Error("Een lijn kon niet getekend worden (" + s.Tool + ", " + s.Pts.Count + " punten)", ex); }
         }
 
         static Rectangle U(Rectangle a, Rectangle b)
@@ -374,7 +416,7 @@ namespace NexusPen
                 StrokeStore.Save(screenStrokes, StrokeStore.CurrentPath);
                 StrokeStore.SaveBoard(pages);
                 autoSavedAt = DateTime.Now;
-                if (BoardMode != Board.None && DrawMode) Rebuild();   // "Automatisch bewaard" bijwerken
+                if (BoardMode != Board.None && DrawMode) RebuildArea(BoardInfoRect());   // alleen de regel "Automatisch bewaard" bijwerken
             }
             catch (Exception ex) { Log.Error("Tekening bewaren mislukt", ex); }
         }
@@ -432,6 +474,7 @@ namespace NexusPen
                         File.Copy(StrokeStore.CurrentPath, StrokeStore.PreviousPath, true);
                         File.Delete(StrokeStore.CurrentPath);
                     }
+                    try { StrokeStore.ArchiveBoard(); } catch (Exception ex) { Log.Error("Vorig bord bewaren", ex); }
                     StrokeStore.SaveBoard(new List<List<Stroke>>());
                     pages = new List<List<Stroke>>();
                 }
@@ -445,14 +488,26 @@ namespace NexusPen
         public void RestorePrevious()
         {
             List<Stroke> prev = StrokeStore.Load(StrokeStore.PreviousPath);
-            if (prev.Count == 0)
+            List<List<Stroke>> prevPages = StrokeStore.LoadPreviousBoard();
+            if (prev.Count == 0 && prevPages.Count == 0)
             {
                 if (tray != null) tray.ShowBalloonTip(2500, "NexusPen", L.T("Er is geen vorige tekening gevonden."), ToolTipIcon.Info);
                 return;
             }
             Checkpoint();
-            strokes.AddRange(prev);
+            StoreActive();
+            screenStrokes.AddRange(prev);
+            if (prevPages.Count > 0)
+            {
+                // het bord van de vorige keer: op lege pagina's zetten, of achter je huidige pagina's
+                bool empty = true;
+                foreach (List<Stroke> pg in pages) if (pg.Count > 0) empty = false;
+                if (empty) pages = prevPages; else pages.AddRange(prevPages);
+                if (pageIndex >= pages.Count) pageIndex = 0;
+            }
+            strokes = BoardMode == Board.None ? screenStrokes : pages[pageIndex];
             StrokesVisible = true;
+            MarkChanged();
             Rebuild();
             RefreshUi();
         }
@@ -504,14 +559,36 @@ namespace NexusPen
             finally { committed.UnlockBits(bd); }
         }
 
+        static bool IsWet(Stroke s) { return s != null && (s.Tool == Tool.Pen || s.Tool == Tool.Marker || s.Tool == Tool.Laser); }
+
+        // Gebied rond stukje i van een lijn die je aan het schrijven bent
+        Rectangle WetBox(Stroke s, int i)
+        {
+            float widest = s.Tool == Tool.Marker ? Render.MarkerWidth(s.Width) : s.Tool == Tool.Laser ? s.Width * 3 + 10 : s.Width;
+            float pad = widest / 2 + 3;
+            RectangleF r = i < 0 || s.Pts.Count < 2 ? new RectangleF(s.Pts[0], SizeF.Empty) : Render.SegmentBox(s.Pts, i);
+            r.Inflate(pad, pad);
+            return Clip(r);
+        }
+
+        // Meteen tekenen, maar niet vaker dan eens per 4 ms (komen er sneller bewegingen, dan gaan die mee in het volgende beeldje)
+        void RenderSoon()
+        {
+            dirty = true;
+            if (perfForceRender || Perf.Now - lastRenderAt >= 4) RenderFrame();
+        }
+
         void RenderFrame()
         {
             dirty = false;
             if (!IsHandleCreated || frame == null) return;
+            double t0 = Perf.Now;
+            if (rebuildArea.Width > 0 && rebuildArea.Height > 0) { Rectangle rb = rebuildArea; rebuildArea = Rectangle.Empty; RebuildArea(rb); dirty = false; }
             int w = committed.Width, h = committed.Height;
             Rectangle full = new Rectangle(0, 0, w, h);
             Rectangle transient = Rectangle.Empty;
-            if (current != null) transient = U(transient, StrokeBounds(current));
+            bool wet = IsWet(current);
+            if (current != null && !wet) transient = U(transient, StrokeBounds(current));
             foreach (Stroke s in lasers) transient = U(transient, StrokeBounds(s));
             foreach (Stroke s in fading) transient = U(transient, StrokeBounds(s));
             if (selected != null)
@@ -523,15 +600,16 @@ namespace NexusPen
             if (focus) transient = U(transient, Clip(FocusRect()));
 
             bool wasFull = fullDirty;
-            Rectangle area = wasFull ? full : U(U(lastTransient, transient), pendingDirty);
+            Rectangle area = wasFull ? full : U(U(U(lastTransient, transient), pendingDirty), wetArea);
             area.Intersect(full);
             lastTransient = transient;
             pendingDirty = Rectangle.Empty;
+            wetArea = Rectangle.Empty;
             fullDirty = false;
-            if (area.Width <= 0 || area.Height <= 0) return;
+            if (area.Width <= 0 || area.Height <= 0) { inputAt = -1; return; }
 
             CopyFromCommitted(area);
-            if ((transient.Width > 0 && transient.Height > 0) || focus)
+            if ((transient.Width > 0 && transient.Height > 0) || focus || current != null)
             {
                 using (Graphics g = Graphics.FromImage(frame))
                 {
@@ -549,10 +627,13 @@ namespace NexusPen
                         double age = (now - s.Born).TotalMilliseconds;
                         float a = age < 5000 ? 1f : (float)Math.Max(0, 1 - (age - 5000) / 1000.0);
                         if (a <= 0) continue;
-                        Stroke c = s.Clone(); c.Color = Color.FromArgb((int)(s.Color.A * a), s.Color);
-                        SafeDraw(g, c, 1f);
+                        SafeDraw(g, s, 1f, a);
                     }
-                    if (current != null) SafeDraw(g, current, 1f);
+                    if (current != null)
+                    {
+                        if (wet) { try { Render.DrawWet(g, current, area); } catch (Exception ex) { SafeDrawError(current, ex); } }
+                        else SafeDraw(g, current, 1f);
+                    }
                     if (selected != null)
                     {
                         if (lifted) SafeDraw(g, selected, 1f);
@@ -574,6 +655,10 @@ namespace NexusPen
                 if (!ok) { useIndirect = false; Log.Info("Gedeeltelijk verversen werkt niet op deze pc (code " + Marshal.GetLastWin32Error() + "), voortaan volledig verversen"); }
             }
             if (!ok) W.UpdateLayeredWindow(Handle, IntPtr.Zero, ref dst, ref size, memDC, ref src, 0, ref bf, W.ULW_ALPHA);
+            double t1 = Perf.Now;
+            Perf.Frame.Add(t1 - t0);
+            if (inputAt >= 0) { Perf.Ink.Add(t1 - inputAt); inputAt = -1; }
+            lastRenderAt = t1;
         }
 
         void DrawSelection(Graphics g)
@@ -644,6 +729,12 @@ namespace NexusPen
             Rebuild();
             RenderFrame();
             Usage.Log("start", Program.Version, Screen.AllScreens.Length + " scherm(en)");
+            // Even later, als alles staat: vensters klaarzetten en een keer onzichtbaar tekenen,
+            // dan hapert de eerste echte klik en de eerste lijn niet
+            System.Windows.Forms.Timer warm = new System.Windows.Forms.Timer();
+            warm.Interval = 400;
+            warm.Tick += delegate { warm.Stop(); warm.Dispose(); WarmUp(); };
+            warm.Start();
             if (StartCollapsed) CollapseAll();
             if (restoredAfterCrash)
                 tray.ShowBalloonTip(4000, "NexusPen", L.T("Je tekening van de vorige keer is teruggezet, want NexusPen was onverwacht gestopt. Alles wissen kan met de Delete-toets."), ToolTipIcon.Info);
@@ -663,6 +754,31 @@ namespace NexusPen
                     }
                     catch { }
                 });
+        }
+
+        void WarmUp()
+        {
+            try
+            {
+                if (toolbar != null) toolbar.Prewarm();
+                using (Bitmap b = new Bitmap(96, 96, PixelFormat.Format32bppPArgb))
+                using (Graphics g = Graphics.FromImage(b))
+                {
+                    Render.Setup(g);
+                    Stroke s = new Stroke(); s.Tool = Tool.Pen; s.Color = CurrentColor; s.Width = 4;
+                    s.Pts.Add(new PointF(5, 5)); s.Pts.Add(new PointF(40, 30)); s.Pts.Add(new PointF(80, 10));
+                    Render.Draw(g, s, 1f);
+                    Render.DrawWet(g, s, new Rectangle(0, 0, 96, 96));
+                    Render.Bounds(s);
+                    Stroke t = new Stroke(); t.Tool = Tool.Text; t.Text = "Ab"; t.FontSize = 20; t.FontName = Cfg.FontName; t.Color = Color.Black; t.Outline = Cfg.TextOutline;
+                    t.Pts.Add(new PointF(5, 40));
+                    Render.Draw(g, t, 1f); Render.Bounds(t);
+                    Stroke st = new Stroke(); st.Tool = Tool.Stamp; st.Text = "vink"; st.FontSize = 28; st.Color = Render.StampColor("vink");
+                    st.Pts.Add(new PointF(60, 60));
+                    Render.Draw(g, st, 1f);
+                }
+            }
+            catch (Exception ex) { Log.Error("Opwarmen", ex); }
         }
 
         string updateUrl;
@@ -691,6 +807,18 @@ namespace NexusPen
                 try
                 {
                     if (c == null || !c.Visible || c.Width <= 0) return;
+                    BarForm bf = c as BarForm;
+                    if (bf != null)
+                    {
+                        // zo ziet het venster er echt uit, met zachte hoeken, op een grijze achtergrond
+                        using (Bitmap img = bf.RenderBitmap())
+                        using (Bitmap b = new Bitmap(img.Width + 24, img.Height + 24, PixelFormat.Format32bppArgb))
+                        {
+                            using (Graphics g = Graphics.FromImage(b)) { g.Clear(Color.FromArgb(200, 200, 204)); g.DrawImage(img, new Rectangle(12, 12, img.Width, img.Height)); }
+                            b.Save(Path.Combine(shots, name + ".png"), ImageFormat.Png);
+                        }
+                        return;
+                    }
                     using (Bitmap b = new Bitmap(c.Width, c.Height))
                     {
                         c.DrawToBitmap(b, new Rectangle(0, 0, c.Width, c.Height));
@@ -754,7 +882,11 @@ namespace NexusPen
                         case 8: snap(toolbar, "07-werkbalk-staand"); Cfg.Vertical = false; Cfg.ShortenAt = 8; ApplySettings(); break;
                         case 9: snap(toolbar, "08-werkbalk-ingekort"); Cfg.ShortenAt = 0; ApplySettings(); CollapseAll(); break;
                         case 10: screen("09-ingeklapt"); ExpandAll(); SetTool(Tool.Mouse); break;
-                        case 11: ShowSettings(null); break;
+                        case 11: PerfTestDraw(); break;
+                        case 12: screen("13-natte-inkt"); PerfTestRelease(); break;
+                        case 13: screen("14-droge-inkt"); PerfTestErase(); break;
+                        case 14: PerfTestReport(shots); break;
+                        case 15: ShowSettings(null); break;
                         default:
                             if (settingsForm != null && pageStep < pagesToShow.Length)
                             {
@@ -771,6 +903,159 @@ namespace NexusPen
                 catch (Exception ex) { Program.SelfTestErrors++; Log.Error("Zelftest stap " + step, ex); Console.Error.WriteLine("Zelftest stap " + step + ": " + ex); }
             };
             Shown += delegate { t.Start(); };
+        }
+
+        // ---------- snelheid meten in de zelftest (op een echte Windows-pc van GitHub)
+        Perf.Meter testMove = new Perf.Meter("Een beweging met inkt (lange lijn van 2000 punten)", 4000);
+        Perf.Meter testErase = new Perf.Meter("Een beweging met de gum (500 lijnen op het scherm)", 1000);
+        double testOldFull;
+        int testWetDiff = -1, testWetBig = -1, testInked;
+        Rectangle testArea;
+        int[] testWetPixels;
+
+        static MouseEventArgs Mouse(MouseButtons b, PointF p) { return new MouseEventArgs(b, 1, (int)Math.Round(p.X), (int)Math.Round(p.Y), 0); }
+
+        PointF TestPoint(int i, int n)
+        {
+            Rectangle pr = Screen.PrimaryScreen.Bounds;
+            float cx = pr.X - vs.X + pr.Width / 2f, cy = pr.Y - vs.Y + pr.Height / 2f;
+            float rmax = Math.Min(pr.Height, pr.Width) * 0.42f;
+            double t = (double)i / n;
+            double ang = t * Math.PI * 2 * 9;
+            float r = (float)(rmax * (0.15 + 0.85 * t));
+            return new PointF(cx + (float)(Math.Cos(ang) * r), cy + (float)(Math.Sin(ang) * r * 0.8));
+        }
+
+        int[] FramePixels(Rectangle r)
+        {
+            int[] px = new int[r.Width * r.Height];
+            for (int y = 0; y < r.Height; y++)
+                Marshal.Copy(new IntPtr(bits.ToInt64() + ((long)(r.Y + y) * frame.Width + r.X) * 4), px, y * r.Width, r.Width);
+            return px;
+        }
+
+        void PerfTestDraw()
+        {
+            try
+            {
+                SetTool(Tool.Pen);
+                strokes.Clear(); Rebuild(); RenderFrame();
+                perfForceRender = true;
+                Perf.Ink.Clear(); Perf.Frame.Clear();
+                const int n = 2000;
+                OnMouseDown(Mouse(MouseButtons.Left, TestPoint(0, n)));
+                for (int i = 1; i < n; i++)
+                {
+                    double t0 = Perf.Now;
+                    OnMouseMove(Mouse(MouseButtons.Left, TestPoint(i, n)));
+                    testMove.Add(Perf.Now - t0);
+                }
+                // zo duurde het in 1.2.0: elk beeldje de hele lijn opnieuw tekenen
+                if (current != null)
+                {
+                    Rectangle sb = StrokeBounds(current);
+                    using (Bitmap tmp = new Bitmap(Math.Max(1, sb.Right), Math.Max(1, sb.Bottom), PixelFormat.Format32bppPArgb))
+                    using (Graphics g = Graphics.FromImage(tmp))
+                    {
+                        Render.Setup(g);
+                        double t0 = Perf.Now;
+                        for (int k = 0; k < 10; k++) Render.Draw(g, current, 1f);
+                        testOldFull = (Perf.Now - t0) / 10;
+                    }
+                    testArea = sb;
+                    testWetPixels = FramePixels(sb);
+                }
+            }
+            catch (Exception ex) { Program.SelfTestErrors++; Log.Error("Zelftest snelheid tekenen", ex); Console.Error.WriteLine(ex); }
+        }
+
+        void PerfTestRelease()
+        {
+            try
+            {
+                OnMouseUp(Mouse(MouseButtons.Left, TestPoint(1999, 2000)));
+                RenderFrame();
+                if (testWetPixels != null)
+                {
+                    int[] dry = FramePixels(testArea);
+                    testWetDiff = 0; testWetBig = 0; testInked = 0;
+                    for (int i = 0; i < dry.Length; i++)
+                    {
+                        int a = dry[i], b = testWetPixels[i], d = 0;
+                        for (int sh = 0; sh < 32; sh += 8) d = Math.Max(d, Math.Abs(((a >> sh) & 0xFF) - ((b >> sh) & 0xFF)));
+                        if (((a >> 24) & 0xFF) > 1) testInked++;
+                        if (d > 2) testWetDiff++;
+                        if (d > 140) testWetBig++;
+                    }
+                }
+            }
+            catch (Exception ex) { Program.SelfTestErrors++; Log.Error("Zelftest snelheid loslaten", ex); Console.Error.WriteLine(ex); }
+        }
+
+        void PerfTestErase()
+        {
+            try
+            {
+                // een volle tekening: 500 korte lijnen verspreid over het scherm
+                Random rnd = new Random(3);
+                Rectangle pr = Screen.PrimaryScreen.Bounds;
+                for (int i = 0; i < 500; i++)
+                {
+                    Stroke s = new Stroke(); s.Tool = Tool.Pen; s.Color = CurrentColor; s.Width = 4;
+                    PointF a = new PointF(pr.X - vs.X + rnd.Next(pr.Width), pr.Y - vs.Y + rnd.Next(pr.Height));
+                    for (int k = 0; k < 30; k++) { s.Pts.Add(a); a = new PointF(a.X + rnd.Next(-6, 9), a.Y + rnd.Next(-6, 7)); }
+                    strokes.Add(s);
+                }
+                Rebuild(); RenderFrame();
+                SetTool(Tool.Eraser);
+                Perf.Erase.Clear();
+                PointF p0 = new PointF(pr.X - vs.X + 20, pr.Y - vs.Y + pr.Height / 2f);
+                OnMouseDown(Mouse(MouseButtons.Left, p0));
+                for (int i = 0; i < 300; i++)
+                {
+                    PointF p = new PointF(p0.X + i * (pr.Width - 40) / 300f, p0.Y + (float)Math.Sin(i / 20.0) * pr.Height * 0.3f);
+                    double t0 = Perf.Now;
+                    OnMouseMove(Mouse(MouseButtons.Left, p));
+                    testErase.Add(Perf.Now - t0);
+                }
+                OnMouseUp(Mouse(MouseButtons.Left, p0));
+            }
+            catch (Exception ex) { Program.SelfTestErrors++; Log.Error("Zelftest snelheid gummen", ex); Console.Error.WriteLine(ex); }
+        }
+
+        void PerfTestReport(string shots)
+        {
+            perfForceRender = false;
+            List<string> lines = new List<string>();
+            lines.Add("NexusPen " + Program.Version + ": snelheid op deze pc (" + vs.Width + " x " + vs.Height + " pixels)");
+            lines.Add(testMove.Summary());
+            lines.Add(Perf.Ink.Summary());
+            lines.Add(Perf.Frame.Summary());
+            lines.Add(string.Format(CultureInfo.InvariantCulture, "Zo was het in 1.2.0 (hele lijn opnieuw per beeldje): {0:0.0} ms per beeldje, plus wachten op de timer (tot 16 ms)", testOldFull));
+            lines.Add(testErase.Summary());
+            lines.Add(Perf.Erase.Summary());
+            lines.Add("Natte inkt tegen droge inkt: " + testWetDiff + " van " + testInked + " pixels een fractie anders, " + testWetBig + " duidelijk anders");
+            lines.Add(Perf.Click.Summary());
+            foreach (string l in lines) { Console.WriteLine(l); Log.Info("Zelftest. " + l); }
+            try
+            {
+                using (Bitmap b = new Bitmap(1100, 40 + lines.Count * 30))
+                using (Graphics g = Graphics.FromImage(b))
+                using (Font f = new Font("Segoe UI", 15, GraphicsUnit.Pixel))
+                {
+                    g.Clear(Color.White);
+                    g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+                    for (int i = 0; i < lines.Count; i++) g.DrawString(lines[i], f, i == 0 ? Brushes.Black : Brushes.DimGray, 14, 14 + i * 30);
+                    b.Save(Path.Combine(shots, "15-snelheid.png"), ImageFormat.Png);
+                }
+            }
+            catch (Exception ex) { Log.Error("Zelftest snelheid plaatje", ex); }
+            // ruime grenzen: dit vangt het als het ooit weer per beeldje de hele lijn gaat tekenen
+            if (testMove.Percentile(0.95) > 25) { Program.SelfTestErrors++; Console.Error.WriteLine("Te traag: inkt bij een lange lijn"); }
+            if (testErase.Percentile(0.95) > 60) { Program.SelfTestErrors++; Console.Error.WriteLine("Te traag: gummen in een volle tekening"); }
+            if (testWetBig > 20) { Program.SelfTestErrors++; Console.Error.WriteLine("Natte inkt wijkt te veel af van de droge inkt"); }
+            strokes.Clear(); undo.Clear(); redo.Clear(); Rebuild();
+            SetTool(Tool.Mouse);
         }
 
         void SetupTray()
@@ -847,6 +1132,7 @@ namespace NexusPen
             Usage.Log("stop", "", "");
             Usage.Flush();
             try { File.Delete(StrokeStore.LockPath); } catch { }
+            Perf.LogSummary();
             Log.Info("Netjes afgesloten");
             FreeBuffers();
             base.OnFormClosed(e);
@@ -1291,6 +1577,7 @@ namespace NexusPen
 
         void EraseAt(PointF p)
         {
+            double t0 = Perf.Now;
             bool removed = false;
             for (int i = strokes.Count - 1; i >= 0; i--)
             {
@@ -1298,11 +1585,14 @@ namespace NexusPen
                 {
                     if (!erasedThisDrag) { Checkpoint(); erasedThisDrag = true; }
                     if (strokes[i] == selected) Deselect();
+                    // alleen het stukje waar de lijn stond opnieuw tekenen, en alles in een beeldje samen
+                    rebuildArea = U(rebuildArea, StrokeBounds(strokes[i]));
                     strokes.RemoveAt(i);
                     removed = true;
                 }
             }
-            if (removed) { MarkChanged(); Rebuild(); }
+            if (removed) { MarkChanged(); RenderSoon(); }
+            Perf.Erase.Add(Perf.Now - t0);
         }
 
         protected override void OnMouseDown(MouseEventArgs e)
@@ -1314,7 +1604,8 @@ namespace NexusPen
             if (CurrentTool == Tool.Focus) return;
             if (e.Button == MouseButtons.Right || (e.Button == MouseButtons.Left && CurrentTool == Tool.Eraser))
             {
-                erasing = true; erasedThisDrag = false; current = null;
+                if (current != null) { pendingDirty = U(pendingDirty, StrokeBounds(current)); current = null; }
+                erasing = true; erasedThisDrag = false;
                 EraseAt(p);
                 return;
             }
@@ -1367,15 +1658,18 @@ namespace NexusPen
             if (Cfg.Chalk && CurrentTool == Tool.Pen) current.Style |= Stroke.Chalk;
             current.Pts.Add(p);
             if (IsShape(CurrentTool)) current.Pts.Add(p);
-            dirty = true;
+            if (IsWet(current)) wetArea = U(wetArea, WetBox(current, -1));
+            inputAt = Perf.Now;
+            RenderSoon();
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
             if (!DrawMode) return;
+            if (inputAt < 0) inputAt = Perf.Now;
             PointF p = e.Location;
-            if (CurrentTool == Tool.Focus) { focusAt = p; dirty = true; return; }
+            if (CurrentTool == Tool.Focus) { focusAt = p; RenderSoon(); return; }
             if (erasing) { EraseAt(p); return; }
             if (resizing && selected != null)
             {
@@ -1385,7 +1679,7 @@ namespace NexusPen
                 ScaleStroke(c, f, resizeAnchor);
                 if (i >= 0) strokes[i] = c;
                 selected = c;
-                dirty = true;
+                RenderSoon();
                 return;
             }
             if (CurrentTool == Tool.Select && !dragging)
@@ -1406,22 +1700,29 @@ namespace NexusPen
                 }
                 Render.Move(selected, dx, dy);
                 dragLast = p;
-                dirty = true;
+                RenderSoon();
                 return;
             }
-            if (current == null) return;
+            if (current == null) { inputAt = -1; return; }
             switch (current.Tool)
             {
                 case Tool.Pen: case Tool.Marker: case Tool.Laser:
-                    PointF last = current.Pts[current.Pts.Count - 1];
+                {
+                    int n = current.Pts.Count;
+                    PointF last = current.Pts[n - 1];
                     float ddx = p.X - last.X, ddy = p.Y - last.Y;
-                    if (ddx * ddx + ddy * ddy >= 2.25f) current.Pts.Add(p);
+                    if (ddx * ddx + ddy * ddy < 2.25f) { inputAt = -1; return; }
+                    // natte inkt: alleen het stuk dat verandert (het vorige stukje buigt een beetje mee)
+                    Rectangle before = n >= 2 ? WetBox(current, n - 2) : WetBox(current, -1);
+                    current.Pts.Add(p);
+                    wetArea = U(wetArea, U(before, U(WetBox(current, n - 1), n >= 2 ? WetBox(current, n - 2) : Rectangle.Empty)));
                     break;
+                }
                 default:
                     current.Pts[1] = Constrain(current.Pts[0], p, current.Tool);
                     break;
             }
-            dirty = true;
+            RenderSoon();
         }
 
         protected override void OnMouseUp(MouseEventArgs e)

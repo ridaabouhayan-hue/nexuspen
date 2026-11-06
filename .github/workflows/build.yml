@@ -7,32 +7,41 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Standaard mag deze workflow alleen lezen. Alleen de stappen die echt iets op GitHub zetten krijgen schrijfrechten.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   windows:
     runs-on: windows-latest
     timeout-minutes: 25
+    outputs:
+      nummer: ${{ steps.versie.outputs.nummer }}
     steps:
-      - uses: actions/checkout@v4
+      # acties op een vaste versie (commit), zodat er nooit ongemerkt andere code meedraait
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
 
       - name: NexusPen bouwen en tests draaien
         shell: pwsh
         run: powershell -ExecutionPolicy Bypass -File build\build.ps1
 
-      - name: Opstarttest (programma start en stopt netjes)
+      - name: Opstarttest en snelheid meten (programma start, tekent en stopt netjes)
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath "out\NexusPen.exe" -ArgumentList "--zelftest" -PassThru
-          if (-not $p.WaitForExit(180000)) { $p.Kill(); throw "Zelftest hangt (langer dan 3 minuten)" }
+          $p = Start-Process -FilePath "out\NexusPen.exe" -ArgumentList "--zelftest" -PassThru -RedirectStandardOutput "out\zelftest.txt" -RedirectStandardError "out\zelftest-fouten.txt"
+          $null = $p.Handle
+          if (-not $p.WaitForExit(240000)) { $p.Kill(); throw "Zelftest hangt (langer dan 4 minuten)" }
+          Get-Content "out\zelftest.txt" -ErrorAction SilentlyContinue
+          Get-Content "out\zelftest-fouten.txt" -ErrorAction SilentlyContinue
           if ($p.ExitCode -ne 0) { throw "Zelftest mislukt met code $($p.ExitCode)" }
 
       - name: Versie bepalen
         id: versie
         shell: pwsh
         run: |
-          if ("${{ github.ref }}" -like "refs/tags/v*") { $v = "${{ github.ref_name }}".TrimStart("v") } else { $v = "1.2.0" }
+          if ("${{ github.ref }}" -like "refs/tags/v*") { $v = "${{ github.ref_name }}".TrimStart("v") } else { $v = "1.2.1" }
           "nummer=$v" >> $env:GITHUB_OUTPUT
 
       - name: Installer maken (Inno Setup)
@@ -44,7 +53,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Installer maken mislukt" }
 
       - name: Bestanden bewaren
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: NexusPen-${{ steps.versie.outputs.nummer }}
           path: |
@@ -53,33 +62,59 @@ jobs:
 
       - name: Schermafbeeldingen van de zelftest bewaren
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: NexusPen-schermen
           path: out/schermen/*.png
           if-no-files-found: warn
 
-      - name: Schermafbeeldingen op een aparte tak zetten (om te bekijken)
-        if: always() && github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
-        shell: pwsh
+  # De schermafbeeldingen op een aparte tak zetten, zodat Claude ze kan bekijken
+  schermen:
+    needs: windows
+    if: always() && github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        continue-on-error: true
+        with:
+          name: NexusPen-schermen
+          path: schermen
+      - name: Op de tak zelftest-schermen zetten
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if (-not (Test-Path out\schermen)) { exit 0 }
-          $d = Join-Path $env:RUNNER_TEMP "schermen"
-          New-Item -ItemType Directory -Force $d | Out-Null
-          Copy-Item out\schermen\*.png $d
-          Set-Location $d
+          if [ ! -d schermen ]; then echo "Geen schermafbeeldingen"; exit 0; fi
+          cd schermen
           git init -q -b zelftest-schermen
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
           git add -A
           git commit -q -m "Schermen van ${{ github.sha }}"
-          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" zelftest-schermen
+          git push -q -f "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" zelftest-schermen
 
-      - name: Release maken bij een versietag
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+  # Bij een versietag (bijvoorbeeld v1.2.1): een Release met de setup en de losse exe
+  release:
+    needs: windows
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          name: NexusPen ${{ steps.versie.outputs.nummer }}
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: NexusPen-${{ needs.windows.outputs.nummer }}
+          path: out
+      - name: Release maken
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          name: NexusPen ${{ needs.windows.outputs.nummer }}
           body_path: docs/RELEASE.md
           files: |
             out/NexusPen-Setup.exe

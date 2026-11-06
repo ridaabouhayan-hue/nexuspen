@@ -42,6 +42,10 @@ namespace NexusPen
         [DllImport("user32.dll", SetLastError = true)]
         public static extern bool UpdateLayeredWindow(IntPtr hwnd, IntPtr hdcDst, ref POINT pptDst, ref SIZE psize,
             IntPtr hdcSrc, ref POINT pptSrc, int crKey, ref BLENDFUNCTION pblend, int dwFlags);
+        [DllImport("user32.dll", SetLastError = true, EntryPoint = "UpdateLayeredWindow")]
+        public static extern bool UpdateLayeredWindowSize(IntPtr hwnd, IntPtr hdcDst, IntPtr pptDst, ref SIZE psize,
+            IntPtr hdcSrc, ref POINT pptSrc, int crKey, ref BLENDFUNCTION pblend, int dwFlags);
+        [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
         [DllImport("user32.dll")] public static extern IntPtr GetDC(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
         [DllImport("gdi32.dll")] public static extern IntPtr CreateCompatibleDC(IntPtr hDC);
@@ -107,6 +111,20 @@ namespace NexusPen
             info.pptSrc = new IntPtr(ulwBuf.ToInt64() + 16); info.pblend = new IntPtr(ulwBuf.ToInt64() + 24);
             info.dwFlags = ULW_ALPHA; info.prcDirty = new IntPtr(ulwBuf.ToInt64() + 32);
             return UpdateLayeredWindowIndirect(hwnd, ref info);
+        }
+
+        // Windows 11: gladde ronde hoeken en een randkleur van Windows zelf. Geeft false op Windows 10.
+        public static bool RoundCorners(IntPtr hwnd, Color border)
+        {
+            try
+            {
+                int pref = 2;   // DWMWCP_ROUND
+                if (DwmSetWindowAttribute(hwnd, 33, ref pref, 4) != 0) return false;
+                int c = border.R | (border.G << 8) | (border.B << 16);
+                DwmSetWindowAttribute(hwnd, 34, ref c, 4);
+                return true;
+            }
+            catch { return false; }
         }
 
         public static void KeepOnTop(IntPtr hwnd)

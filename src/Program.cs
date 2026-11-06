@@ -16,7 +16,7 @@ using Microsoft.Win32;
 [assembly: System.Reflection.AssemblyTitle("NexusPen")]
 [assembly: System.Reflection.AssemblyProduct("NexusPen")]
 [assembly: System.Reflection.AssemblyCompany("Nexus of Language")]
-[assembly: System.Reflection.AssemblyVersion("1.2.0.0")]
+[assembly: System.Reflection.AssemblyVersion("1.2.1.0")]
 
 namespace NexusPen
 {
@@ -67,6 +67,19 @@ namespace NexusPen
             t.Start();
         }
 
+        // .NET onthoudt welke code bij het opstarten nodig is en zet die de volgende keer alvast klaar (sneller starten)
+        static void StartProfile()
+        {
+            try
+            {
+                string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "NexusPen");
+                Directory.CreateDirectory(dir);
+                System.Runtime.ProfileOptimization.SetProfileRoot(dir);
+                System.Runtime.ProfileOptimization.StartProfile("opstarten.profiel");
+            }
+            catch { }
+        }
+
         public static bool SelfTest;
         public static int SelfTestErrors;
 
@@ -80,6 +93,7 @@ namespace NexusPen
             {
                 if (!created) { MessageBox.Show("NexusPen draait al. Kijk rechtsonder bij de klok.", "NexusPen"); return 0; }
                 SetDpiAwareness();
+                StartProfile();
                 Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
                 Application.ThreadException += delegate(object s, ThreadExceptionEventArgs e)
                 {
@@ -104,6 +118,6 @@ namespace NexusPen
             }
         }
 
-        public const string Version = "1.2.0";
+        public const string Version = "1.2.1";
     }
 }

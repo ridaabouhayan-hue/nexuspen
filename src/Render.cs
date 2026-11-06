@@ -185,10 +185,112 @@ namespace NexusPen
                 return;
             }
             using (Pen p = MakePen(c, w))
+            using (GraphicsPath gp = CurvePath(pts, 0, pts.Count - 2))
+                g.DrawPath(p, gp);
+        }
+
+        // ---- vloeiende lijn door de punten (zoals DrawCurve met spanning 0,5), maar per stukje uit te rekenen.
+        // Daardoor kunnen we tijdens het schrijven alleen het nieuwste stukje tekenen, precies gelijk aan de hele lijn.
+        public const float CurveK = 0.15f;
+
+        // Stuurpunten van stukje i (van punt i naar punt i+1)
+        public static void Segment(List<PointF> p, int i, out PointF c1, out PointF c2)
+        {
+            int n = p.Count;
+            PointF a = p[i], b = p[i + 1];
+            PointF prev = i > 0 ? p[i - 1] : a, next = i + 2 < n ? p[i + 2] : b;
+            if (n == 2) { c1 = a; c2 = b; return; }
+            float k = CurveK;
+            if (i == 0) c1 = new PointF(a.X + k * (b.X - a.X), a.Y + k * (b.Y - a.Y));
+            else c1 = new PointF(a.X + k * (b.X - prev.X), a.Y + k * (b.Y - prev.Y));
+            if (i + 2 >= n) c2 = new PointF(b.X + k * (a.X - b.X), b.Y + k * (a.Y - b.Y));
+            else c2 = new PointF(b.X - k * (next.X - a.X), b.Y - k * (next.Y - a.Y));
+        }
+
+        // Omtrek van stukje i, inclusief de stuurpunten (de bocht blijft daar altijd binnen)
+        public static RectangleF SegmentBox(List<PointF> p, int i)
+        {
+            PointF c1, c2;
+            Segment(p, i, out c1, out c2);
+            PointF a = p[i], b = p[i + 1];
+            float x0 = Math.Min(Math.Min(a.X, b.X), Math.Min(c1.X, c2.X)), x1 = Math.Max(Math.Max(a.X, b.X), Math.Max(c1.X, c2.X));
+            float y0 = Math.Min(Math.Min(a.Y, b.Y), Math.Min(c1.Y, c2.Y)), y1 = Math.Max(Math.Max(a.Y, b.Y), Math.Max(c1.Y, c2.Y));
+            return RectangleF.FromLTRB(x0, y0, x1, y1);
+        }
+
+        // Pad met de stukjes van 'from' tot en met 'to' als een doorlopende lijn
+        public static GraphicsPath CurvePath(List<PointF> p, int from, int to)
+        {
+            GraphicsPath gp = new GraphicsPath();
+            if (p.Count < 2 || to < from) return gp;
+            PointF[] pts = new PointF[(to - from + 1) * 3 + 1];
+            pts[0] = p[from];
+            int k = 1;
+            for (int i = from; i <= to; i++)
             {
-                PointF[] arr = pts.ToArray();
-                if (arr.Length > 2) g.DrawCurve(p, arr, 0.5f); else g.DrawLines(p, arr);
+                PointF c1, c2;
+                Segment(p, i, out c1, out c2);
+                pts[k++] = c1; pts[k++] = c2; pts[k++] = p[i + 1];
             }
+            gp.AddBeziers(pts);
+            return gp;
+        }
+
+        // Alleen de stukjes die het gebied raken (voor natte inkt). Aaneengesloten stukjes blijven een lijn.
+        static GraphicsPath PartialPath(List<PointF> p, RectangleF area, float pad)
+        {
+            GraphicsPath gp = new GraphicsPath();
+            RectangleF a = RectangleF.Inflate(area, pad, pad);
+            int runStart = -1;
+            for (int i = 0; i <= p.Count - 2; i++)
+            {
+                bool hit = SegmentBox(p, i).IntersectsWith(a) || PointIn(p[i], a) || PointIn(p[i + 1], a);
+                if (hit) { if (runStart < 0) runStart = i; continue; }
+                if (runStart >= 0) { AddRun(gp, p, runStart, i - 1); runStart = -1; }
+            }
+            if (runStart >= 0) AddRun(gp, p, runStart, p.Count - 2);
+            return gp;
+        }
+
+        static bool PointIn(PointF q, RectangleF r) { return q.X >= r.Left && q.X <= r.Right && q.Y >= r.Top && q.Y <= r.Bottom; }
+
+        static void AddRun(GraphicsPath gp, List<PointF> p, int from, int to)
+        {
+            using (GraphicsPath run = CurvePath(p, from, to)) { gp.StartFigure(); gp.AddPath(run, false); }
+        }
+
+        // Natte inkt: teken van een lijn die je nog aan het schrijven bent alleen wat in 'area' valt.
+        // Het resultaat in 'area' is pixel voor pixel gelijk aan de hele lijn tekenen.
+        public static void DrawWet(Graphics g, Stroke s, Rectangle area)
+        {
+            if (s.Pts.Count < 2 || (s.Tool != Tool.Pen && s.Tool != Tool.Marker && s.Tool != Tool.Laser)) { Draw(g, s, 1f); return; }
+            float widest = s.Tool == Tool.Marker ? MarkerWidth(s.Width) : s.Tool == Tool.Laser ? s.Width * 3 + 10 : s.Width;
+            // stukjes ruim meenemen: het begin en eind van een stuk liggen dan altijd buiten 'area',
+            // zodat binnen 'area' de lijn precies zo getekend wordt als de hele lijn
+            using (GraphicsPath gp = PartialPath(s.Pts, area, widest + 8))
+            {
+                if (gp.PointCount == 0) return;
+                switch (s.Tool)
+                {
+                    case Tool.Pen:
+                        if ((s.Style & Stroke.Chalk) != 0) using (Pen p = ChalkPen(s.Color, s.Width)) g.DrawPath(p, gp);
+                        else using (Pen p = MakePen(s.Color, s.Width)) g.DrawPath(p, gp);
+                        break;
+                    case Tool.Marker: using (Pen p = MakePen(Color.FromArgb(110, s.Color), MarkerWidth(s.Width))) g.DrawPath(p, gp); break;
+                    case Tool.Laser:
+                        using (Pen p = MakePen(Color.FromArgb(60, s.Color), s.Width * 3 + 10)) g.DrawPath(p, gp);
+                        using (Pen p = MakePen(Color.FromArgb(255, s.Color), s.Width + 2)) g.DrawPath(p, gp);
+                        using (Pen p = MakePen(Color.FromArgb(200, 255, 255, 255), Math.Max(1f, s.Width / 2.5f))) g.DrawPath(p, gp);
+                        break;
+                }
+            }
+        }
+
+        static Pen ChalkPen(Color c, float w)
+        {
+            Pen p = new Pen(ChalkBrush(c), w);
+            p.StartCap = LineCap.Round; p.EndCap = LineCap.Round; p.LineJoin = LineJoin.Round;
+            return p;
         }
 
         static void Arrow(Graphics g, PointF a, PointF b, Color c, float w)
@@ -256,12 +358,9 @@ namespace NexusPen
         static void FreeChalk(Graphics g, List<PointF> pts, Color c, float w)
         {
             if (pts.Count < 2) { Free(g, pts, c, w); return; }
-            using (Pen p = new Pen(ChalkBrush(c), w))
-            {
-                p.StartCap = LineCap.Round; p.EndCap = LineCap.Round; p.LineJoin = LineJoin.Round;
-                PointF[] arr = pts.ToArray();
-                if (arr.Length > 2) g.DrawCurve(p, arr, 0.5f); else g.DrawLines(p, arr);
-            }
+            using (Pen p = ChalkPen(c, w))
+            using (GraphicsPath gp = CurvePath(pts, 0, pts.Count - 2))
+                g.DrawPath(p, gp);
         }
 
         static void DrawText(Graphics g, Stroke s)
@@ -328,16 +427,22 @@ namespace NexusPen
             Icons.Draw(g, icon, r, size, s.Color, 3f);
         }
 
-        public static void Draw(Graphics g, Stroke s, float fade)
+        public static void Draw(Graphics g, Stroke s, float fade) { Draw(g, s, fade, 1f); }
+
+        // 'alpha' maakt pen en markeerstift doorzichtiger (voor lijnen die vervagen), zonder de lijn te kopieren
+        public static void Draw(Graphics g, Stroke s, float fade, float alpha)
         {
             if (s.Pts.Count == 0) return;
             PointF a = s.Pts[0], b = s.Pts[s.Pts.Count - 1];
             switch (s.Tool)
             {
                 case Tool.Pen:
-                    if ((s.Style & Stroke.Chalk) != 0) FreeChalk(g, s.Pts, s.Color, s.Width); else Free(g, s.Pts, s.Color, s.Width);
+                {
+                    Color pc = alpha >= 1f ? s.Color : Color.FromArgb(Math.Max(0, Math.Min(255, (int)(s.Color.A * alpha))), s.Color);
+                    if ((s.Style & Stroke.Chalk) != 0) FreeChalk(g, s.Pts, pc, s.Width); else Free(g, s.Pts, pc, s.Width);
                     break;
-                case Tool.Marker: Free(g, s.Pts, Color.FromArgb(110, s.Color), MarkerWidth(s.Width)); break;
+                }
+                case Tool.Marker: Free(g, s.Pts, Color.FromArgb(Math.Max(0, Math.Min(255, (int)(110 * alpha))), s.Color), MarkerWidth(s.Width)); break;
                 case Tool.Laser:
                     Free(g, s.Pts, Color.FromArgb((int)(60 * fade), s.Color), s.Width * 3 + 10);
                     Free(g, s.Pts, Color.FromArgb((int)(255 * fade), s.Color), s.Width + 2);
@@ -369,6 +474,15 @@ namespace NexusPen
         public static RectangleF Bounds(Stroke s)
         {
             if (s.Pts.Count == 0) return RectangleF.Empty;
+            // onthouden zolang de lijn niet verandert (tekst opmeten is vrij traag)
+            if (s.CacheValid()) return s.BCache;
+            RectangleF r = ComputeBounds(s);
+            s.SetCache(r);
+            return r;
+        }
+
+        static RectangleF ComputeBounds(Stroke s)
+        {
             if (s.Tool == Tool.Text) return TextBounds(s);
             if (s.Tool == Tool.Stamp)
             {
@@ -396,10 +510,9 @@ namespace NexusPen
                 return Math.Sqrt(dx * dx + dy * dy) <= w / 2;
             }
             // snel vooraf: ligt het punt wel in de buurt van deze lijn?
-            float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
-            foreach (PointF q in s.Pts) { if (q.X < minX) minX = q.X; if (q.X > maxX) maxX = q.X; if (q.Y < minY) minY = q.Y; if (q.Y > maxY) maxY = q.Y; }
+            RectangleF bb = Bounds(s);
             float m = w + (s.Tool == Tool.Arrow ? s.Width * 4 + 12 : 0);
-            if (p.X < minX - m || p.X > maxX + m || p.Y < minY - m || p.Y > maxY + m) return false;
+            if (p.X < bb.Left - m || p.X > bb.Right + m || p.Y < bb.Top - m || p.Y > bb.Bottom + m) return false;
             if (s.Tool != Tool.Rect && s.Tool != Tool.Ellipse)
             {
                 // pen, markeerstift, lijn en pijl: afstand tot elk stukje lijn, zonder iets aan te maken

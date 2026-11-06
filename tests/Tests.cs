@@ -179,6 +179,58 @@ static class Tests {
     var bad = new Settings(); bad.Width = float.NaN; bad.TextSize = float.PositiveInfinity; bad.Tool = (Tool)99; bad.Clamp();
     Check(!float.IsNaN(bad.Width) && Math.Abs(bad.TextSize - 36) < 0.01 && bad.Tool == Tool.Pen, "Kapotte getallen in instellingen worden hersteld");
     Shortcuts.Cfg = new Settings();
+
+    // 14. Nieuw in 1.2.1: natte inkt (alleen het nieuwste stukje tekenen) geeft precies dezelfde lijn als alles in een keer
+    foreach (Tool wt in new[]{Tool.Pen, Tool.Marker, Tool.Laser}) {
+      var rnd = new Random(7);
+      var ws = new Stroke{Tool=wt, Color=Color.FromArgb(255, 41, 98, 255), Width=wt == Tool.Marker ? 6 : 5};
+      PointF cur = new PointF(200, 200); ws.Pts.Add(cur);
+      using (var wetBmp = new Bitmap(500, 420, PixelFormat.Format32bppPArgb))
+      using (var dryBmp = new Bitmap(500, 420, PixelFormat.Format32bppPArgb)) {
+        using (var g = Graphics.FromImage(wetBmp)) {
+          Render.Setup(g);
+          for (int i = 0; i < 400; i++) {
+            int n = ws.Pts.Count;
+            RectangleF before = n >= 2 ? Render.SegmentBox(ws.Pts, n - 2) : new RectangleF(ws.Pts[0], SizeF.Empty);
+            cur = new PointF(Math.Max(20, Math.Min(480, cur.X + rnd.Next(-14, 15))), Math.Max(20, Math.Min(400, cur.Y + rnd.Next(-14, 15))));
+            ws.Pts.Add(cur);
+            RectangleF a = RectangleF.Union(before, Render.SegmentBox(ws.Pts, n - 1));
+            if (n >= 2) a = RectangleF.Union(a, Render.SegmentBox(ws.Pts, n - 2));
+            float pad = (wt == Tool.Marker ? Render.MarkerWidth(ws.Width) : wt == Tool.Laser ? ws.Width * 3 + 10 : ws.Width) / 2 + 3;
+            a.Inflate(pad, pad);
+            Rectangle ai = Rectangle.FromLTRB((int)Math.Floor(a.Left), (int)Math.Floor(a.Top), (int)Math.Ceiling(a.Right), (int)Math.Ceiling(a.Bottom));
+            ai.Intersect(new Rectangle(0, 0, 500, 420));
+            g.SetClip(ai);
+            g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+            g.FillRectangle(Brushes.Transparent, ai);
+            g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+            Render.DrawWet(g, ws, ai);
+            g.ResetClip();
+          }
+        }
+        using (var g = Graphics.FromImage(dryBmp)) { Render.Setup(g); Render.Draw(g, ws, 1f); }
+        int diff = 0, big = 0, inked = 0;
+        for (int y = 0; y < 420; y += 1) for (int x = 0; x < 500; x += 1) {
+          Color w1 = wetBmp.GetPixel(x, y), w2 = dryBmp.GetPixel(x, y);
+          int d = Math.Max(Math.Abs(w1.A - w2.A), Math.Max(Math.Abs(w1.R - w2.R), Math.Max(Math.Abs(w1.G - w2.G), Math.Abs(w1.B - w2.B))));
+          if (w2.A > 0) inked++; if (d > 2) diff++; if (d > 140) big++;
+        }
+        // Tijdens het schrijven mag een randpixel een fractie anders zijn (mono tekent iets anders dan Windows).
+        // Bij loslaten wordt de lijn een keer helemaal getekend ('droog'), dan is hij precies gelijk.
+        Check(big == 0 && diff * 200 < inked, "Natte inkt is gelijk aan de hele lijn (" + wt + ", " + diff + " van " + inked + " pixels een fractie anders)");
+      }
+    }
+    var bs = new Stroke{Tool=Tool.Text, Text="Hallo", FontSize=30}; bs.Pts.Add(new PointF(10, 10));
+    RectangleF bb1 = Render.Bounds(bs); Render.Move(bs, 50, 0); RectangleF bb2 = Render.Bounds(bs);
+    Check(Math.Abs(bb2.X - bb1.X - 50) < 0.01, "Onthouden omtrek gaat mee als je iets verplaatst");
+    bs.Text = "Hallo allemaal, dit is langer"; Check(Render.Bounds(bs).Width > bb2.Width + 20, "Onthouden omtrek gaat mee als de tekst verandert");
+    using (var p0 = new System.Drawing.Drawing2D.GraphicsPath()) {
+      p0.AddLine(3.1f, 5.2f, 20.7f, 5.2f);
+      using (var sp = Icons.Snapped(p0, 1f, 0, 0, 2)) { PointF[] q = sp.PathPoints; Check(q[0].X == 3 && q[0].Y == 5 && q[1].X == 21, "Icoontjes staan op hele pixels (lijn van 2 pixels)"); }
+      using (var sp = Icons.Snapped(p0, 1f, 0, 0, 1)) { PointF[] q = sp.PathPoints; Check(q[0].X == 3.5f && q[0].Y == 5.5f, "Icoontjes staan op hele pixels (lijn van 1 pixel)"); }
+    }
+    Check(Icons.DeviceStroke(2, 20 / 24f) == 2 && Icons.DeviceStroke(2, 30 / 24f) == 3 && Icons.DeviceStroke(2, 16 / 24f) == 1, "Lijndikte van icoontjes in hele pixels");
+
     Console.WriteLine(fails == 0 ? "\nALLE TESTS GESLAAGD" : "\n" + fails + " TEST(S) MISLUKT");
     return fails;
   }

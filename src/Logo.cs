@@ -29,8 +29,10 @@ namespace NexusPen
             GraphicsState st = g.Save();
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            float sc = Math.Min(r.Width, r.Height) / 64f;
-            g.TranslateTransform(r.X + (r.Width - 64 * sc) / 2, r.Y + (r.Height - 64 * sc) / 2);
+            // hele pixels: de tegel staat dan scherp, ook op 125% en 150%
+            float z = Math.Max(8, (float)Math.Round(Math.Min(r.Width, r.Height)));
+            float sc = z / 64f;
+            g.TranslateTransform((float)Math.Round(r.X + (r.Width - z) / 2), (float)Math.Round(r.Y + (r.Height - z) / 2));
             g.ScaleTransform(sc, sc);
             bool small = r.Width <= 24.5f;
             using (GraphicsPath gp = Svg.RoundRect(new RectangleF(0, 0, 64, 64), 14))

@@ -57,7 +57,8 @@ namespace NexusPen
             get
             {
                 CreateParams cp = base.CreateParams;
-                cp.ExStyle |= W.WS_EX_NOACTIVATE | W.WS_EX_TOOLWINDOW | W.WS_EX_TOPMOST;
+                // WS_EX_LAYERED: we tekenen zelf het hele venster met zachte randen (geen gekartelde hoekjes)
+                cp.ExStyle |= W.WS_EX_NOACTIVATE | W.WS_EX_TOOLWINDOW | W.WS_EX_TOPMOST | W.WS_EX_LAYERED;
                 return cp;
             }
         }
@@ -67,6 +68,7 @@ namespace NexusPen
             base.OnHandleCreated(e);
             W.SetProp(Handle, "MicrosoftTabletPenServiceProperty", new IntPtr(W.TABLET_FLAGS));
             W.HideFromCapture(Handle, ov.Cfg.HideFromCapture);
+            RenderNow();
         }
 
         protected override void WndProc(ref Message m)
@@ -88,22 +90,165 @@ namespace NexusPen
 
         public void ApplyCaptureSetting() { if (IsHandleCreated) W.HideFromCapture(Handle, ov.Cfg.HideFromCapture); }
 
+        // ---- zelf tekenen met UpdateLayeredWindow: zachte ronde hoeken, scherpe rand, en direct zichtbaar na een klik
+        byte alpha = 255;
+        bool renderQueued;
+        protected bool building;
+        Bitmap maskCache; Size maskSize; float maskRadius; int maskKind;
+
+        // Doorzichtigheid van het hele venster (100%, 90% of 80%)
+        public byte BarAlpha { get { return alpha; } set { if (alpha != value) { alpha = value; RenderNow(); } } }
+
+        protected override void OnInvalidated(InvalidateEventArgs e)
+        {
+            base.OnInvalidated(e);
+            if (renderQueued || !IsHandleCreated || IsDisposed) return;
+            renderQueued = true;
+            try { BeginInvoke((MethodInvoker)RenderQueued); } catch { renderQueued = false; }
+        }
+
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+            if (Visible) RenderNow();
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            RenderNow();
+        }
+
+        // De vorm van het venster. Standaard een afgeronde rechthoek.
+        protected virtual GraphicsPath ShapePath(float w, float h) { return Svg.RoundRect(new RectangleF(0, 0, w, h), Radius); }
+        protected virtual int ShapeKind { get { return 0; } }
+
+        // Is er intussen al getekend (bijvoorbeeld direct na een klik), dan hoeft het niet nog een keer
+        void RenderQueued() { if (renderQueued) RenderNow(); }
+
+        // Meteen tekenen en aan Windows geven (niet wachten op de volgende verversing)
+        public void RenderNow()
+        {
+            renderQueued = false;
+            if (!IsHandleCreated || IsDisposed || building) return;
+            int w = ClientSize.Width, h = ClientSize.Height;
+            if (w <= 0 || h <= 0) return;
+            try
+            {
+                using (Bitmap b = RenderBitmap())
+                {
+                    IntPtr screen = W.GetDC(IntPtr.Zero);
+                    IntPtr mem = W.CreateCompatibleDC(screen);
+                    IntPtr hb = IntPtr.Zero, old = IntPtr.Zero;
+                    try
+                    {
+                        hb = b.GetHbitmap(Color.FromArgb(0));
+                        old = W.SelectObject(mem, hb);
+                        W.SIZE size = new W.SIZE(w, h);
+                        W.POINT src = new W.POINT(0, 0);
+                        W.BLENDFUNCTION bf = new W.BLENDFUNCTION();
+                        bf.BlendOp = 0; bf.BlendFlags = 0; bf.SourceConstantAlpha = alpha; bf.AlphaFormat = 1;
+                        W.UpdateLayeredWindowSize(Handle, screen, IntPtr.Zero, ref size, mem, ref src, 0, ref bf, W.ULW_ALPHA);
+                    }
+                    finally
+                    {
+                        if (old != IntPtr.Zero) W.SelectObject(mem, old);
+                        if (hb != IntPtr.Zero) W.DeleteObject(hb);
+                        W.DeleteDC(mem);
+                        W.ReleaseDC(IntPtr.Zero, screen);
+                    }
+                }
+            }
+            catch (Exception ex) { Log.Error("Venster tekenen", ex); }
+        }
+
+        // Het hele venster als plaatje (ook voor de zelftest)
+        public Bitmap RenderBitmap()
+        {
+            int w = Math.Max(1, ClientSize.Width), h = Math.Max(1, ClientSize.Height);
+            Bitmap b = new Bitmap(w, h, PixelFormat.Format32bppPArgb);
+            using (Graphics g = Graphics.FromImage(b)) PaintAll(g);
+            ApplyMask(b);
+            return b;
+        }
+
+        // Alles buiten de afgeronde vorm doorzichtig maken, met een zachte rand
+        void ApplyMask(Bitmap b)
+        {
+            int w = b.Width, h = b.Height;
+            float rad = Radius;
+            if (maskCache == null || maskSize != b.Size || maskRadius != rad || maskKind != ShapeKind)
+            {
+                if (maskCache != null) maskCache.Dispose();
+                maskCache = new Bitmap(w, h, PixelFormat.Format32bppPArgb);
+                using (Graphics g = Graphics.FromImage(maskCache))
+                using (GraphicsPath gp = ShapePath(w, h))
+                {
+                    g.Clear(Color.Transparent);
+                    g.SmoothingMode = SmoothingMode.AntiAlias;
+                    g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                    g.FillPath(Brushes.White, gp);
+                }
+                maskSize = b.Size; maskRadius = rad; maskKind = ShapeKind;
+            }
+            Rectangle all = new Rectangle(0, 0, w, h);
+            BitmapData bd = b.LockBits(all, ImageLockMode.ReadWrite, PixelFormat.Format32bppPArgb);
+            BitmapData md = maskCache.LockBits(all, ImageLockMode.ReadOnly, PixelFormat.Format32bppPArgb);
+            try
+            {
+                int n = w;
+                int[] row = new int[n], mrow = new int[n];
+                for (int y = 0; y < h; y++)
+                {
+                    IntPtr pr = new IntPtr(bd.Scan0.ToInt64() + (long)y * bd.Stride);
+                    IntPtr mr = new IntPtr(md.Scan0.ToInt64() + (long)y * md.Stride);
+                    Marshal.Copy(pr, row, 0, n);
+                    Marshal.Copy(mr, mrow, 0, n);
+                    bool changed = false;
+                    for (int x = 0; x < n; x++)
+                    {
+                        int m = (mrow[x] >> 24) & 0xFF;
+                        if (m == 255) continue;
+                        changed = true;
+                        if (m == 0) { row[x] = 0; continue; }
+                        int c = row[x];
+                        int a = ((c >> 24) & 0xFF) * m / 255, r = ((c >> 16) & 0xFF) * m / 255, gg = ((c >> 8) & 0xFF) * m / 255, bb = (c & 0xFF) * m / 255;
+                        row[x] = (a << 24) | (r << 16) | (gg << 8) | bb;
+                    }
+                    if (changed) Marshal.Copy(row, 0, pr, n);
+                }
+            }
+            finally { b.UnlockBits(bd); maskCache.UnlockBits(md); }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && maskCache != null) { maskCache.Dispose(); maskCache = null; }
+            base.Dispose(disposing);
+        }
+
+        // Op hele pixels zetten: dan blijven randen en icoontjes scherp
+        public static float Px(float v) { return (float)Math.Round(v); }
+        public static RectangleF Px(RectangleF r)
+        {
+            return RectangleF.FromLTRB(Px(r.Left), Px(r.Top), Px(r.Right), Px(r.Bottom));
+        }
+
         protected virtual void Build() { }
 
         public virtual void Rebuild()
         {
             hover = null;
             items.Clear();
-            Build();
-            using (GraphicsPath gp = Svg.RoundRect(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), Radius))
-                Region = new Region(gp);
-            Invalidate();
+            building = true;
+            try { Build(); } finally { building = false; }
+            RenderNow();
         }
 
         protected Item Add(RectangleF r, string tipText, Action click)
         {
             Item it = new Item();
-            it.R = r; it.Tip = tipText; it.Click = click;
+            it.R = Px(r); it.Tip = tipText; it.Click = click;
             items.Add(it);
             return it;
         }
@@ -122,21 +267,31 @@ namespace NexusPen
 
         protected float StrokeW { get { return T.Thick ? 2.4f : 2f; } }
 
-        protected override void OnPaint(PaintEventArgs e)
+        protected override void OnPaint(PaintEventArgs e) { PaintAll(e.Graphics); }
+
+        protected void PaintAll(Graphics g)
         {
-            Graphics g = e.Graphics;
             Theme t = T;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            g.TextRenderingHint = TextRenderingHint.AntiAlias;
+            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             g.Clear(t.Bar);
-            float bw = (t.Thick ? 2 : 1) * S;
+            // rand van een hele pixel breed, precies op de pixels: scherp in plaats van wazig
+            float bw = Math.Max(1, Px((t.Thick ? 2 : 1) * S));
             using (Pen p = new Pen(t.Border, bw))
-            using (GraphicsPath gp = Svg.RoundRect(new RectangleF(bw / 2, bw / 2, ClientSize.Width - bw - 0.5f, ClientSize.Height - bw - 0.5f), Radius - bw / 2))
+            using (GraphicsPath gp = BorderPath(ClientSize.Width, ClientSize.Height, bw))
                 g.DrawPath(p, gp);
             PaintExtra(g);
             foreach (Item it in items) PaintItem(g, it);
+            PaintOverlay(g);
         }
+
+        protected virtual GraphicsPath BorderPath(float w, float h, float bw)
+        {
+            return Svg.RoundRect(new RectangleF(bw / 2, bw / 2, w - bw, h - bw), Radius - bw / 2);
+        }
+
+        protected virtual void PaintOverlay(Graphics g) { }
 
         protected virtual void PaintExtra(Graphics g) { }
 
@@ -165,15 +320,22 @@ namespace NexusPen
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
+            double t0 = Perf.Now;
             if (OnPress(e)) return;
             Item it = ItemAt(e.Location);
             if (e.Button == MouseButtons.Right)
             {
-                if (it != null && it.RightClick != null) { it.RightClick(); Invalidate(); }
+                if (it != null && it.RightClick != null) { it.RightClick(); if (!IsDisposed) RenderNow(); }
                 return;
             }
             if (e.Button != MouseButtons.Left) return;
-            if (it != null) { if (it.Click != null) it.Click(); if (!IsDisposed) Invalidate(); return; }
+            if (it != null)
+            {
+                if (it.Click != null) it.Click();
+                if (!IsDisposed) RenderNow();   // knop meteen oranje, in hetzelfde beeldje
+                Perf.Click.Add(Perf.Now - t0);
+                return;
+            }
             if (draggable)
             {
                 W.ReleaseCapture();
@@ -188,7 +350,7 @@ namespace NexusPen
             if (it != hover)
             {
                 hover = it;
-                Invalidate();
+                RenderNow();
                 if (it != null && !string.IsNullOrEmpty(it.Tip))
                 {
                     Point at = vertical

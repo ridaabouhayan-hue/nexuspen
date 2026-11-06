@@ -119,7 +119,7 @@ namespace NexusPen
                 : new Point(Screen.PrimaryScreen.WorkingArea.Left + 40, Screen.PrimaryScreen.WorkingArea.Top + 40);
             S = W.DpiScaleAt(start);
             vertical = ov.Cfg.Vertical;
-            Opacity = OpacityValue;
+            BarAlpha = OpacityValue;
             flash = new System.Windows.Forms.Timer();
             flash.Interval = 1700;
             flash.Tick += delegate { flash.Stop(); Invalidate(); };
@@ -141,7 +141,7 @@ namespace NexusPen
             }
         }
 
-        double OpacityValue { get { int i = ov.Cfg.OpacityIndex; return i == 1 ? 0.9 : i == 2 ? 0.8 : 1.0; } }
+        byte OpacityValue { get { int i = ov.Cfg.OpacityIndex; return (byte)(i == 1 ? 230 : i == 2 ? 204 : 255); } }
 
         public void ResetPosition()
         {
@@ -165,7 +165,7 @@ namespace NexusPen
         {
             Point keep = Location;
             vertical = ov.Cfg.Vertical;
-            Opacity = OpacityValue;
+            BarAlpha = OpacityValue;
             ClosePopups();
             HideMiniBar();
             if (IsHandleCreated) RecreateHandle();
@@ -209,7 +209,7 @@ namespace NexusPen
             float thick = vertical ? bw : bh;
 
             float gripLen = vertical ? (4 + 12 + 8) * S : (4 + 12 + 6) * S;
-            gripItem = new Item(); gripItem.R = Rect(pos, cross, gripLen, thick); gripItem.Paint = PaintGrip;
+            gripItem = new Item(); gripItem.R = Px(Rect(pos, cross, gripLen, thick)); gripItem.Paint = PaintGrip;
             pos += gripLen;
 
             float lb = vertical ? bh + 4 * S : bw;
@@ -246,7 +246,7 @@ namespace NexusPen
             }
             // sleeprandje om de balk in te korten
             float hl = 12 * S;
-            handleItem = new Item(); handleItem.R = Rect(pos, cross, hl, thick); handleItem.Paint = PaintHandle;
+            handleItem = new Item(); handleItem.R = Px(Rect(pos, cross, hl, thick)); handleItem.Paint = PaintHandle;
             handleItem.Tip = L.T("Sleep om de balk in te korten");
             pos += hl + padMain - 2 * S;
 
@@ -258,7 +258,8 @@ namespace NexusPen
         {
             float m = (vertical ? 4 : 5) * S;
             Item sep = new Item();
-            sep.R = vertical ? new RectangleF(cross + thick / 2 - 11 * S, pos + m, 22 * S, 1 * S) : new RectangleF(pos + m, cross + thick / 2 - 11 * S, 1 * S, 22 * S);
+            float one = Math.Max(1, Px(S));   // streepje van hele pixels: scherp
+            sep.R = vertical ? new RectangleF(Px(cross + thick / 2 - 11 * S), Px(pos + m), Px(22 * S), one) : new RectangleF(Px(pos + m), Px(cross + thick / 2 - 11 * S), one, Px(22 * S));
             seps.Add(sep);
             pos += m * 2 + 1 * S;
         }
@@ -359,13 +360,12 @@ namespace NexusPen
             if (handleItem != null) PaintHandle(g, handleItem, hoverHandle || shortening);
         }
 
-        protected override void OnPaint(PaintEventArgs e)
+        protected override void PaintOverlay(Graphics g)
         {
-            base.OnPaint(e);
             // tijdens het inkorten: wat achter het randje valt, wordt doorzichtig
             if (shortening)
                 using (SolidBrush b = new SolidBrush(Color.FromArgb(170, T.Bar)))
-                    for (int i = shortenPreview; i < buttonOrder.Count; i++) e.Graphics.FillRectangle(b, buttonOrder[i].R);
+                    for (int i = shortenPreview; i < buttonOrder.Count; i++) g.FillRectangle(b, buttonOrder[i].R);
         }
 
         void PaintGrip(Graphics g, Item it, bool h)
@@ -597,6 +597,26 @@ namespace NexusPen
             ClosePopups();
             Point k = Location; Rebuild(); Location = k;
             ov.RefreshSettingsWindow();
+        }
+
+        // Kleine vensters alvast klaarzetten (onzichtbaar), zodat ze bij de eerste klik meteen openen
+        public void Prewarm()
+        {
+            try
+            {
+                if (colorPopup == null) { colorPopup = new ColorPopup(ov); colorPopup.Owner = this; }
+                if (shapePopup == null) { shapePopup = new ShapePopup(ov); shapePopup.Owner = this; }
+                if (stampPopup == null) { stampPopup = new StampPopup(ov); stampPopup.Owner = this; }
+                if (boardPopup == null) { boardPopup = new BoardPopup(ov); boardPopup.Owner = this; }
+                foreach (BarForm f in new BarForm[] { colorPopup, shapePopup, stampPopup, boardPopup })
+                {
+                    f.S = S; f.SetVertical(vertical);
+                    IntPtr h = f.Handle;   // venster aanmaken zonder te tonen
+                    f.Rebuild();
+                    using (Bitmap b = f.RenderBitmap()) { }
+                }
+            }
+            catch (Exception ex) { Log.Error("Vensters klaarzetten", ex); }
         }
 
         // Voor de zelftest op GitHub

@@ -1,16 +1,13 @@
-NexusPen 1.2 voor Windows 10 en 11.
+NexusPen 1.2.1 voor Windows 10 en 11.
 
-**Installeren:** download `NexusPen-Setup.exe` en open het. Je hebt geen beheerdersrechten nodig. Geeft Windows een blauwe waarschuwing, klik dan op "Meer info" en daarna op "Toch uitvoeren". Liever niet installeren? `NexusPen.exe` werkt ook los.
+**Installeren:** download `NexusPen-Setup.exe` en open het. Je hebt geen beheerdersrechten nodig. Geeft Windows een blauwe waarschuwing, klik dan op "Meer info" en daarna op "Toch uitvoeren". Heb je 1.2.0 al, dan installeer je er gewoon overheen: je tekeningen en instellingen blijven staan. Liever niet installeren? `NexusPen.exe` werkt ook los.
 
-**Nieuw in 1.2**
-- Nieuwe werkbalk met Lucide-icoontjes, liggend of staand.
-- Klik op het logo om alles in te klappen. Klik nog een keer en alles is terug.
-- Wegschuiven naar de rand: de balk gaat weg, je tekeningen blijven staan.
-- Balk inkorten met het sleeprandje. Knoppen verbergen met een rechtsklik.
-- In de instellingen sleep je knoppen tussen je balk en de bak.
-- Sneltoetsen met Ctrl+Shift, zodat typen nooit per ongeluk een gereedschap kiest. Zelf aan te passen.
-- Nederlands, Engels, Frans en Spaans.
-- Stempels (vinkje, kruis, ster, vraagteken, nummer), whiteboard en krijtbord met lijnen en pagina's.
-- Krijtstreep, vervagen na 5 seconden, lettertypes zoals Andika, rand om tekst.
-- Opslaan-knop: je tekening staat er de volgende keer weer.
-- Gebruik bijhouden, alleen op je eigen pc, nooit wat je schrijft of tekent.
+**Nieuw in 1.2.1: scherper en sneller**
+- De inkt zit vast aan je muis of pen: NexusPen tekent bij elke beweging meteen het nieuwste stukje, ook bij een hele lange zin.
+- Knoppen worden meteen oranje als je klikt. De kleine vensters (kleur, stempel, vormen, bord) openen direct.
+- Gummen in een volle tekening hapert niet meer.
+- Scherpere werkbalk: gladde ronde hoeken, een scherpe rand en icoontjes met lijnen van hele pixels, ook op 125% en 150%.
+- Scherpere tekst in de instellingen. Op Windows 11 gladde ronde hoeken.
+- Vorige tekening terughalen zet nu ook je bord met pagina's terug.
+- Bij verwijderen vraagt NexusPen of je tekeningen en instellingen ook weg mogen.
+- In Hulp en foutlog zie je hoe snel NexusPen op jouw pc reageert.

@@ -4,7 +4,7 @@ NexusPen is een lichtgewicht tekenprogramma over je scherm (vervanger van Epic P
 
 ## Altijd eerst lezen
 1. `BOUWPLAN.md`: alle afgesproken keuzes. Dit gaat voor bij twijfel.
-2. `ontwerp/`: afbeeldingen van de borden uit het design canvas. In `ontwerp/html/` staat de bron van elk bord, ook van de interactieve borden (6 Tekst, 7 Timer, 8 Thema's). Nieuwere borden (10 t/m 18) gaan voor op oudere.
+2. `docs/ontwerp/`: afbeeldingen van de borden uit het design canvas. In `docs/ontwerp/html/` staat de bron van elk bord, ook van de interactieve borden (6 Tekst, 7 Timer, 8 Thema's). Nieuwere borden (10 t/m 18) gaan voor op oudere.
 
 ## Werkafspraken met Rida
 - Schrijf in het Nederlands. Gebruik nooit het lange gedachtestreepje, ook niet in code-commentaar, teksten of commits.
@@ -14,11 +14,11 @@ NexusPen is een lichtgewicht tekenprogramma over je scherm (vervanger van Epic P
 
 ## Techniek
 - C# 5 met WinForms op .NET Framework 4.8. Dat zit al in Windows, er hoeft niets extra geïnstalleerd te worden.
-- `start/NexusPen.cs` is een eerste opzet van 1.2. Die compileert en de tests slagen, maar hij volgt het nieuwste ontwerp nog niet helemaal (sneltoetsen Ctrl+Shift, inklappen, inkorten, slepen tussen balk en bak, taal en gebruik ontbreken nog). Gebruik hem als startpunt en splits hem op in nette bestanden.
-- `start/NexusPen-1.1.cs` is de huidige werkende versie, ter vergelijking.
+- De code staat in `src/` (opgesplitst per onderdeel). `docs/NexusPen-1.1-oud.cs` is de oude versie 1.1, ter vergelijking.
+- Snelheid: zie `docs/SNELHEID-PLAN.md`. De werkbalk en kleine vensters tekenen zichzelf met UpdateLayeredWindow (zachte hoeken, scherpe rand). Icoontjes staan op hele pixels (Icons.Snapped).
 - Icoontjes: Lucide (ISC). Neem de paden letterlijk over uit lucide-static (zie `BOUWPLAN.md`). De SVG-lezer moet path, circle, rect, line, polyline en ellipse kunnen lezen.
-- Lettertypes: `fonts/` (Andika en Nunito, SIL OFL), ingebouwd als resource.
-- Logo: `logo/` (SVG, PNG en nexuspen.ico). Het witte potlood is de goedgekeurde versie.
+- Lettertypes: `assets/fonts/` (SIL OFL), ingebouwd als resource.
+- Logo: `assets/` (NexusPen.ico) en `src/Logo.cs`. Het witte potlood is de goedgekeurde versie.
 - Tests: `tests/Tests.cs`.
 
 ## GitHub

@@ -38,6 +38,35 @@ namespace NexusPen
             }
         }
 
+        // De bordpagina's van de vorige keer: vorige-bord-1.dat, vorige-bord-2.dat, ...
+        public static string PreviousBoardPath(int page) { return Path.Combine(Dir, "vorige-bord-" + (page + 1) + ".dat"); }
+
+        // Bij een nieuwe start: de bordpagina's bewaren als 'vorige', zodat Vorige tekening terughalen ook het bord terugzet
+        public static void ArchiveBoard()
+        {
+            if (!File.Exists(BoardPath(0))) return;
+            int i = 0;
+            for (; i < 200 && File.Exists(BoardPath(i)); i++) File.Copy(BoardPath(i), PreviousBoardPath(i), true);
+            for (; i < 200; i++)
+            {
+                string p = PreviousBoardPath(i);
+                if (!File.Exists(p)) break;
+                File.Delete(p);
+            }
+        }
+
+        // Alleen de pagina's waar iets op staat
+        public static List<List<Stroke>> LoadPreviousBoard()
+        {
+            List<List<Stroke>> pages = new List<List<Stroke>>();
+            for (int i = 0; i < 200 && File.Exists(PreviousBoardPath(i)); i++)
+            {
+                List<Stroke> pg = Load(PreviousBoardPath(i));
+                if (pg.Count > 0) pages.Add(pg);
+            }
+            return pages;
+        }
+
         public static List<List<Stroke>> LoadBoard()
         {
             List<List<Stroke>> pages = new List<List<Stroke>>();

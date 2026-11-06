@@ -164,7 +164,7 @@ namespace NexusPen
             return it;
         }
 
-        protected void Sep() { rowSeps.Add(new RectangleF(x + 2 * S, pad + (h - 22 * S) / 2, 1 * S, 22 * S)); x += 11 * S; }
+        protected void Sep() { rowSeps.Add(Px(new RectangleF(x + 2 * S, pad + (h - 22 * S) / 2, Math.Max(1, Px(S)), 22 * S))); x += 11 * S; }
 
         protected void Finish() { ClientSize = new Size((int)Math.Ceiling(x + 2 * S), (int)Math.Ceiling(h + pad * 2)); }
 
@@ -217,7 +217,7 @@ namespace NexusPen
             }
             Item num = Chip(L.T("Nummer"), null, Color.Empty, L.T("Telt vanzelf op: 1, 2, 3. Rechtsklik = weer bij 1 beginnen"),
                 delegate { return o.Cfg.StampKind == 4; }, delegate { o.Cfg.StampKind = 4; o.Cfg.Save(); o.SetTool(Tool.Stamp); Invalidate(); });
-            num.R = new RectangleF(num.R.X, num.R.Y, num.R.Width + 26 * S, num.R.Height);
+            num.R = Px(new RectangleF(num.R.X, num.R.Y, num.R.Width + 26 * S, num.R.Height));
             x += 26 * S;
             num.RightClick = delegate { o.Cfg.StampNext = 1; o.Cfg.Save(); Invalidate(); };
             num.Paint = delegate(Graphics g, Item item, bool hv)
@@ -365,7 +365,7 @@ namespace NexusPen
                 Icons.Draw(g, "plus", c, 12 * S, T.Muted, 2.4f);
             };
             x += sw;
-            barSeps.Add(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, 1 * S, 20 * S)); x += 9 * S;
+            barSeps.Add(Px(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, Math.Max(1, Px(S)), 20 * S))); x += 9 * S;
             Button(new RectangleF(x, pad, h, h), "min", L.T("Kleiner"), delegate { o.ScaleSelected(1 / 1.12f); Invalidate(); }, null, null); x += h + 2 * S;
             Item size = Add(new RectangleF(x, pad, 34 * S, h), L.T("Grootte"), null);
             size.Paint = delegate(Graphics g, Item item, bool hv) { Label(g, o.SelectedSize.ToString(), item.R, T.Text, 13, true, StringAlignment.Center); };
@@ -373,16 +373,16 @@ namespace NexusPen
             Button(new RectangleF(x, pad, h, h), "plus", L.T("Groter"), delegate { o.ScaleSelected(1.12f); Invalidate(); }, null, null); x += h;
             if (o.SelectionIsText)
             {
-                barSeps.Add(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, 1 * S, 20 * S)); x += 9 * S;
+                barSeps.Add(Px(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, Math.Max(1, Px(S)), 20 * S))); x += 9 * S;
                 float rw = TextWidth(L.T("Rand"), 13) + 40 * S;
                 Item rand = Add(new RectangleF(x, pad, rw, h), L.T("Rand om de tekst aan of uit"), delegate { o.ToggleOutlineSelected(); Invalidate(); });
                 rand.Paint = delegate(Graphics g, Item item, bool hv) { PaintChip(g, item.R, o.SelectionHasOutline, hv, L.T("Rand"), "tekst", Color.Empty); };
                 x += rw + 2 * S;
             }
-            barSeps.Add(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, 1 * S, 20 * S)); x += 9 * S;
+            barSeps.Add(Px(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, Math.Max(1, Px(S)), 20 * S))); x += 9 * S;
             Button(new RectangleF(x, pad, h, h), "dupliceer", L.T("Kopie maken") + "  (Ctrl+D)", delegate { o.DuplicateSelected(); }, null, null); x += h + 2 * S;
             Button(new RectangleF(x, pad, h, h), "voren", L.T("Naar voren"), delegate { o.BringSelectedToFront(); }, null, null); x += h + 2 * S;
-            barSeps.Add(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, 1 * S, 20 * S)); x += 9 * S;
+            barSeps.Add(Px(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, Math.Max(1, Px(S)), 20 * S))); x += 9 * S;
             Item del = Add(new RectangleF(x, pad, h, h), L.T("Verwijderen") + "  (Delete)", delegate { o.DeleteSelected(); });
             del.Paint = delegate(Graphics g, Item item, bool hv)
             {
@@ -446,32 +446,31 @@ namespace NexusPen
         }
 
         // Alleen de kant van het scherm af is rond
-        public override void Rebuild()
+        protected override int ShapeKind { get { return vert ? 1 : 2; } }
+        protected override GraphicsPath ShapePath(float w, float h) { return LipShape(w, h, 0); }
+        protected override GraphicsPath BorderPath(float w, float h, float bw) { return LipShape(w, h, bw / 2); }
+
+        GraphicsPath LipShape(float w, float h, float i)
         {
-            hover = null;
-            items.Clear();
-            Build();
-            float r = 10 * S;
-            using (GraphicsPath gp = new GraphicsPath())
+            float r = 10 * S - i;
+            GraphicsPath gp = new GraphicsPath();
+            // aan de schermrand loopt de vorm 1 pixel door, zodat daar geen randje te zien is
+            RectangleF b = vert ? RectangleF.FromLTRB(-i - 1, i, w - i, h - i) : RectangleF.FromLTRB(i, -i - 1, w - i, h - i);
+            if (vert)
             {
-                RectangleF b = new RectangleF(0, 0, ClientSize.Width, ClientSize.Height);
-                if (vert)
-                {
-                    gp.AddLine(b.X, b.Y, b.Right - r, b.Y);
-                    gp.AddArc(b.Right - 2 * r, b.Y, 2 * r, 2 * r, 270, 90);
-                    gp.AddArc(b.Right - 2 * r, b.Bottom - 2 * r, 2 * r, 2 * r, 0, 90);
-                    gp.AddLine(b.Right - r, b.Bottom, b.X, b.Bottom);
-                }
-                else
-                {
-                    gp.AddLine(b.X, b.Y, b.Right, b.Y);
-                    gp.AddArc(b.Right - 2 * r, b.Bottom - 2 * r, 2 * r, 2 * r, 0, 90);
-                    gp.AddArc(b.X, b.Bottom - 2 * r, 2 * r, 2 * r, 90, 90);
-                }
-                gp.CloseFigure();
-                Region = new Region(gp);
+                gp.AddLine(b.X, b.Y, b.Right - r, b.Y);
+                gp.AddArc(b.Right - 2 * r, b.Y, 2 * r, 2 * r, 270, 90);
+                gp.AddArc(b.Right - 2 * r, b.Bottom - 2 * r, 2 * r, 2 * r, 0, 90);
+                gp.AddLine(b.Right - r, b.Bottom, b.X, b.Bottom);
             }
-            Invalidate();
+            else
+            {
+                gp.AddLine(b.X, b.Y, b.Right, b.Y);
+                gp.AddArc(b.Right - 2 * r, b.Bottom - 2 * r, 2 * r, 2 * r, 0, 90);
+                gp.AddArc(b.X, b.Bottom - 2 * r, 2 * r, 2 * r, 90, 90);
+            }
+            gp.CloseFigure();
+            return gp;
         }
     }
 
