@@ -1368,6 +1368,28 @@ namespace NexusPen
             RefreshUi();
         }
 
+        // Afsluiten met de knop: even vragen, dan gaat het nooit per ongeluk. De tekening wordt bewaard (SaveNow bij sluiten).
+        public void AskQuit()
+        {
+            if (DrawMode) SetTool(Tool.Mouse);
+            string msg = Cfg.KeepDrawing == 1 && StrokeCountAll() > 0
+                ? L.T("NexusPen afsluiten? Wil je je tekening de volgende keer terugzien, druk dan eerst op Opslaan.")
+                : L.T("NexusPen afsluiten?");
+            if (MessageBox.Show(msg, "NexusPen", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1) == DialogResult.Yes)
+            {
+                Usage.Log("afsluiten", "", "knop");
+                Close();
+            }
+        }
+
+        int StrokeCountAll()
+        {
+            StoreActive();
+            int n = screenStrokes.Count;
+            foreach (List<Stroke> pg in pages) n += pg.Count;
+            return n;
+        }
+
         // Kleur kiezen vanuit Instellingen: alleen onthouden, niet meteen gaan tekenen
         public void ChooseColorQuietly(int i)
         {

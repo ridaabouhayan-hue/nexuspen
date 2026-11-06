@@ -337,7 +337,7 @@ namespace NexusPen
                 delegate { return c.KeepDrawing; }, delegate(int i) { c.KeepDrawing = i; });
             y = Section(y + 8 * S, L.T("Overig"));
             y = Toggle(y, L.T("Melding als er een nieuwe versie is"), L.T("Bijwerken met een klik, je instellingen blijven staan"), delegate { return c.UpdateCheck; }, delegate(bool v) { c.UpdateCheck = v; });
-            Button(contentX, y + 16 * S, L.T("Alles terugzetten naar standaard"), "undo", delegate
+            float rw = Button(contentX, y + 16 * S, L.T("Alles terugzetten naar standaard"), "undo", delegate
             {
                 if (MessageBox.Show(this, L.T("Alle instellingen terugzetten naar standaard? Je tekeningen blijven staan."), "NexusPen", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
                 Settings fresh = new Settings();
@@ -347,6 +347,9 @@ namespace NexusPen
                 ov.RegisterGlobalHotkeys();
                 Changed(); BuildItems(); Notice(L.T("Alles staat weer op standaard."));
             }, false);
+            // NexusPen helemaal afsluiten
+            float qx = contentX + rw + 10 * S;
+            Button(qx, y + 16 * S, L.T("NexusPen afsluiten"), "afsluiten", delegate { Close(); ov.AskQuit(); }, false);
         }
 
         // ---- Taal

@@ -12,11 +12,11 @@ namespace NexusPen
     // zodat je ze in Instellingen kunt slepen en met rechtsklik kunt verbergen.
     class Toolbar : BarForm
     {
-        public const string DefaultLayout = "muis,selecteer|pen,markeer,laser|vormen,tekst,gum|kleur,stempel,focus|undo,bord,foto|opslaan,oog,instellingen,weg";
+        public const string DefaultLayout = "muis,selecteer|pen,markeer,laser|vormen,tekst,gum|kleur,stempel,focus|undo,bord,foto|opslaan,oog,instellingen,afsluiten,weg";
 
         // alle knoppen die in de balk kunnen; de losse vormen en Opnieuw staan standaard in de bak
         public static readonly string[] Catalog = { "muis", "selecteer", "pen", "markeer", "laser", "vormen", "lijn", "pijl", "rechthoek", "cirkel",
-            "tekst", "gum", "kleur", "stempel", "focus", "undo", "redo", "wis", "bord", "foto", "opslaan", "oog", "instellingen", "weg" };
+            "tekst", "gum", "kleur", "stempel", "focus", "undo", "redo", "wis", "bord", "foto", "opslaan", "oog", "instellingen", "afsluiten", "weg" };
 
         public static string NameOf(string key)
         {
@@ -45,6 +45,7 @@ namespace NexusPen
                 case "opslaan": return L.T("Opslaan");
                 case "oog": return L.T("Tekeningen verbergen");
                 case "instellingen": return L.T("Instellingen");
+                case "afsluiten": return L.T("NexusPen afsluiten");
                 case "weg": return L.T("Wegschuiven");
                 case "|": return L.T("Streep");
             }
@@ -331,6 +332,10 @@ namespace NexusPen
                 case "instellingen":
                     it = Button(r, "instellingen", L.T("Instellingen"), delegate { Use(key); ClosePopups(); o.ShowSettings(null); }, null, null);
                     break;
+                case "afsluiten":
+                    it = Button(r, "afsluiten", L.T("NexusPen afsluiten. Je tekening wordt eerst bewaard"), delegate { Use(key); ClosePopups(); ov.AskQuit(); }, null, null);
+                    it.Muted = true;
+                    break;
                 case "weg":
                     it = Button(r, vertical ? "links" : "op", L.T("Wegschuiven naar de rand. Je tekeningen blijven staan"), delegate { Use(key); DockAway(); }, null, null);
                     it.Muted = true;
@@ -530,7 +535,7 @@ namespace NexusPen
             m.Items.Add(collapsed ? L.T("Uitklappen") : L.T("Inklappen"), null, delegate { if (collapsed) ov.ExpandAll(); else ov.CollapseAll(); });
             m.Items.Add(L.T("Instellingen"), null, delegate { ov.ShowSettings(null); });
             m.Items.Add(new ToolStripSeparator());
-            m.Items.Add(L.T("NexusPen afsluiten"), null, delegate { ov.Close(); });
+            m.Items.Add(L.T("NexusPen afsluiten"), null, delegate { ov.AskQuit(); });
             m.Show(at);
         }
 

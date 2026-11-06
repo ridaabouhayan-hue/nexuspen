@@ -29,6 +29,8 @@ namespace NexusPen
             new string[] { "Foutlog openen", "Open error log", "Ouvrir le journal des erreurs", "Abrir el registro de errores" },
             new string[] { "Er zijn nog geen fouten gelogd.", "No errors have been logged yet.", "Aucune erreur n'a encore été enregistrée.", "Todavía no se ha registrado ningún error." },
             new string[] { "Afsluiten", "Quit", "Quitter", "Salir" },
+            new string[] { "NexusPen afsluiten? Wil je je tekening de volgende keer terugzien, druk dan eerst op Opslaan.", "Quit NexusPen? If you want to see your drawing again next time, press Save first.", "Quitter NexusPen ? Si vous voulez retrouver votre dessin la prochaine fois, appuyez d'abord sur Enregistrer.", "¿Salir de NexusPen? Si quieres ver tu dibujo la próxima vez, pulsa primero Guardar." },
+            new string[] { "NexusPen afsluiten?", "Quit NexusPen?", "Quitter NexusPen ?", "¿Salir de NexusPen?" },
             new string[] { "Dikte", "Thickness", "Épaisseur", "Grosor" },
             new string[] { "Tekstgrootte", "Text size", "Taille du texte", "Tamaño del texto" },
             new string[] { "Stempel", "Stamp", "Tampon", "Sello" },
@@ -122,6 +124,7 @@ namespace NexusPen
             new string[] { "Alles terugzetten naar standaard", "Reset everything to default", "Tout remettre par défaut", "Restablecer todo" },
             new string[] { "Alle instellingen terugzetten naar standaard? Je tekeningen blijven staan.", "Reset all settings to default? Your drawings stay.", "Remettre tous les paramètres par défaut ? Vos dessins restent.", "¿Restablecer todos los ajustes? Tus dibujos se mantienen." },
             new string[] { "Alles staat weer op standaard.", "Everything is back to default.", "Tout est revenu par défaut.", "Todo ha vuelto a los valores predeterminados." },
+            new string[] { "NexusPen afsluiten", "Quit NexusPen", "Quitter NexusPen", "Salir de NexusPen" },
             new string[] { "Taal", "Language", "Langue", "Idioma" },
             new string[] { "De taal van alle knoppen, tips, menu's en instellingen. Je tekeningen en teksten veranderen niet.", "The language of all buttons, tips, menus and settings. Your drawings and texts do not change.", "La langue des boutons, astuces, menus et paramètres. Vos dessins et textes ne changent pas.", "El idioma de todos los botones, consejos, menús y ajustes. Tus dibujos y textos no cambian." },
             new string[] { "Taal van Windows gebruiken", "Use the Windows language", "Utiliser la langue de Windows", "Usar el idioma de Windows" },
@@ -325,13 +328,13 @@ namespace NexusPen
             new string[] { "Schermafbeelding, naar Afbeeldingen\\NexusPen en het klembord", "Screenshot, to Pictures\\NexusPen and the clipboard", "Capture d'écran, dans Images\\NexusPen et le presse-papiers", "Captura, a Imágenes\\NexusPen y al portapapeles" },
             new string[] { "Opslaan: je tekening staat er de volgende keer weer", "Save: your drawing is back next time", "Enregistrer : votre dessin revient la prochaine fois", "Guardar: tu dibujo vuelve la próxima vez" },
             new string[] { "Tekeningen verbergen of weer tonen", "Hide or show drawings", "Masquer ou afficher les dessins", "Ocultar o mostrar los dibujos" },
+            new string[] { "NexusPen afsluiten. Je tekening wordt eerst bewaard", "Quit NexusPen. Your drawing is saved first", "Quitter NexusPen. Votre dessin est d'abord enregistré", "Salir de NexusPen. Tu dibujo se guarda primero" },
             new string[] { "Wegschuiven naar de rand. Je tekeningen blijven staan", "Slide away to the edge. Your drawings stay", "Ranger sur le bord. Vos dessins restent", "Apartar al borde. Tus dibujos se quedan" },
             new string[] { "Rechthoek (om te lezen)", "Rectangle (for reading)", "Rectangle (pour lire)", "Rectángulo (para leer)" },
             new string[] { "Verbergen uit de balk", "Hide from the bar", "Masquer de la barre", "Ocultar de la barra" },
             new string[] { "Werkbalk aanpassen...", "Customise toolbar...", "Personnaliser la barre...", "Personalizar la barra..." },
             new string[] { "Uitklappen", "Expand", "Déplier", "Expandir" },
             new string[] { "Inklappen", "Collapse", "Réduire", "Contraer" },
-            new string[] { "NexusPen afsluiten", "Quit NexusPen", "Quitter NexusPen", "Salir de NexusPen" },
         };
     }
 }
