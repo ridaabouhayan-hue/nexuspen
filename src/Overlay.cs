@@ -485,8 +485,15 @@ namespace NexusPen
             catch (Exception ex) { Log.Error("Sessie starten", ex); if (pages.Count == 0) pages.Add(new List<Stroke>()); }
         }
 
+        bool previousRestored;
+
         public void RestorePrevious()
         {
+            if (previousRestored)
+            {
+                if (tray != null) tray.ShowBalloonTip(2500, "NexusPen", L.T("De vorige tekening staat er al."), ToolTipIcon.Info);
+                return;
+            }
             List<Stroke> prev = StrokeStore.Load(StrokeStore.PreviousPath);
             List<List<Stroke>> prevPages = StrokeStore.LoadPreviousBoard();
             if (prev.Count == 0 && prevPages.Count == 0)
@@ -506,6 +513,7 @@ namespace NexusPen
                 if (pageIndex >= pages.Count) pageIndex = 0;
             }
             strokes = BoardMode == Board.None ? screenStrokes : pages[pageIndex];
+            previousRestored = true;
             StrokesVisible = true;
             MarkChanged();
             Rebuild();
@@ -1651,6 +1659,7 @@ namespace NexusPen
                 CommitToLayer(st);
                 return;
             }
+            if (current != null) pendingDirty = U(pendingDirty, StrokeBounds(current));   // oude lijn zonder loslaten: netjes weghalen
             current = new Stroke();
             current.Tool = CurrentTool;
             current.Color = CurrentColor;
@@ -1669,7 +1678,7 @@ namespace NexusPen
             if (!DrawMode) return;
             if (inputAt < 0) inputAt = Perf.Now;
             PointF p = e.Location;
-            if (CurrentTool == Tool.Focus) { focusAt = p; RenderSoon(); return; }
+            if (CurrentTool == Tool.Focus) { focusAt = p; dirty = true; inputAt = -1; return; }   // spotlicht: groot vlak, de timer is snel genoeg
             if (erasing) { EraseAt(p); return; }
             if (resizing && selected != null)
             {
@@ -1723,6 +1732,18 @@ namespace NexusPen
                     break;
             }
             RenderSoon();
+        }
+
+        // Muis kwijt (Alt+Tab, Windows-toets, een venster dat ertussen komt): de lijn netjes afmaken
+        protected override void OnMouseCaptureChanged(EventArgs e)
+        {
+            base.OnMouseCaptureChanged(e);
+            if ((Control.MouseButtons & (MouseButtons.Left | MouseButtons.Right)) != 0) return;
+            if (current != null || erasing || dragging || resizing)
+            {
+                Point mp = PointToClient(Control.MousePosition);
+                OnMouseUp(new MouseEventArgs(MouseButtons.Left, 1, mp.X, mp.Y, 0));
+            }
         }
 
         protected override void OnMouseUp(MouseEventArgs e)

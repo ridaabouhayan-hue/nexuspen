@@ -11,6 +11,7 @@ namespace NexusPen
             new string[] { "Automatisch bewaard", "Saved automatically", "Enregistré automatiquement", "Guardado automáticamente" },
             new string[] { "pagina {0} van {1}", "page {0} of {1}", "page {0} sur {1}", "página {0} de {1}" },
             new string[] { "Opslaan is niet gelukt", "Saving failed", "L'enregistrement a échoué", "No se pudo guardar" },
+            new string[] { "De vorige tekening staat er al.", "The previous drawing is already back.", "Le dessin précédent est déjà revenu.", "El dibujo anterior ya ha vuelto." },
             new string[] { "Er is geen vorige tekening gevonden.", "No previous drawing was found.", "Aucun dessin précédent n'a été trouvé.", "No se encontró ningún dibujo anterior." },
             new string[] { "{0} is al in gebruik door een ander programma.", "{0} is already used by another program.", "{0} est déjà utilisé par un autre programme.", "{0} ya lo usa otro programa." },
             new string[] { "Je tekening van de vorige keer is teruggezet, want NexusPen was onverwacht gestopt. Alles wissen kan met de Delete-toets.", "Your drawing from last time is back, because NexusPen stopped unexpectedly. Press Delete to clear everything.", "Votre dessin de la dernière fois est revenu, car NexusPen s'est arrêté de façon inattendue. Appuyez sur Suppr pour tout effacer.", "Tu dibujo de la última vez ha vuelto, porque NexusPen se cerró de forma inesperada. Pulsa Supr para borrar todo." },

@@ -495,6 +495,14 @@ namespace NexusPen
                 if (p.X < minX) minX = p.X; if (p.Y < minY) minY = p.Y;
                 if (p.X > maxX) maxX = p.X; if (p.Y > maxY) maxY = p.Y;
             }
+            // een vloeiende lijn kan in een scherpe bocht iets buiten de punten lopen: de stuurpunten meetellen
+            if ((s.Tool == Tool.Pen || s.Tool == Tool.Marker || s.Tool == Tool.Laser) && s.Pts.Count >= 3)
+                for (int i = 0; i < s.Pts.Count - 1; i++)
+                {
+                    RectangleF sb = SegmentBox(s.Pts, i);
+                    if (sb.Left < minX) minX = sb.Left; if (sb.Top < minY) minY = sb.Top;
+                    if (sb.Right > maxX) maxX = sb.Right; if (sb.Bottom > maxY) maxY = sb.Bottom;
+                }
             float pad = s.Tool == Tool.Marker ? MarkerWidth(s.Width) / 2 : s.Width / 2;
             return RectangleF.FromLTRB(minX - pad, minY - pad, maxX + pad, maxY + pad);
         }

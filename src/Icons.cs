@@ -138,9 +138,10 @@ namespace NexusPen
             float ds = DeviceStroke(stroke, sc);
             int margin = (int)Math.Ceiling(ds) + 1;
             int x = (int)Math.Round(r.X + (r.Width - dev) / 2), y = (int)Math.Round(r.Y + (r.Height - dev) / 2);
-            if (!g.Transform.IsIdentity)
+            if (!g.Transform.IsIdentity || dev > 64)
             {
-                // getekend met een vergroting: dan gewoon als vorm tekenen
+                // getekend met een vergroting, of groot (een stempel die je groter sleept): gewoon als vorm tekenen,
+                // anders vult de voorraad plaatjes zich met elke tussenmaat
                 DrawVector(g, name, x, y, sc, c, ds);
                 return;
             }

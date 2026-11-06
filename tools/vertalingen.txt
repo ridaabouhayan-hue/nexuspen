@@ -315,3 +315,4 @@ Er is een nieuwe versie: {0}. Klik hier om hem te downloaden. | A new version is
 Alles wissen | Clear everything | Tout effacer | Borrar todo
 Terug met Ctrl+Z | Undo with Ctrl+Z | Annuler avec Ctrl+Z | Deshacer con Ctrl+Z
 Snelheid sinds het starten: inkt op het scherm na {0} ms (traagst {1} ms), een klik op een knop na {2} ms. | Speed since start: ink on screen after {0} ms (slowest {1} ms), a click on a button after {2} ms. | Vitesse depuis le démarrage : encre à l'écran après {0} ms (au plus lent {1} ms), un clic sur un bouton après {2} ms. | Velocidad desde el inicio: tinta en pantalla tras {0} ms (lo más lento {1} ms), un clic en un botón tras {2} ms.
+De vorige tekening staat er al. | The previous drawing is already back. | Le dessin précédent est déjà revenu. | El dibujo anterior ya ha vuelto.

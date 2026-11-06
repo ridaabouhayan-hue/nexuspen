@@ -43,7 +43,7 @@ namespace NexusPen
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.Manual;
             TopMost = true;
-            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
             tip.InitialDelay = 350;
         }
 
@@ -267,7 +267,9 @@ namespace NexusPen
 
         protected float StrokeW { get { return T.Thick ? 2.4f : 2f; } }
 
-        protected override void OnPaint(PaintEventArgs e) { PaintAll(e.Graphics); }
+        // Windows tekent dit venster niet zelf (UpdateLayeredWindow), dus hier niets dubbel doen
+        protected override void OnPaint(PaintEventArgs e) { }
+        protected override void OnPaintBackground(PaintEventArgs e) { }
 
         protected void PaintAll(Graphics g)
         {
