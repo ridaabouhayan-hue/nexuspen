@@ -702,9 +702,25 @@ namespace NexusPen
             Usage.Log("wegschuiven", "", "balk");
         }
 
+        // Balk op deze plek zetten, maar helemaal binnen het scherm, en de plek onthouden
+        void PlaceInside(Point p, Point onScreen)
+        {
+            Rectangle wa = Screen.FromPoint(onScreen).WorkingArea;
+            int x = Math.Max(wa.Left, Math.Min(wa.Right - Width, p.X)), y = Math.Max(wa.Top, Math.Min(wa.Bottom - Height, p.Y));
+            Location = new Point(x, y);
+            ov.Cfg.ToolbarX = x; ov.Cfg.ToolbarY = y;
+        }
+
         public void Undock()
         {
             docked = false;
+            if (lipje != null && lipje.Visible && lipjeMoved)
+            {
+                // het lipje is versleept: de balk komt terug bij het lipje
+                Point c = lipje.Center;
+                PlaceInside(new Point(c.X - Width / 2, c.Y - Height / 2), c);
+            }
+            lipjeMoved = false;
             if (lipje != null) lipje.Hide();
             if (!collapsed) { Show(); W.KeepOnTop(Handle); }
         }
@@ -734,10 +750,10 @@ namespace NexusPen
             collapsed = false;
             if (tile != null && tile.Visible && logoItem != null && !docked)
             {
-                // de balk komt terug met zijn logo precies op de plek van het logo (ook als je het logo hebt versleept)
+                // de balk komt terug met zijn logo precies op de plek van het logo (ook als je het logo hebt versleept),
+                // maar altijd helemaal op het scherm
                 Point c = tile.LogoCenter;
-                Location = new Point(c.X - (int)(logoItem.R.X + logoItem.R.Width / 2), c.Y - (int)(logoItem.R.Y + logoItem.R.Height / 2));
-                EnsureOnScreen();
+                PlaceInside(new Point(c.X - (int)(logoItem.R.X + logoItem.R.Width / 2), c.Y - (int)(logoItem.R.Y + logoItem.R.Height / 2)), c);
             }
             if (tile != null) tile.Hide();
             if (docked && lipje != null) { lipje.Show(); return; }
@@ -745,12 +761,20 @@ namespace NexusPen
             W.KeepOnTop(Handle);
         }
 
+        Point moveStart;
+
         // Na het slepen: tegen de zijkant = staand, tegen boven of onder = liggend
         void AutoOrientation()
         {
             if (IsDisposed || !Visible || collapsed || docked) return;
             Point mouse = Control.MousePosition;
             Rectangle wa = Screen.FromRectangle(Bounds).WorkingArea, b = Bounds;
+            // alleen als je de balk echt hebt versleept, en alleen als hij in de andere stand ook past
+            if (Math.Abs(b.X - moveStart.X) + Math.Abs(b.Y - moveStart.Y) < 8) return;
+            if (!vertical && b.Width > wa.Height - 40) return;
+            if (vertical && b.Height > wa.Width - 40) return;
+            if (!vertical && b.Width > wa.Width - 120) return;
+            if (vertical && b.Height > wa.Height - 120) return;
             bool left = b.Left <= wa.Left, right = b.Right >= wa.Right, top = b.Top <= wa.Top, bottom = b.Bottom >= wa.Bottom;
             bool wantVertical = vertical;
             if (!vertical && (left || right) && !top && !bottom) wantVertical = true;
@@ -766,6 +790,9 @@ namespace NexusPen
             Usage.Log("stand", wantVertical ? "staand" : "liggend", "slepen naar de rand");
             ov.RefreshSettingsWindow();
         }
+
+        bool lipjeMoved;
+        public void LipjeMoved() { lipjeMoved = true; }
 
         bool shotWasVisible, shotLipje, shotTile;
 
@@ -808,6 +835,7 @@ namespace NexusPen
                 m.Result = new IntPtr(1);
                 return;
             }
+            if (m.Msg == 0x0231) moveStart = Location;   // WM_ENTERSIZEMOVE
             if (m.Msg == WM_EXITSIZEMOVE) { base.WndProc(ref m); try { BeginInvoke((MethodInvoker)AutoOrientation); } catch { } return; }
             base.WndProc(ref m);
         }

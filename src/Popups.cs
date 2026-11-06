@@ -229,7 +229,7 @@ namespace NexusPen
                 delegate { return o.Cfg.StampKind == 4; }, delegate { o.Cfg.StampKind = 4; o.Cfg.Save(); o.SetTool(Tool.Stamp); Invalidate(); });
             num.R = Px(new RectangleF(num.R.X, num.R.Y, num.R.Width + 26 * S, num.R.Height));
             x += 26 * S;
-            num.RightClick = delegate { o.Cfg.StampNext = 1; o.Cfg.Save(); Invalidate(); };
+            num.RightClick = delegate { o.Cfg.StampNext = 1; o.Cfg.Save(); o.UpdateCursor(); Invalidate(); };
             num.Paint = delegate(Graphics g, Item item, bool hv)
             {
                 PaintChip(g, item.R, o.Cfg.StampKind == 4, hv, null, null, Color.Empty);
@@ -461,6 +461,7 @@ namespace NexusPen
             if (!pressed) return;
             Point m = Control.MousePosition;
             if (!dragged && Math.Abs(m.X - downAt.X) + Math.Abs(m.Y - downAt.Y) < 5) return;
+            if (!dragged) bar.LipjeMoved();
             dragged = true;
             Rectangle sb = Screen.FromPoint(m).Bounds;
             if (vert) Location = new Point(startLoc.X, Math.Max(sb.Top, Math.Min(sb.Bottom - Height, startLoc.Y + m.Y - downAt.Y)));
@@ -474,6 +475,16 @@ namespace NexusPen
             pressed = false; Capture = false;
             if (!dragged) bar.Undock();
         }
+
+        // Muis kwijt tijdens het slepen (Alt+Tab, Windows-toets): stoppen met slepen
+        protected override void OnMouseCaptureChanged(EventArgs e)
+        {
+            base.OnMouseCaptureChanged(e);
+            if (pressed && !Capture) pressed = false;
+        }
+
+        public Point Center { get { return new Point(Left + Width / 2, Top + Height / 2); } }
+        public bool Vertical { get { return vert; } }
 
         protected override void Build()
         {
@@ -536,9 +547,8 @@ namespace NexusPen
             S = scale; side = tileSide; logo = logoSize;
             Rebuild();
             Rectangle wa = Screen.FromPoint(center).WorkingArea;
-            Rectangle sb = Screen.FromPoint(center).Bounds;
             int x = center.X - Width / 2, y = center.Y - Height / 2;
-            Location = new Point(Math.Max(sb.Left, Math.Min(sb.Right - Width, x)), Math.Max(sb.Top, Math.Min(sb.Bottom - Height, y)));
+            Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, x)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, y)));
         }
 
         public Point LogoCenter { get { return new Point(Left + Width / 2, Top + Height / 2); } }

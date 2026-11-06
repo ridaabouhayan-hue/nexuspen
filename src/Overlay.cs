@@ -1310,6 +1310,8 @@ namespace NexusPen
             }
             if (DrawMode && BoardMode != Board.None) Rebuild();
             if (selected != null) dirty = true;
+            if (FocusOn) { fullDirty = true; dirty = true; }   // bijvoorbeeld spotlicht rond of rechthoek
+            UpdateCursor();
         }
 
         // ---------- modus en gereedschap
@@ -1424,8 +1426,16 @@ namespace NexusPen
                 return;
             }
             if (!Cfg.WheelWidth) return;
-            if (DrawMode && (CurrentTool == Tool.Text || typing != null)) { WheelText(delta); return; }
-            if (DrawMode && CurrentTool == Tool.Stamp) { WheelStamp(delta); return; }
+            if (DrawMode && (CurrentTool == Tool.Text || typing != null || CurrentTool == Tool.Stamp))
+            {
+                // touchpad en knijpen geven veel kleine stapjes: pas een stand verder na een hele 'klik' van het wiel
+                if (Math.Sign(delta) != Math.Sign(wheelAcc)) wheelAcc = 0;
+                wheelAcc += delta;
+                if (Math.Abs(wheelAcc) < 120) return;
+                int d = wheelAcc; wheelAcc = 0;
+                if (CurrentTool == Tool.Stamp) WheelStamp(d); else WheelText(d);
+                return;
+            }
             float step = PenWidth < 6 ? 1 : 2;
             SetWidth(PenWidth + (delta > 0 ? step : -step));
             if ((DateTime.Now - lastWidthLog).TotalSeconds > 3) { lastWidthLog = DateTime.Now; Usage.Log("dikte", ((int)PenWidth).ToString(), "muiswiel"); }
@@ -1443,6 +1453,8 @@ namespace NexusPen
             best = Math.Max(0, Math.Min(list.Length - 1, best + (delta > 0 ? 1 : -1)));
             return list[best];
         }
+
+        int wheelAcc;
 
         void WheelText(int delta)
         {
@@ -1808,21 +1820,39 @@ namespace NexusPen
             return -1;
         }
 
-        // De eerste klik van een dubbelklik heeft een puntje gezet: dat weer weghalen
-        void RemoveFirstClickDot()
+        Stroke lastDot;
+        DateTime lastDotAt = DateTime.MinValue;
+        bool skipDoubleClick;
+
+        // Het puntje van de eerste klik van een dubbelklik (of null)
+        Stroke FirstClickDot()
         {
-            if (strokes.Count == 0 || (DateTime.Now - lastStrokeAt).TotalMilliseconds > 800) return;
-            Stroke last = strokes[strokes.Count - 1];
-            RectangleF b = Render.Bounds(last);
-            float w = last.Tool == Tool.Marker ? Render.MarkerWidth(last.Width) : last.Width;
-            bool tiny = b.Width <= w + 8 && b.Height <= w + 8;
-            if (!tiny || last.Tool == Tool.Text || last.Tool == Tool.Stamp) return;
-            Rectangle area = StrokeBounds(last);
-            strokes.RemoveAt(strokes.Count - 1);
-            if (undo.Count > 0) undo.RemoveAt(undo.Count - 1);
-            lastStrokeAt = DateTime.MinValue;
-            rebuildArea = U(rebuildArea, area);
-            MarkChanged();
+            if (lastDot == null || (DateTime.Now - lastDotAt).TotalMilliseconds > 800) return null;
+            if (!strokes.Contains(lastDot) && !fading.Contains(lastDot)) return null;
+            RectangleF b = Render.Bounds(lastDot);
+            float w = lastDot.Tool == Tool.Marker ? Render.MarkerWidth(lastDot.Width) : lastDot.Width;
+            return b.Width <= w + 8 && b.Height <= w + 8 ? lastDot : null;
+        }
+
+        void RemoveDot(Stroke dot)
+        {
+            if (dot == null) return;
+            Rectangle area = StrokeBounds(dot);
+            if (fading.Remove(dot)) { pendingDirty = U(pendingDirty, area); }
+            else if (strokes.Remove(dot))
+            {
+                if (undo.Count > 0) undo.RemoveAt(undo.Count - 1);
+                rebuildArea = U(rebuildArea, area);
+                MarkChanged();
+            }
+            lastDot = null;
+        }
+
+        Stroke TopHit(PointF p, Stroke skip)
+        {
+            for (int i = strokes.Count - 1; i >= 0; i--)
+                if (strokes[i] != skip && Render.Hit(strokes[i], p, 6)) return strokes[i];
+            return null;
         }
 
         Stroke TopHit(PointF p)
@@ -1874,6 +1904,7 @@ namespace NexusPen
         {
             base.OnMouseDown(e);
             if (!DrawMode) return;
+            if (e.Clicks < 2) skipDoubleClick = false;
             if (toolbar != null) toolbar.ClosePopups();
             PointF p = e.Location;
             if (typing != null)
@@ -1886,9 +1917,16 @@ namespace NexusPen
             // dubbelklik op iets wat er staat (met pen, markeerstift of een vorm): meteen selecteren
             if (e.Button == MouseButtons.Left && e.Clicks >= 2 && StrokesVisible && (CurrentTool == Tool.Pen || CurrentTool == Tool.Marker || IsShape(CurrentTool)))
             {
-                RemoveFirstClickDot();
-                Stroke hit = TopHit(p);
-                if (hit != null) { SetTool(Tool.Select); SelectStroke(hit); return; }
+                // alleen als je echt iets raakt (anders is het gewoon een tweede puntje, zoals bij een trema)
+                Stroke dot = FirstClickDot();
+                Stroke hit = TopHit(p, dot);
+                if (hit != null)
+                {
+                    RemoveDot(dot);
+                    SetTool(Tool.Select); SelectStroke(hit);
+                    skipDoubleClick = true;   // niet meteen ook de tekst openen
+                    return;
+                }
             }
             if (e.Button == MouseButtons.Right || (e.Button == MouseButtons.Left && CurrentTool == Tool.Eraser))
             {
@@ -2054,6 +2092,7 @@ namespace NexusPen
             if (current == null) return;
             Stroke s = current;
             current = null;
+            lastDot = s; lastDotAt = DateTime.Now;   // voor dubbelklik: de eerste klik kan een puntje zijn
             if (s.Tool == Tool.Laser)
             {
                 s.Born = DateTime.Now;
@@ -2081,6 +2120,7 @@ namespace NexusPen
         protected override void OnMouseDoubleClick(MouseEventArgs e)
         {
             base.OnMouseDoubleClick(e);
+            if (skipDoubleClick) { skipDoubleClick = false; return; }
             if (!DrawMode || CurrentTool != Tool.Select || selected == null || selected.Tool != Tool.Text) return;
             Stroke old = selected;
             Deselect();
@@ -2117,7 +2157,12 @@ namespace NexusPen
             if (e.Control && !e.Alt && e.KeyCode == Keys.A) { typingAll = t.Length > 0; TypingChanged(true); e.Handled = true; e.SuppressKeyPress = true; return true; }
             if (e.Control && !e.Alt && e.KeyCode == Keys.C) { try { if (t.Length > 0) Clipboard.SetText(t.Replace("\n", "\r\n")); } catch { } e.Handled = true; e.SuppressKeyPress = true; return true; }
             if (typingAll && (e.KeyCode == Keys.Back || e.KeyCode == Keys.Delete)) { typing.Text = ""; typingAll = false; TypingChanged(); e.Handled = true; e.SuppressKeyPress = true; return true; }
-            if (typingAll && e.Control && !e.Alt && e.KeyCode == Keys.V) { typing.Text = ""; t = ""; typingAll = false; }
+            if (typingAll && e.Control && !e.Alt && e.KeyCode == Keys.V)
+            {
+                bool hasText = false;
+                try { hasText = Clipboard.ContainsText(); } catch { }
+                if (hasText) { typing.Text = ""; t = ""; typingAll = false; }
+            }
             if (typingAll && (e.KeyCode == Keys.Left || e.KeyCode == Keys.Right || e.KeyCode == Keys.Up || e.KeyCode == Keys.Down || e.KeyCode == Keys.Enter)) { typingAll = false; TypingChanged(); if (e.KeyCode != Keys.Enter) { e.Handled = true; return true; } }
             switch (e.KeyCode)
             {
@@ -2279,7 +2324,8 @@ namespace NexusPen
             if (typingOld != null)
             {
                 int i = Math.Max(0, Math.Min(strokes.Count, typingIndex < 0 ? strokes.Count : typingIndex));
-                if (!commit || t.Text == typingOld.Text)
+                bool same = t.Text == typingOld.Text && t.FontSize == typingOld.FontSize && t.Pts[0] == typingOld.Pts[0];
+                if (!commit || same)
                 {
                     strokes.Insert(i, typingOld);
                     // er is niets veranderd: de stap voor Ongedaan maken weer weghalen (alleen als hij nog bovenop ligt)

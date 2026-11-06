@@ -19,6 +19,44 @@ namespace NexusPen
         [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr h);
         [DllImport("gdi32.dll")] static extern IntPtr CreateBitmap(int w, int h, uint planes, uint bits, IntPtr data);
         [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr h);
+        [DllImport("gdi32.dll")] static extern IntPtr CreateDIBSection(IntPtr hdc, ref W.BITMAPINFOHEADER bi, uint usage, out IntPtr bits, IntPtr section, uint offset);
+
+        // 32-bits plaatje met gewone (niet voorvermenigvuldigde) doorzichtigheid, zoals Windows dat voor cursors wil
+        static IntPtr StraightAlpha(Bitmap b)
+        {
+            W.BITMAPINFOHEADER bi = new W.BITMAPINFOHEADER();
+            bi.biSize = (uint)Marshal.SizeOf(typeof(W.BITMAPINFOHEADER));
+            bi.biWidth = b.Width; bi.biHeight = -b.Height; bi.biPlanes = 1; bi.biBitCount = 32;
+            IntPtr bits;
+            IntPtr h = CreateDIBSection(IntPtr.Zero, ref bi, 0, out bits, IntPtr.Zero, 0);
+            if (h == IntPtr.Zero) return IntPtr.Zero;
+            BitmapData bd = b.LockBits(new Rectangle(0, 0, b.Width, b.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+            try
+            {
+                int[] row = new int[b.Width];
+                for (int y = 0; y < b.Height; y++)
+                {
+                    Marshal.Copy(new IntPtr(bd.Scan0.ToInt64() + (long)y * bd.Stride), row, 0, b.Width);
+                    Marshal.Copy(row, 0, new IntPtr(bits.ToInt64() + (long)y * b.Width * 4), b.Width);
+                }
+            }
+            finally { b.UnlockBits(bd); }
+            return h;
+        }
+
+        // Masker met nullen: bij gewone (niet-alfa) weergave, zoals via Extern bureaublad, telt dan het kleurplaatje
+        static IntPtr ZeroMask(int w, int h)
+        {
+            int stride = ((w + 15) / 16) * 2;
+            IntPtr buf = Marshal.AllocHGlobal(stride * h);
+            try
+            {
+                byte[] zeros = new byte[stride * h];
+                Marshal.Copy(zeros, 0, buf, zeros.Length);
+                return CreateBitmap(w, h, 1, 1, buf);
+            }
+            finally { Marshal.FreeHGlobal(buf); }
+        }
 
         static IntPtr current = IntPtr.Zero, previous = IntPtr.Zero;
         static string currentKey;
@@ -35,8 +73,9 @@ namespace NexusPen
                 using (Bitmap b = paint())
                 {
                     if (b == null) return null;
-                    IntPtr color = b.GetHbitmap(Color.FromArgb(0));
-                    IntPtr mask = CreateBitmap(b.Width, b.Height, 1, 1, IntPtr.Zero);
+                    IntPtr color = StraightAlpha(b);
+                    if (color == IntPtr.Zero) return null;
+                    IntPtr mask = ZeroMask(b.Width, b.Height);
                     ICONINFO ii = new ICONINFO();
                     ii.fIcon = false; ii.xHotspot = b.Width / 2; ii.yHotspot = b.Height / 2;
                     ii.hbmColor = color; ii.hbmMask = mask;
