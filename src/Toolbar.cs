@@ -124,6 +124,8 @@ namespace NexusPen
             S = W.UiScaleAt(start);
             vertical = ov.Cfg.Vertical;
             BarAlpha = OpacityValue;
+            // vanaf 1.2.6 staat krijt niet meer standaard in de balk: stond krijt nog aan van de krijtknop, dan weer gewone pen
+            if (!ov.Cfg.ChalkChecked) { ov.Cfg.ChalkChecked = true; if (!Layout(ov.Cfg).Contains("krijt")) ov.Cfg.Chalk = false; ov.Cfg.Save(); }
             flash = new System.Windows.Forms.Timer();
             flash.Interval = 1700;
             flash.Tick += delegate { flash.Stop(); Invalidate(); };
@@ -276,8 +278,8 @@ namespace NexusPen
                 case "muis": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Muis: gewoon klikken op je scherm"), "") + "  (Esc)", Tool.Mouse); break;
                 case "selecteer": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Selecteren en verplaatsen"), "selecteer"), Tool.Select); break;
                 case "pen":
-                    it = Button(r, "pen", Shortcuts.Tip(L.T("Pen"), "pen"), delegate { Use(key); ClosePopups(); if (byKey.ContainsKey("krijt")) { o.Cfg.Chalk = false; o.Cfg.Save(); } o.SetTool(Tool.Pen); o.RefreshSettingsWindow(); },
-                        delegate { return o.DrawMode && o.CurrentTool == Tool.Pen && !(o.Cfg.Chalk && byKey.ContainsKey("krijt")); }, null);
+                    it = Button(r, "pen", Shortcuts.Tip(L.T("Pen"), "pen"), delegate { Use(key); ClosePopups(); if (Layout(o.Cfg).Contains("krijt")) { o.Cfg.Chalk = false; o.Cfg.Save(); } o.SetTool(Tool.Pen); o.RefreshSettingsWindow(); },
+                        delegate { return o.DrawMode && o.CurrentTool == Tool.Pen && !(o.Cfg.Chalk && Layout(o.Cfg).Contains("krijt")); }, null);
                     break;
                 case "krijt":
                     it = Button(r, "krijt", L.T("Krijt: een pen met een korrelige streep, zoals krijt op een bord"), delegate { Use(key); ClosePopups(); o.Cfg.Chalk = true; o.Cfg.Save(); o.SetTool(Tool.Pen); o.RefreshSettingsWindow(); },
@@ -1024,6 +1026,8 @@ namespace NexusPen
                     it.Margin = new Padding(0, (int)(1 * sc), 0, (int)(1 * sc));
                 }
             };
+            // Windows 11: echt afgeronde hoeken voor het menu
+            m.Opened += delegate { try { W.RoundCorners(m.Handle, t.Border); } catch { } };
             m.Closed += delegate { try { m.BeginInvoke((MethodInvoker)delegate { Font f = m.Font; m.Dispose(); f.Dispose(); }); } catch { } };
             return m;
         }

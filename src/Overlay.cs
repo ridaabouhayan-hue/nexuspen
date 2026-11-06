@@ -264,7 +264,10 @@ namespace NexusPen
                 if (Cfg.BoardBg == 1)
                 {
                     float step = 32 * s * z;
-                    for (float y = 190 * s; y + step * 3 < h - 40 * s; y += step * 5)
+                    float y0 = 190 * s;
+                    // heel ver ingezoomd: past er geen groep onder de balk, zet er dan een in het midden
+                    if (y0 + step * 3 >= h - 40 * s) y0 = Math.Max(10 * s, (h - step * 3) / 2);
+                    for (float y = y0; y + step * 3 < h - 10 * s; y += step * 5)
                     {
                         g.DrawLine(pb, margin, y, w - margin, y);
                         g.DrawLine(pb, margin, y + step, w - margin, y + step);
@@ -2114,6 +2117,12 @@ namespace NexusPen
                 Point mp = PointToClient(Control.MousePosition);
                 OnMouseUp(new MouseEventArgs(MouseButtons.Left, 1, mp.X, mp.Y, 0));
             }
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+            if (textHover) { textHover = false; RenderSoon(); }   // kader van de tekst weg als de muis weggaat
         }
 
         protected override void OnMouseUp(MouseEventArgs e)

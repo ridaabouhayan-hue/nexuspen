@@ -307,7 +307,7 @@ namespace NexusPen
             Item zl = Add(new RectangleF(x, pad, 56 * S, h), L.T("Grootte van lijnen en ruitjes"), delegate { o.Cfg.BoardZoom = 1; o.Cfg.Save(); o.ZoomBoard(0); Rebuild(); });
             zl.Paint = delegate(Graphics g, Item item, bool hv) { if (hv) PaintChip(g, item.R, false, true, null, null, Color.Empty); Label(g, Math.Round(o.Cfg.BoardZoom * 100) + "%", item.R, T.Text, 13, true, StringAlignment.Center); };
             x += 56 * S + 6 * S;
-            Chip(null, "plus", Color.Empty, L.T("Lijnen en ruitjes groter (minder regels)"), null, delegate { o.ZoomBoard(1); Rebuild(); });
+            Chip(null, "zoom", Color.Empty, L.T("Lijnen en ruitjes groter (minder regels)"), null, delegate { o.ZoomBoard(1); Rebuild(); });
             Sep();
             Chip(null, "links", Color.Empty, L.T("Vorige pagina"), null, delegate { o.PrevPage(); Rebuild(); });
             Item pg = Add(new RectangleF(x, pad, 52 * S, h), L.T("Pagina"), null);
