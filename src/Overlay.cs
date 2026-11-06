@@ -959,19 +959,19 @@ namespace NexusPen
                             SetBoard(Board.Dark); SetColor(5); SetTool(Tool.Pen); SetWidth(6);
                             {
                                 PointF c0 = TestPoint(0, 1);
-                                OnMouseDown(Mouse(MouseButtons.Left, new PointF(c0.X - 300, c0.Y - 120)));
-                                for (int i = 1; i <= 120; i++) { double a = i / 120.0 * Math.PI * 3; OnMouseMove(Mouse(MouseButtons.Left, new PointF(c0.X - 300 + i * 4, c0.Y - 120 + (float)Math.Sin(a) * 90))); }
-                                for (int i = 0; i <= 120; i++) OnMouseMove(Mouse(MouseButtons.Left, new PointF(c0.X + 180 - i * 4, c0.Y - 120 + (float)Math.Cos(i / 20.0) * 60)));
-                                OnMouseUp(Mouse(MouseButtons.Left, new PointF(c0.X, c0.Y)));
+                                SimDown(Mouse(MouseButtons.Left, new PointF(c0.X - 300, c0.Y - 120)));
+                                for (int i = 1; i <= 120; i++) { double a = i / 120.0 * Math.PI * 3; SimMove(Mouse(MouseButtons.Left, new PointF(c0.X - 300 + i * 4, c0.Y - 120 + (float)Math.Sin(a) * 90))); }
+                                for (int i = 0; i <= 120; i++) SimMove(Mouse(MouseButtons.Left, new PointF(c0.X + 180 - i * 4, c0.Y - 120 + (float)Math.Cos(i / 20.0) * 60)));
+                                SimUp(Mouse(MouseButtons.Left, new PointF(c0.X, c0.Y)));
                                 SetColor(0); SetTool(Tool.Laser); SetWidth(5);
-                                OnMouseDown(Mouse(MouseButtons.Left, new PointF(c0.X - 300, c0.Y + 120)));
-                                for (int i = 1; i <= 150; i++) { double a = i / 150.0 * Math.PI * 4; OnMouseMove(Mouse(MouseButtons.Left, new PointF(c0.X - 300 + i * 4, c0.Y + 120 + (float)Math.Sin(a) * 70))); }
-                                for (int i = 0; i <= 100; i++) OnMouseMove(Mouse(MouseButtons.Left, new PointF(c0.X + 300 - i * 5, c0.Y + 120 + (float)Math.Cos(i / 15.0) * 50)));
+                                SimDown(Mouse(MouseButtons.Left, new PointF(c0.X - 300, c0.Y + 120)));
+                                for (int i = 1; i <= 150; i++) { double a = i / 150.0 * Math.PI * 4; SimMove(Mouse(MouseButtons.Left, new PointF(c0.X - 300 + i * 4, c0.Y + 120 + (float)Math.Sin(a) * 70))); }
+                                for (int i = 0; i <= 100; i++) SimMove(Mouse(MouseButtons.Left, new PointF(c0.X + 300 - i * 5, c0.Y + 120 + (float)Math.Cos(i / 15.0) * 50)));
                             }
                             break;
                         case 19:
                             screen("18-zwart-bord-laser");
-                            OnMouseUp(Mouse(MouseButtons.Left, TestPoint(0, 1)));
+                            SimUp(Mouse(MouseButtons.Left, TestPoint(0, 1)));
                             strokes.Clear(); undo.Clear(); lasers.Clear(); SetBoard(Board.None);
                             Cfg.FocusShape = 1; SetTool(Tool.Focus); focusAt = TestPoint(0, 1); fullDirty = true; RenderFrame();
                             Console.WriteLine("Spotlicht direct: buiten alfa " + ((FramePixels(new Rectangle(20, 20, 1, 1))[0] >> 24) & 0xFF) + ", gat alfa " + ((FramePixels(new Rectangle((int)focusAt.X, (int)focusAt.Y, 1, 1))[0] >> 24) & 0xFF) + ", DrawMode " + DrawMode + ", tool " + CurrentTool);
@@ -1008,6 +1008,13 @@ namespace NexusPen
 
         static MouseEventArgs Mouse(MouseButtons b, PointF p) { return new MouseEventArgs(b, 1, (int)Math.Round(p.X), (int)Math.Round(p.Y), 0); }
 
+        // In de zelftest bewegen we de muis zelf; de echte muis van de testcomputer telt dan niet mee
+        bool simulated;
+        void SimDown(MouseEventArgs e) { simulated = true; try { OnMouseDown(e); } finally { simulated = false; } }
+        void SimMove(MouseEventArgs e) { simulated = true; try { OnMouseMove(e); } finally { simulated = false; } }
+        void SimUp(MouseEventArgs e) { simulated = true; try { OnMouseUp(e); } finally { simulated = false; } }
+        bool RealMouseInSelfTest { get { return Program.SelfTest && !simulated; } }
+
         PointF TestPoint(int i, int n)
         {
             Rectangle pr = Screen.PrimaryScreen.Bounds;
@@ -1036,11 +1043,11 @@ namespace NexusPen
                 perfForceRender = true;
                 Perf.Ink.Clear(); Perf.Frame.Clear();
                 const int n = 2000;
-                OnMouseDown(Mouse(MouseButtons.Left, TestPoint(0, n)));
+                SimDown(Mouse(MouseButtons.Left, TestPoint(0, n)));
                 for (int i = 1; i < n; i++)
                 {
                     double t0 = Perf.Now;
-                    OnMouseMove(Mouse(MouseButtons.Left, TestPoint(i, n)));
+                    SimMove(Mouse(MouseButtons.Left, TestPoint(i, n)));
                     testMove.Add(Perf.Now - t0);
                 }
                 // zo duurde het in 1.2.0: elk beeldje de hele lijn opnieuw tekenen
@@ -1066,7 +1073,7 @@ namespace NexusPen
         {
             try
             {
-                OnMouseUp(Mouse(MouseButtons.Left, TestPoint(1999, 2000)));
+                SimUp(Mouse(MouseButtons.Left, TestPoint(1999, 2000)));
                 RenderFrame();
                 if (testWetPixels != null)
                 {
@@ -1103,15 +1110,15 @@ namespace NexusPen
                 SetTool(Tool.Eraser);
                 Perf.Erase.Clear();
                 PointF p0 = new PointF(pr.X - vs.X + 20, pr.Y - vs.Y + pr.Height / 2f);
-                OnMouseDown(Mouse(MouseButtons.Left, p0));
+                SimDown(Mouse(MouseButtons.Left, p0));
                 for (int i = 0; i < 300; i++)
                 {
                     PointF p = new PointF(p0.X + i * (pr.Width - 40) / 300f, p0.Y + (float)Math.Sin(i / 20.0) * pr.Height * 0.3f);
                     double t0 = Perf.Now;
-                    OnMouseMove(Mouse(MouseButtons.Left, p));
+                    SimMove(Mouse(MouseButtons.Left, p));
                     testErase.Add(Perf.Now - t0);
                 }
-                OnMouseUp(Mouse(MouseButtons.Left, p0));
+                SimUp(Mouse(MouseButtons.Left, p0));
             }
             catch (Exception ex) { Program.SelfTestErrors++; Log.Error("Zelftest snelheid gummen", ex); Console.Error.WriteLine(ex); }
         }
@@ -1159,7 +1166,7 @@ namespace NexusPen
                 SetColor(8);
                 SetTool(Tool.Text);
                 PointF c = TestPoint(0, 1);
-                OnMouseDown(Mouse(MouseButtons.Left, new PointF(c.X - 200, c.Y)));
+                SimDown(Mouse(MouseButtons.Left, new PointF(c.X - 200, c.Y)));
                 foreach (char ch in "Ik ga met de trein.") OnKeyPress(new KeyPressEventArgs(ch));
                 TypingKey(new KeyEventArgs(Keys.Enter));
                 foreach (char ch in "Één, twee: café!") OnKeyPress(new KeyPressEventArgs(ch));
@@ -1908,7 +1915,7 @@ namespace NexusPen
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
-            if (!DrawMode) return;
+            if (!DrawMode || RealMouseInSelfTest) return;
             if (e.Clicks < 2) skipDoubleClick = false;
             if (toolbar != null) toolbar.ClosePopups();
             PointF p = e.Location;
@@ -2001,7 +2008,7 @@ namespace NexusPen
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
-            if (!DrawMode) return;
+            if (!DrawMode || RealMouseInSelfTest) return;
             if (typing != null && TextMouseMove(e)) return;
             if (inputAt < 0) inputAt = Perf.Now;
             PointF p = e.Location;
@@ -2065,6 +2072,7 @@ namespace NexusPen
         protected override void OnMouseCaptureChanged(EventArgs e)
         {
             base.OnMouseCaptureChanged(e);
+            if (Program.SelfTest) return;
             if ((Control.MouseButtons & (MouseButtons.Left | MouseButtons.Right)) != 0) return;
             if (current != null || erasing || dragging || resizing)
             {
@@ -2076,6 +2084,7 @@ namespace NexusPen
         protected override void OnMouseUp(MouseEventArgs e)
         {
             base.OnMouseUp(e);
+            if (RealMouseInSelfTest) return;
             if (textDrag != 0) { textDrag = 0; Capture = false; RenderSoon(); return; }
             if (erasing) { erasing = false; return; }
             if (resizing)
