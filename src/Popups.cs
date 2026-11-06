@@ -117,6 +117,7 @@ namespace NexusPen
         }
 
         protected override void OnMouseUp(MouseEventArgs e) { base.OnMouseUp(e); if (sliding) { sliding = false; Capture = false; } }
+        protected override void OnMouseCaptureChanged(EventArgs e) { base.OnMouseCaptureChanged(e); if (!Capture) sliding = false; }
 
         void Slide(int x)
         {
@@ -452,7 +453,7 @@ namespace NexusPen
             Location = new Point(x, y);
         }
 
-        public void Restyle() { Point k = Location; Rebuild(); Location = k; }
+        public void Restyle() { Point c = Center; Rebuild(); PutAt(c, Screen.FromPoint(c).WorkingArea); }
 
         // Lipje slepen naar elke rand van het scherm; gewoon klikken = de balk komt terug
         bool pressed, dragged;
@@ -502,7 +503,7 @@ namespace NexusPen
         protected override void Build()
         {
             ClientSize = vert ? new Size((int)(38 * S), (int)(34 * S)) : new Size((int)(34 * S), (int)(38 * S));
-            Item it = Add(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), null, delegate { bar.Undock(); });
+            Item it = Add(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), L.T("Werkbalk terughalen"), delegate { bar.Undock(); });
             it.Paint = delegate(Graphics g, Item item, bool h)
             {
                 Theme t = T;

@@ -104,6 +104,8 @@ namespace NexusPen
                 S = d * W.ScreenFactorAt(new Point((r.Left + r.Right) / 2, (r.Top + r.Bottom) / 2), d);
                 Location = new Point(r.Left, r.Top);
                 Rebuild();
+                // tijdens het slepen naar een scherm met een andere schaal: opnieuw meten vanaf hier
+                moveStart = Location; moveMouse = Control.MousePosition;
                 m.Result = IntPtr.Zero;
                 return;
             }

@@ -482,10 +482,10 @@ namespace NexusPen
                 Invalidate();
                 return;
             }
-            HoverCheck();
             bool hh = handleItem != null && RectangleF.Inflate(handleItem.R, 4 * S, 4 * S).Contains(e.Location);
             if (hh != hoverHandle) { hoverHandle = hh; Invalidate(); if (hh && ov.Cfg.ShowTips) tip.Show(handleItem.Tip, this, TipPoint(handleItem), 2500); }
             base.OnMouseMove(e);
+            HoverCheck();   // na base: dan weten we over welke knop je nu bent
             if (hh) Cursor = vertical ? Cursors.SizeNS : Cursors.SizeWE;
         }
 
@@ -558,6 +558,7 @@ namespace NexusPen
         void TogglePopup<T2>(ref T2 popup, string key) where T2 : BarForm
         {
             bool open = IsOpen(popup);
+            StopHoverOpen();   // een klik telt, niet meer het wachtende 'erover bewegen'
             // al open door erover te bewegen: een klik laat hem gewoon open (dan sluit hij niet meer vanzelf)
             if (open && popup != null && (object)popup == (object)hoverPopup) { hoverPopup = null; return; }
             ClosePopups();
@@ -614,6 +615,8 @@ namespace NexusPen
         string hoverPopupKey;
         int leaveTicks;
 
+        void StopHoverOpen() { if (hoverOpen != null) hoverOpen.Stop(); hoverKey = null; }
+
         static bool HasPopup(string k) { return k == "vormen" || k == "kleur" || k == "stempel" || k == "bord"; }
 
         void HoverCheck()
@@ -657,6 +660,7 @@ namespace NexusPen
         void HoverCloseTick()
         {
             if (hoverPopup == null || hoverPopup.IsDisposed || !hoverPopup.Visible) { hoverPopup = null; hoverClose.Stop(); return; }
+            if (Control.MouseButtons != MouseButtons.None) { leaveTicks = 0; return; }   // je sleept nog (bijvoorbeeld het schuifje)
             Point m = Control.MousePosition;
             // het venster, de knop, en de strook ertussen
             Rectangle pr = hoverPopup.Bounds, br = byKey.ContainsKey(hoverPopupKey) ? ScreenRect(hoverPopupKey) : Bounds;
@@ -715,6 +719,7 @@ namespace NexusPen
 
         public void ClosePopups()
         {
+            StopHoverOpen();
             foreach (Form f in new Form[] { colorPopup, shapePopup, stampPopup, boardPopup, overflowPopup })
                 if (IsOpen(f)) f.Hide();
             Invalidate();
@@ -785,8 +790,9 @@ namespace NexusPen
             docked = false;
             if (lipje != null && lipje.Visible && lipjeMoved)
             {
-                // het lipje is versleept: de balk komt terug bij het lipje
+                // het lipje is versleept: de balk komt terug bij het lipje, staand aan een zijkant en liggend boven of onder
                 Point c = lipje.Center;
+                if (lipje.Vertical != vertical) { ov.Cfg.Vertical = lipje.Vertical; ov.ApplySettings(); }
                 PlaceInside(new Point(c.X - Width / 2, c.Y - Height / 2), c);
             }
             lipjeMoved = false;

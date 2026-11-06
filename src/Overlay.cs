@@ -1289,6 +1289,8 @@ namespace NexusPen
         // ---------- instellingen en uiterlijk
         public void ShowSettings(string page)
         {
+            // het bord gaat even weg voor de instellingen, en komt terug als je ze sluit
+            Board keepBoard = BoardMode;
             if (DrawMode) SetTool(Tool.Mouse);
             Usage.Log("menu", "instellingen", page ?? "");
             if (settingsForm != null && !settingsForm.IsDisposed)
@@ -1298,7 +1300,11 @@ namespace NexusPen
                 return;
             }
             settingsForm = new SettingsForm(this);
-            settingsForm.FormClosed += delegate { settingsForm = null; };
+            settingsForm.FormClosed += delegate
+            {
+                settingsForm = null;
+                if (keepBoard != Board.None && BoardMode == Board.None && !allHidden) SetBoard(keepBoard);
+            };
             if (page != null) settingsForm.ShowPage(page);
             settingsForm.Show();
             settingsForm.Activate();
@@ -1382,11 +1388,10 @@ namespace NexusPen
         // Afsluiten met de knop: even vragen, dan gaat het nooit per ongeluk. De tekening wordt bewaard (SaveNow bij sluiten).
         public void AskQuit()
         {
-            if (DrawMode) SetTool(Tool.Mouse);
             string msg = Cfg.KeepDrawing == 1 && StrokeCountAll() > 0
                 ? L.T("NexusPen afsluiten? Wil je je tekening de volgende keer terugzien, druk dan eerst op Opslaan.")
                 : L.T("NexusPen afsluiten?");
-            if (MessageBox.Show(msg, "NexusPen", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1) == DialogResult.Yes)
+            if (MessageBox.Show(this, msg, "NexusPen", MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button1) == DialogResult.Yes)
             {
                 Usage.Log("afsluiten", "", "knop");
                 Close();
@@ -1548,7 +1553,8 @@ namespace NexusPen
         public void ToggleStrokesVisible()
         {
             StrokesVisible = !StrokesVisible;
-            if (!StrokesVisible) { Deselect(); if (DrawMode) SetDrawMode(false); }
+            // op een bord blijft het bord staan; anders terug naar de muis
+            if (!StrokesVisible) { Deselect(); if (DrawMode && BoardMode == Board.None) SetDrawMode(false); }
             Rebuild();
             RefreshUi();
         }

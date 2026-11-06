@@ -123,7 +123,7 @@ namespace NexusPen
             }
             TextFormatFlags fl = TextFormatFlags.NoPrefix;
             fl |= align == StringAlignment.Center ? TextFormatFlags.HorizontalCenter : align == StringAlignment.Far ? TextFormatFlags.Right : TextFormatFlags.Left;
-            if (wrap) fl |= TextFormatFlags.WordBreak | TextFormatFlags.Top;
+            if (wrap) fl |= TextFormatFlags.WordBreak | TextFormatFlags.Top | TextFormatFlags.EndEllipsis;
             else fl |= TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis;
             Rectangle ri = Rectangle.FromLTRB((int)Math.Round(r.Left), (int)Math.Round(r.Top), (int)Math.Round(r.Right), (int)Math.Round(r.Bottom));
             using (Font f = F(px, bold)) TextRenderer.DrawText(g, text, f, ri, c, fl);
@@ -903,7 +903,7 @@ namespace NexusPen
             float y = Heading(contentTop, L.T("Wat doet elke knop"), null);
             string[] keys = Toolbar.Catalog;
             int rows = (keys.Length + 1) / 2;
-            float colW = (contentW - 20 * S) / 2, rowH = 46 * S;
+            float colW = (contentW - 20 * S) / 2, rowH = 48 * S;
             for (int i = 0; i < keys.Length; i++)
             {
                 string k = keys[i];
@@ -922,8 +922,8 @@ namespace NexusPen
                     if (k == "kleur")
                         using (SolidBrush b = new SolidBrush(ov.CurrentColor)) g.FillEllipse(b, x + 2 * S, yy + 4 * S, 16 * S, 16 * S);
                     else Icons.Draw(g, Toolbar.IconOf(k), new RectangleF(x, yy + 2 * S, 20 * S, 20 * S), 18 * S, t.Icon, 2f);
-                    Txt(g, name, new RectangleF(x + 30 * S, yy, colW - 30 * S, 22 * S), t.Text, 13, true, StringAlignment.Near, false);
-                    Txt(g, tipText, new RectangleF(x + 30 * S, yy + 20 * S, colW - 30 * S, rowH - 20 * S), t.Muted, 11, false, StringAlignment.Near, true);
+                    Txt(g, name, new RectangleF(x + 30 * S, yy, colW - 30 * S, 20 * S), t.Text, 13, true, StringAlignment.Near, false);
+                    Txt(g, tipText, new RectangleF(x + 30 * S, yy + 18 * S, colW - 30 * S, rowH - 18 * S), t.Muted, 11, false, StringAlignment.Near, true);
                 });
             }
         }

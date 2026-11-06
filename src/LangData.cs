@@ -92,6 +92,7 @@ namespace NexusPen
             new string[] { "Kopie maken", "Make a copy", "Faire une copie", "Hacer una copia" },
             new string[] { "Naar voren", "Bring to front", "Mettre au premier plan", "Traer al frente" },
             new string[] { "Verwijderen", "Delete", "Supprimer", "Eliminar" },
+            new string[] { "Werkbalk terughalen", "Bring the toolbar back", "Rappeler la barre d'outils", "Recuperar la barra" },
             new string[] { "Klik om alles weer te tonen. Slepen = verplaatsen, rechtsklik = menu", "Click to show everything again. Drag = move, right-click = menu", "Cliquez pour tout réafficher. Glisser = déplacer, clic droit = menu", "Haz clic para mostrar todo. Arrastrar = mover, clic derecho = menú" },
             new string[] { "{0} tot {1}, scrol of knijp", "{0} to {1}, scroll or pinch", "{0} à {1}, molette ou pincement", "{0} a {1}, rueda o pellizco" },
             new string[] { "Map openen", "Open folder", "Ouvrir le dossier", "Abrir carpeta" },

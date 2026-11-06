@@ -14,3 +14,4 @@ NexusPen 1.2.4 voor Windows 10 en 11.
 - Laserpen: een felle neonlijn met een zachte gloed, zonder ringen of vakjes.
 - Tekst met een rand heeft geen zwarte vakjes meer in letters als de t.
 - Rustiger letters in de instellingen en de werkbalk (Segoe UI Semibold in plaats van vet).
+- Instellingen openen of de tekeningen verbergen haalt je bord niet meer weg. Na het sluiten van de instellingen staat je bord er weer.
