@@ -38,6 +38,7 @@ namespace NexusPen
         DateTime lastStrokeAt = DateTime.MinValue;
         public static bool StartCollapsed;
         public static readonly Color ChalkGreen = ColorTranslator.FromHtml("#24463A");
+        public static readonly Color DarkBoard = ColorTranslator.FromHtml("#121214");
         public int PageIndex { get { return pageIndex; } }
         public int PageCount { get { return pages.Count; } }
         List<List<Stroke>> undo = new List<List<Stroke>>(), redo = new List<List<Stroke>>();
@@ -65,7 +66,7 @@ namespace NexusPen
         // tekst typen, direct op het scherm (zonder tekstvak)
         Stroke typing, typingOld;
         int typingIndex = -1, typingUndoCount = -1;
-        bool caretOn;
+        bool caretOn, typingAll;   // typingAll: Ctrl+A, alles geselecteerd
         DateTime caretAt;
         SettingsForm settingsForm;
         bool allHidden;
@@ -96,7 +97,7 @@ namespace NexusPen
             StartSession();
             ColorIndex = Cfg.ColorIndex;
             PaletteIndex = Cfg.PaletteIndex;
-            PenWidth = Math.Max(1, Math.Min(60, Cfg.Width));
+            PenWidth = Math.Max(1, Math.Min(Settings.MaxWidth, Cfg.Width));
             if (Cfg.Tool != Tool.Mouse) { CurrentTool = Cfg.Tool; LastDrawTool = Cfg.Tool; }
             if (IsShape(Cfg.Tool)) LastShape = Cfg.Tool;
 
@@ -187,6 +188,7 @@ namespace NexusPen
         {
             if (DrawMode && BoardMode == Board.White) return Color.FromArgb(255, 250, 250, 248);
             if (DrawMode && BoardMode == Board.Black) return ChalkGreen;
+            if (DrawMode && BoardMode == Board.Dark) return DarkBoard;
             // alpha 1 = onzichtbaar, maar vangt wel de muis op in tekenmodus
             return DrawMode ? Color.FromArgb(1, 0, 0, 0) : Color.FromArgb(0, 0, 0, 0);
         }
@@ -246,17 +248,18 @@ namespace NexusPen
         void DrawBoard(Graphics g)
         {
             int w = committed.Width, h = committed.Height;
-            bool chalk = BoardMode == Board.Black;
+            bool chalk = BoardMode == Board.Black || BoardMode == Board.Dark;
             Color blue = chalk ? Color.FromArgb(70, 255, 255, 255) : Color.FromArgb(110, 120, 160, 220);
             Color red = chalk ? Color.FromArgb(120, 247, 215, 116) : Color.FromArgb(150, 220, 80, 80);
             float s = W.DpiScaleAt(new Point(vs.X + w / 2, vs.Y + h / 2));
             float margin = 120 * s;
-            using (Pen pb = new Pen(blue, 1.2f * s))
-            using (Pen pr = new Pen(red, 1.6f * s))
+            float z = Settings.BoardScales[Math.Max(0, Math.Min(Settings.BoardScales.Length - 1, Cfg.BoardScale))];
+            using (Pen pb = new Pen(blue, 1.2f * s * Math.Max(1f, z * 0.8f)))
+            using (Pen pr = new Pen(red, 1.6f * s * Math.Max(1f, z * 0.8f)))
             {
                 if (Cfg.BoardBg == 1)
                 {
-                    float step = 32 * s;
+                    float step = 32 * s * z;
                     for (float y = 190 * s; y + step * 3 < h - 40 * s; y += step * 5)
                     {
                         g.DrawLine(pb, margin, y, w - margin, y);
@@ -267,7 +270,7 @@ namespace NexusPen
                 }
                 else if (Cfg.BoardBg == 2)
                 {
-                    float step = 32 * s;
+                    float step = 32 * s * z;
                     using (Pen pg = new Pen(Color.FromArgb(chalk ? 40 : 70, blue), 1f))
                     {
                         for (float x = 0; x < w; x += step) g.DrawLine(pg, x, 0, x, h);
@@ -276,7 +279,7 @@ namespace NexusPen
                 }
                 else if (Cfg.BoardBg == 3)
                 {
-                    float step = 44 * s;
+                    float step = 44 * s * z;
                     for (float y = 150 * s; y < h - 30 * s; y += step) g.DrawLine(pb, margin, y, w - margin, y);
                 }
             }
@@ -334,9 +337,11 @@ namespace NexusPen
             if (s.Pts.Count == 0 || committed == null) return Rectangle.Empty;
             RectangleF r = Render.Bounds(s);
             float pad = 8;
-            if (s.Tool == Tool.Laser) pad = (s.Width * 3 + 10) / 2 + 4;
+            if (s.Tool == Tool.Laser) pad = Render.LaserWidest(s.Width) / 2 + 4;
             else if (s.Tool == Tool.Arrow) pad = Math.Max(14f, s.Width * 4f) + s.Width + 4;
-            else if (s.Tool != Tool.Text && s.Tool != Tool.Stamp) pad = 4 + s.Width; // de vloeiende curve kan iets buiten de punten lopen
+            else if (s.Tool == Tool.Text) pad = 8 + s.FontSize * 0.3f + Render.OutlineWidth(s) * 2;   // letters (en rand) steken soms uit
+            else if (s.Tool == Tool.Stamp) pad = 8 + s.FontSize * 0.2f;
+            else pad = 4 + s.Width; // de vloeiende curve kan iets buiten de punten lopen
             r.Inflate(pad, pad);
             return Clip(r);
         }
@@ -350,8 +355,22 @@ namespace NexusPen
 
         RectangleF FocusRect()
         {
-            float r = Cfg.FocusRadius + 3;
+            RectangleF h = FocusHole(); h.Inflate(3, 3);
+            return h;
+        }
+
+        // Het lichte gat: rond, of een brede strook om een zin te lezen
+        RectangleF FocusHole()
+        {
+            float r = Cfg.FocusRadius;
+            if (Cfg.FocusShape == 1) { float w = r * 3.4f, hh = r * 0.8f; return new RectangleF(focusAt.X - w / 2, focusAt.Y - hh / 2, w, hh); }
             return new RectangleF(focusAt.X - r, focusAt.Y - r, 2 * r, 2 * r);
+        }
+
+        public void SetFocusShape(int shape)
+        {
+            Cfg.FocusShape = Math.Max(0, Math.Min(1, shape)); Cfg.Save();
+            fullDirty = true; dirty = true;
         }
 
         bool FocusOn { get { return DrawMode && CurrentTool == Tool.Focus; } }
@@ -365,7 +384,8 @@ namespace NexusPen
                 DateTime now = DateTime.Now;
                 lasers.RemoveAll(delegate(Stroke s) { return (now - s.Born).TotalMilliseconds > 1500; });
                 int before = fading.Count;
-                fading.RemoveAll(delegate(Stroke s) { return (now - s.Born).TotalMilliseconds > 6000; });
+                double life = Cfg.FadeSeconds * 1000.0 + 1000;
+                fading.RemoveAll(delegate(Stroke s) { return (now - s.Born).TotalMilliseconds > life; });
                 if (fading.Count != before) pendingDirty = full2();
                 dirty = true;
             }
@@ -584,7 +604,7 @@ namespace NexusPen
         // Gebied rond stukje i van een lijn die je aan het schrijven bent
         Rectangle WetBox(Stroke s, int i)
         {
-            float widest = s.Tool == Tool.Marker ? Render.MarkerWidth(s.Width) : s.Tool == Tool.Laser ? s.Width * 3 + 10 : s.Width;
+            float widest = s.Tool == Tool.Marker ? Render.MarkerWidth(s.Width) : s.Tool == Tool.Laser ? Render.LaserWidest(s.Width) : s.Width;
             float pad = widest / 2 + 3;
             RectangleF r = i < 0 || s.Pts.Count < 2 ? new RectangleF(s.Pts[0], SizeF.Empty) : Render.SegmentBox(s.Pts, i);
             r.Inflate(pad, pad);
@@ -646,7 +666,8 @@ namespace NexusPen
                     foreach (Stroke s in fading)
                     {
                         double age = (now - s.Born).TotalMilliseconds;
-                        float a = age < 5000 ? 1f : (float)Math.Max(0, 1 - (age - 5000) / 1000.0);
+                        double keep = Cfg.FadeSeconds * 1000.0;
+                        float a = age < keep ? 1f : (float)Math.Max(0, 1 - (age - keep) / 1000.0);
                         if (a <= 0) continue;
                         SafeDraw(g, s, 1f, a);
                     }
@@ -662,6 +683,8 @@ namespace NexusPen
                     }
                     if (typing != null)
                     {
+                        if (typingAll)
+                            using (SolidBrush b = new SolidBrush(Color.FromArgb(90, Theme.Accent))) g.FillRectangle(b, Render.Bounds(typing));
                         SafeDraw(g, typing, 1f);
                         if (caretOn)
                             try
@@ -714,15 +737,18 @@ namespace NexusPen
 
         void DrawFocus(Graphics g, Rectangle area)
         {
-            float r = Cfg.FocusRadius;
+            RectangleF hole = FocusHole();
+            bool rect = Cfg.FocusShape == 1;
             using (GraphicsPath gp = new GraphicsPath(FillMode.Alternate))
+            using (GraphicsPath hp = rect ? Svg.RoundRect(hole, 14) : new GraphicsPath())
             {
+                if (!rect) hp.AddEllipse(hole);
                 gp.AddRectangle(area);
-                gp.AddEllipse(focusAt.X - r, focusAt.Y - r, 2 * r, 2 * r);
+                gp.AddPath(hp, false);
                 g.CompositingMode = CompositingMode.SourceOver;
                 using (SolidBrush b = new SolidBrush(Color.FromArgb(185, 0, 0, 0))) g.FillPath(b, gp);
+                using (Pen p = new Pen(Color.FromArgb(90, 255, 255, 255), 1.5f)) g.DrawPath(p, hp);
             }
-            using (Pen p = new Pen(Color.FromArgb(90, 255, 255, 255), 1.5f)) g.DrawEllipse(p, focusAt.X - r, focusAt.Y - r, 2 * r, 2 * r);
         }
 
         // ---------- opstarten
@@ -923,8 +949,44 @@ namespace NexusPen
                         case 14: PerfTestReport(shots); break;
                         case 15: TypeTest(); break;
                         case 16: screen("16-tekst-typen"); TypingKey(new KeyEventArgs(Keys.Escape)); break;
-                        case 17: screen("17-tekst-klaar"); strokes.Clear(); undo.Clear(); Rebuild(); SetTool(Tool.Mouse); break;
-                        case 18: ShowSettings(null); break;
+                        case 17:
+                            screen("17-tekst-klaar");
+                            {
+                                // Ctrl+Z en Ctrl+Y met het toetsenbord
+                                int before = strokes.Count;
+                                OnKeyDown(new KeyEventArgs(Keys.Control | Keys.Z));
+                                int afterUndo = strokes.Count;
+                                OnKeyDown(new KeyEventArgs(Keys.Control | Keys.Y));
+                                int afterRedo = strokes.Count;
+                                string r = "Ctrl+Z en Ctrl+Y: " + before + " > " + afterUndo + " > " + afterRedo;
+                                Console.WriteLine(r); Log.Info("Zelftest. " + r);
+                                if (!(afterUndo == before - 1 && afterRedo == before)) { Program.SelfTestErrors++; Console.Error.WriteLine("Ongedaan maken of opnieuw werkt niet: " + r); }
+                            }
+                            strokes.Clear(); undo.Clear(); redo.Clear(); Rebuild(); SetTool(Tool.Mouse);
+                            break;
+                        case 18:
+                            // zwart bord, een lijn die zichzelf kruist, en de neon-laser (nog ingedrukt)
+                            SetBoard(Board.Dark); SetColor(5); SetTool(Tool.Pen); SetWidth(6);
+                            {
+                                PointF c0 = TestPoint(0, 1);
+                                OnMouseDown(Mouse(MouseButtons.Left, new PointF(c0.X - 300, c0.Y - 120)));
+                                for (int i = 1; i <= 120; i++) { double a = i / 120.0 * Math.PI * 3; OnMouseMove(Mouse(MouseButtons.Left, new PointF(c0.X - 300 + i * 4, c0.Y - 120 + (float)Math.Sin(a) * 90))); }
+                                for (int i = 0; i <= 120; i++) OnMouseMove(Mouse(MouseButtons.Left, new PointF(c0.X + 180 - i * 4, c0.Y - 120 + (float)Math.Cos(i / 20.0) * 60)));
+                                OnMouseUp(Mouse(MouseButtons.Left, new PointF(c0.X, c0.Y)));
+                                SetColor(0); SetTool(Tool.Laser); SetWidth(5);
+                                OnMouseDown(Mouse(MouseButtons.Left, new PointF(c0.X - 300, c0.Y + 120)));
+                                for (int i = 1; i <= 150; i++) { double a = i / 150.0 * Math.PI * 4; OnMouseMove(Mouse(MouseButtons.Left, new PointF(c0.X - 300 + i * 4, c0.Y + 120 + (float)Math.Sin(a) * 70))); }
+                                for (int i = 0; i <= 100; i++) OnMouseMove(Mouse(MouseButtons.Left, new PointF(c0.X + 300 - i * 5, c0.Y + 120 + (float)Math.Cos(i / 15.0) * 50)));
+                            }
+                            break;
+                        case 19:
+                            screen("18-zwart-bord-laser");
+                            OnMouseUp(Mouse(MouseButtons.Left, TestPoint(0, 1)));
+                            strokes.Clear(); undo.Clear(); lasers.Clear(); SetBoard(Board.None);
+                            Cfg.FocusShape = 1; SetTool(Tool.Focus); focusAt = TestPoint(0, 1); fullDirty = true; RenderFrame();
+                            break;
+                        case 20: screen("19-spotlicht-rechthoek"); Cfg.FocusShape = 0; SetTool(Tool.Mouse); break;
+                        case 21: ShowSettings(null); break;
                         default:
                             if (settingsForm != null && pageStep < pagesToShow.Length)
                             {
@@ -1278,7 +1340,7 @@ namespace NexusPen
             if (IsShape(t)) LastShape = t;
             if (Cfg.PerToolWidth && HasWidth(t)) PenWidth = Cfg.WidthFor(t, PenWidth);
             Usage.ToolChanged(t.ToString());
-            Cursor = t == Tool.Text ? Cursors.IBeam : t == Tool.Select ? Cursors.Default : t == Tool.Focus ? Cursors.Default : Cursors.Cross;
+            UpdateCursor();
             if (t == Tool.Focus)
             {
                 Point mp = PointToClient(Control.MousePosition);
@@ -1303,6 +1365,14 @@ namespace NexusPen
             RefreshUi();
         }
 
+        // Kleur kiezen vanuit Instellingen: alleen onthouden, niet meteen gaan tekenen
+        public void ChooseColorQuietly(int i)
+        {
+            ColorIndex = Math.Max(0, Math.Min(9, i));
+            Cfg.ColorIndex = ColorIndex;
+            RefreshUi();
+        }
+
         public void SetPalette(int p)
         {
             PaletteIndex = Math.Max(0, Math.Min(Palette.Sets.Length - 1, p));
@@ -1313,7 +1383,7 @@ namespace NexusPen
 
         public void SetWidth(float w)
         {
-            PenWidth = Math.Max(1, Math.Min(60, w));
+            PenWidth = Math.Max(1, Math.Min(Settings.MaxWidth, w));
             if (Cfg.PerToolWidth && HasWidth(CurrentTool)) Cfg.SetWidthFor(CurrentTool, PenWidth);
             RefreshUi();
         }
@@ -1329,10 +1399,52 @@ namespace NexusPen
                 return;
             }
             if (!Cfg.WheelWidth) return;
+            if (DrawMode && (CurrentTool == Tool.Text || typing != null)) { WheelText(delta); return; }
+            if (DrawMode && CurrentTool == Tool.Stamp) { WheelStamp(delta); return; }
             float step = PenWidth < 6 ? 1 : 2;
             SetWidth(PenWidth + (delta > 0 ? step : -step));
             if ((DateTime.Now - lastWidthLog).TotalSeconds > 3) { lastWidthLog = DateTime.Now; Usage.Log("dikte", ((int)PenWidth).ToString(), "muiswiel"); }
-            if (toolbar != null) toolbar.ShowWidthTip(Control.MousePosition, PenWidth, 1, 60, L.T("Dikte"));
+            if (toolbar != null) toolbar.ShowWidthTip(Control.MousePosition, PenWidth, 1, Settings.MaxWidth, L.T("Dikte"));
+        }
+
+        // Vaste standen voor de grootte van tekst en stempels (zoals bij Epic Pen)
+        public static readonly float[] TextSizes = { 14, 18, 22, 26, 30, 36, 42, 48, 56, 64, 72, 84, 96, 120, 144 };
+        public static readonly float[] StampPxSizes = { 20, 24, 28, 34, 40, 48, 56, 68, 80, 96, 120, 150 };
+
+        static float NextSize(float[] list, float cur, int delta)
+        {
+            int best = 0;
+            for (int i = 0; i < list.Length; i++) if (Math.Abs(list[i] - cur) < Math.Abs(list[best] - cur)) best = i;
+            best = Math.Max(0, Math.Min(list.Length - 1, best + (delta > 0 ? 1 : -1)));
+            return list[best];
+        }
+
+        void WheelText(int delta)
+        {
+            float cur = typing != null ? typing.FontSize : Cfg.TextSize;
+            float nw = NextSize(TextSizes, cur, delta);
+            Cfg.TextSize = nw;
+            if (typing != null)
+            {
+                // de tekst die je typt groeit mee; de klikplek (midden van de eerste regel) blijft staan
+                float oldH = 0, newH = 0;
+                try { oldH = Render.LineHeight(typing); } catch { }
+                typing.FontSize = nw;
+                try { newH = Render.LineHeight(typing); } catch { }
+                typing.Pts[0] = new PointF(typing.Pts[0].X, typing.Pts[0].Y - (newH - oldH) / 2);
+                TypingChanged();
+            }
+            UpdateCursor();
+            if (toolbar != null) toolbar.ShowWidthTip(Control.MousePosition, nw, TextSizes[0], TextSizes[TextSizes.Length - 1], L.T("Tekstgrootte"));
+        }
+
+        public float StampPx { get { return Cfg.StampPx > 0 ? Cfg.StampPx : Render.StampSizes[Cfg.StampSize]; } }
+
+        void WheelStamp(int delta)
+        {
+            Cfg.StampPx = NextSize(StampPxSizes, StampPx, delta);
+            UpdateCursor();
+            if (toolbar != null) toolbar.ShowWidthTip(Control.MousePosition, Cfg.StampPx, StampPxSizes[0], StampPxSizes[StampPxSizes.Length - 1], L.T("Stempel"));
         }
 
         // ---------- bord en pagina's
@@ -1358,7 +1470,14 @@ namespace NexusPen
             RefreshUi();
         }
 
-        public void CycleBoard() { SetBoard(BoardMode == Board.None ? Board.White : BoardMode == Board.White ? Board.Black : Board.None); }
+        public void CycleBoard() { SetBoard(BoardMode == Board.None ? Board.White : BoardMode == Board.White ? Board.Black : BoardMode == Board.Black ? Board.Dark : Board.None); }
+
+        // Lijnen en ruitjes groter of kleiner (om in te zoomen)
+        public void CycleBoardScale()
+        {
+            Cfg.BoardScale = (Cfg.BoardScale + 1) % Settings.BoardScales.Length; Cfg.Save();
+            if (BoardMode == Board.None) SetBoard(Board.White); else Rebuild();
+        }
 
         void GoToPage(int i)
         {
@@ -1414,7 +1533,64 @@ namespace NexusPen
 
         public void ToggleAllHidden() { if (allHidden) ExpandAll(); else CollapseAll(); }
 
-        void RefreshUi() { if (toolbar != null) toolbar.Refresh2(); }
+        void RefreshUi() { UpdateCursor(); if (toolbar != null) toolbar.Refresh2(); }
+
+        // De cursor laat zien wat je gaat doen: dikte en kleur van de pen, grootte van gum, stempel of tekst
+        public void UpdateCursor()
+        {
+            Cursor c = null;
+            try
+            {
+                switch (CurrentTool)
+                {
+                    case Tool.Pen:
+                    {
+                        Color col = CurrentColor;
+                        c = ToolCursor.For("pen|" + PenWidth + "|" + col.ToArgb(), delegate { return ToolCursor.Circle(PenWidth, col); });
+                        break;
+                    }
+                    case Tool.Marker:
+                    {
+                        Color col = Color.FromArgb(110, CurrentColor); float w = Render.MarkerWidth(PenWidth);
+                        c = ToolCursor.For("marker|" + w + "|" + col.ToArgb(), delegate { return ToolCursor.Circle(w, col); });
+                        break;
+                    }
+                    case Tool.Laser:
+                    {
+                        Color col = CurrentColor;
+                        c = ToolCursor.For("laser|" + col.ToArgb(), delegate { return ToolCursor.Circle(9, col); });
+                        break;
+                    }
+                    case Tool.Eraser:
+                    {
+                        float d = EraserRadius * 2;
+                        c = ToolCursor.For("gum|" + d, delegate { return ToolCursor.Circle(d, Color.FromArgb(70, 255, 255, 255)); });
+                        break;
+                    }
+                    case Tool.Text:
+                    {
+                        Stroke probe = new Stroke(); probe.Tool = Tool.Text; probe.FontSize = typing != null ? typing.FontSize : Cfg.TextSize; probe.FontName = Cfg.FontName;
+                        float lh = probe.FontSize * 1.2f;
+                        try { lh = Render.LineHeight(probe); } catch { }
+                        Color col = CurrentColor;
+                        c = ToolCursor.For("tekst|" + lh + "|" + col.ToArgb(), delegate { return ToolCursor.TextBar(lh * 0.85f, col); });
+                        break;
+                    }
+                    case Tool.Stamp:
+                    {
+                        string kind = Render.StampKinds[Cfg.StampKind];
+                        Stroke st = new Stroke(); st.Tool = Tool.Stamp; st.FontSize = StampPx; st.Color = Render.StampColor(kind);
+                        st.Text = kind == "nummer" ? "#" + Cfg.StampNext : kind; st.Pts.Add(PointF.Empty);
+                        c = ToolCursor.For("stempel|" + st.Text + "|" + st.FontSize, delegate { return ToolCursor.Stamp(st); });
+                        break;
+                    }
+                    case Tool.Select: case Tool.Focus: c = Cursors.Default; break;
+                }
+            }
+            catch (Exception ex) { Log.Error("Cursor", ex); }
+            Cursor want = c ?? Cursors.Cross;
+            if (Cursor != want) Cursor = want;
+        }
 
         // ---------- ongedaan maken
         void Checkpoint()
@@ -1550,7 +1726,7 @@ namespace NexusPen
             EditSelected();
             ScaleStroke(selected, f, Center(Render.Bounds(selected)));
             Rebuild();
-            if (toolbar != null) toolbar.ShowMiniBar(SelectionScreenRect());
+            if (toolbar != null) toolbar.ShowMiniBar(SelectionScreenRect(), true);
         }
 
         static PointF Center(RectangleF r) { return new PointF(r.X + r.Width / 2, r.Y + r.Height / 2); }
@@ -1585,7 +1761,7 @@ namespace NexusPen
             selected.Outline = !selected.Outline;
             if (selected.Outline) { selected.OutlineWidth = Cfg.OutlineWidth; selected.OutlineColor = Cfg.OutlineColor; }
             Rebuild();
-            if (toolbar != null) toolbar.ShowMiniBar(SelectionScreenRect());
+            if (toolbar != null) toolbar.ShowMiniBar(SelectionScreenRect(), true);
         }
 
         public void BringSelectedToFront()
@@ -1605,6 +1781,23 @@ namespace NexusPen
             PointF[] c = { r.Location, new PointF(r.Right, r.Top), new PointF(r.Left, r.Bottom), new PointF(r.Right, r.Bottom) };
             for (int i = 0; i < 4; i++) if (Math.Abs(p.X - c[i].X) <= 9 && Math.Abs(p.Y - c[i].Y) <= 9) return i;
             return -1;
+        }
+
+        // De eerste klik van een dubbelklik heeft een puntje gezet: dat weer weghalen
+        void RemoveFirstClickDot()
+        {
+            if (strokes.Count == 0 || (DateTime.Now - lastStrokeAt).TotalMilliseconds > 800) return;
+            Stroke last = strokes[strokes.Count - 1];
+            RectangleF b = Render.Bounds(last);
+            float w = last.Tool == Tool.Marker ? Render.MarkerWidth(last.Width) : last.Width;
+            bool tiny = b.Width <= w + 8 && b.Height <= w + 8;
+            if (!tiny || last.Tool == Tool.Text || last.Tool == Tool.Stamp) return;
+            Rectangle area = StrokeBounds(last);
+            strokes.RemoveAt(strokes.Count - 1);
+            if (undo.Count > 0) undo.RemoveAt(undo.Count - 1);
+            lastStrokeAt = DateTime.MinValue;
+            rebuildArea = U(rebuildArea, area);
+            MarkChanged();
         }
 
         Stroke TopHit(PointF p)
@@ -1665,6 +1858,13 @@ namespace NexusPen
                 CloseTextInput(true);
             }
             if (CurrentTool == Tool.Focus) return;
+            // dubbelklik op iets wat er staat (met pen, markeerstift of een vorm): meteen selecteren
+            if (e.Button == MouseButtons.Left && e.Clicks >= 2 && StrokesVisible && (CurrentTool == Tool.Pen || CurrentTool == Tool.Marker || IsShape(CurrentTool)))
+            {
+                RemoveFirstClickDot();
+                Stroke hit = TopHit(p);
+                if (hit != null) { SetTool(Tool.Select); SelectStroke(hit); return; }
+            }
             if (e.Button == MouseButtons.Right || (e.Button == MouseButtons.Left && CurrentTool == Tool.Eraser))
             {
                 if (current != null) { pendingDirty = U(pendingDirty, StrokeBounds(current)); current = null; }
@@ -1697,7 +1897,13 @@ namespace NexusPen
                 if (toolbar != null) toolbar.HideMiniBar();
                 return;
             }
-            if (CurrentTool == Tool.Text) { OpenTextInput(e.Location); return; }
+            if (CurrentTool == Tool.Text)
+            {
+                // klik op een tekst die er al staat: die wijzigen. Anders: nieuwe tekst op deze plek.
+                Stroke onText = StrokesVisible ? TopHit(p) : null;
+                if (onText != null && onText.Tool == Tool.Text) OpenTextInput(e.Location, onText); else OpenTextInput(e.Location);
+                return;
+            }
             if (!StrokesVisible && CurrentTool != Tool.Laser) { StrokesVisible = true; Rebuild(); RefreshUi(); }
             if (CurrentTool == Tool.Stamp)
             {
@@ -1705,8 +1911,9 @@ namespace NexusPen
                 Stroke st = new Stroke();
                 st.Tool = Tool.Stamp; st.Width = PenWidth;
                 st.Color = Render.StampColor(kind);
-                st.FontSize = Render.StampSizes[Cfg.StampSize];
+                st.FontSize = StampPx;
                 st.Text = kind == "nummer" ? "#" + (Cfg.StampNext++) : kind;
+                if (kind == "nummer") UpdateCursor();
                 st.Pts.Add(p);
                 Usage.Log("stempel", kind, "");
                 Checkpoint();
@@ -1872,6 +2079,7 @@ namespace NexusPen
             e.Handled = true;
             if (e.KeyChar < ' ' || e.KeyChar == (char)127) return;
             if ((Control.ModifierKeys & Keys.Alt) != 0 && (Control.ModifierKeys & Keys.Control) == 0) return;   // Alt+letter is geen letter
+            if (typingAll) { typing.Text = ""; typingAll = false; }   // alles geselecteerd: typen vervangt alles
             typing.Text = (typing.Text ?? "") + e.KeyChar;
             TypingChanged();
         }
@@ -1881,6 +2089,11 @@ namespace NexusPen
         {
             if (typing == null) return false;
             string t = typing.Text ?? "";
+            if (e.Control && !e.Alt && e.KeyCode == Keys.A) { typingAll = t.Length > 0; TypingChanged(true); e.Handled = true; e.SuppressKeyPress = true; return true; }
+            if (e.Control && !e.Alt && e.KeyCode == Keys.C) { try { if (t.Length > 0) Clipboard.SetText(t.Replace("\n", "\r\n")); } catch { } e.Handled = true; e.SuppressKeyPress = true; return true; }
+            if (typingAll && (e.KeyCode == Keys.Back || e.KeyCode == Keys.Delete)) { typing.Text = ""; typingAll = false; TypingChanged(); e.Handled = true; e.SuppressKeyPress = true; return true; }
+            if (typingAll && e.Control && !e.Alt && e.KeyCode == Keys.V) { typing.Text = ""; t = ""; typingAll = false; }
+            if (typingAll && (e.KeyCode == Keys.Left || e.KeyCode == Keys.Right || e.KeyCode == Keys.Up || e.KeyCode == Keys.Down || e.KeyCode == Keys.Enter)) { typingAll = false; TypingChanged(); if (e.KeyCode != Keys.Enter) { e.Handled = true; return true; } }
             switch (e.KeyCode)
             {
                 case Keys.Escape: lastEsc = true; CloseTextInput(true); break;
@@ -1935,6 +2148,7 @@ namespace NexusPen
                 if (e.KeyCode == Keys.Delete || e.KeyCode == Keys.Back) { DeleteSelected(); e.Handled = true; return; }
             }
             string act = Shortcuts.ActionFor(e);
+            if (act == null && e.KeyCode == Keys.Z && e.Control && e.Shift && !e.Alt) act = "redo";   // Ctrl+Shift+Z werkt ook als Opnieuw
             if (act != null)
             {
                 e.Handled = true; e.SuppressKeyPress = true;
@@ -2019,8 +2233,11 @@ namespace NexusPen
             return r;
         }
 
-        void TypingChanged()
+        void TypingChanged() { TypingChanged(false); }
+
+        void TypingChanged(bool keepSelection)
         {
+            if (!keepSelection) typingAll = false;
             caretOn = true; caretAt = DateTime.Now;
             inputAt = Perf.Now;
             RenderSoon();
@@ -2032,6 +2249,7 @@ namespace NexusPen
             if (typing == null) return;
             Stroke t = typing;
             typing = null;
+            typingAll = false;
             bool empty = string.IsNullOrEmpty(t.Text) || t.Text.Trim().Length == 0;
             if (typingOld != null)
             {

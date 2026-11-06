@@ -20,7 +20,7 @@ namespace NexusPen
     {
         RectangleF track;
         bool sliding;
-        public const float MaxW = 40;
+        public const float MaxW = Settings.MaxWidth;
 
         public ColorPopup(Overlay o) : base(o) { Text = "NexusPen kleur"; }
 
@@ -30,7 +30,7 @@ namespace NexusPen
             tipFor.Clear();
             float pad = 14 * S, sw = 28 * S, gapX = 12 * S, rowGap = 12 * S;
             float w = pad * 2 + sw * 5 + gapX * 4;
-            float chipW = Math.Max(TextWidth(L.T("Krijtstreep"), 13), TextWidth(L.T("Vervaagt na 5 s"), 13)) + 30 * S;
+            float chipW = Math.Max(TextWidth(L.T("Krijtstreep"), 13), TextWidth(L.F("Vervaagt na {0} s", 12), 13)) + 30 * S;
             w = Math.Max(w, pad * 2 + 8 * S + chipW * 2);
             float y = pad;
             titleRow = new RectangleF(pad, y, w - pad * 2, 16 * S);
@@ -80,8 +80,18 @@ namespace NexusPen
             float half = (w - pad * 2 - 8 * S) / 2;
             Item chalk = Add(new RectangleF(pad, y, half, 32 * S), L.T("Lijnen zien eruit als krijt op een bord"), delegate { o.Cfg.Chalk = !o.Cfg.Chalk; o.Cfg.Save(); Invalidate(); });
             chalk.Paint = delegate(Graphics g, Item item, bool h) { PaintChip(g, item.R, o.Cfg.Chalk, h, L.T("Krijtstreep"), null, Color.Empty); };
-            Item fade = Add(new RectangleF(pad + half + 8 * S, y, half, 32 * S), L.T("Wat je tekent verdwijnt na 5 seconden vanzelf"), delegate { o.Cfg.Fade = !o.Cfg.Fade; o.Cfg.Save(); Invalidate(); });
-            fade.Paint = delegate(Graphics g, Item item, bool h) { PaintChip(g, item.R, o.Cfg.Fade, h, L.T("Vervaagt na 5 s"), null, Color.Empty); };
+            // klikken: uit, 3, 5, 7, 12 seconden en weer uit
+            Item fade = Add(new RectangleF(pad + half + 8 * S, y, half, 32 * S), L.T("Wat je tekent verdwijnt vanzelf. Klik nog een keer voor een andere tijd: 3, 5, 7 of 12 seconden"), delegate
+            {
+                if (!o.Cfg.Fade) { o.Cfg.Fade = true; o.Cfg.FadeSeconds = 3; }
+                else
+                {
+                    int i = Array.IndexOf(Settings.FadeChoices, o.Cfg.FadeSeconds);
+                    if (i < 0 || i == Settings.FadeChoices.Length - 1) o.Cfg.Fade = false; else o.Cfg.FadeSeconds = Settings.FadeChoices[i + 1];
+                }
+                o.Cfg.Save(); Invalidate();
+            });
+            fade.Paint = delegate(Graphics g, Item item, bool h) { PaintChip(g, item.R, o.Cfg.Fade, h, L.F("Vervaagt na {0} s", o.Cfg.FadeSeconds), null, Color.Empty); };
             y += 32 * S + pad;
             ClientSize = new Size((int)Math.Ceiling(w), (int)Math.Ceiling(y));
         }
@@ -233,7 +243,7 @@ namespace NexusPen
             for (int i = 0; i < 3; i++)
             {
                 int idx = i;
-                Chip(sizes[i], null, Color.Empty, L.T("Grootte van de stempel"), delegate { return o.Cfg.StampSize == idx; }, delegate { o.Cfg.StampSize = idx; o.Cfg.Save(); Invalidate(); });
+                Chip(sizes[i], null, Color.Empty, L.T("Grootte van de stempel"), delegate { return o.Cfg.StampPx <= 0 && o.Cfg.StampSize == idx; }, delegate { o.Cfg.StampSize = idx; o.Cfg.StampPx = 0; o.Cfg.Save(); o.UpdateCursor(); Invalidate(); });
             }
             Finish();
         }
@@ -251,8 +261,10 @@ namespace NexusPen
             Chip(L.T("Scherm"), null, Color.Empty, L.T("Gewoon over je scherm tekenen"), delegate { return o.BoardMode == Board.None; }, delegate { o.SetBoard(Board.None); Invalidate(); });
             Item wb = Chip(L.T("Whiteboard"), "leeg", Color.Empty, L.T("Wit bord"), delegate { return o.BoardMode == Board.White; }, delegate { o.SetBoard(Board.White); Invalidate(); });
             Item kb = Chip(L.T("Krijtbord"), "leeg", Color.Empty, L.T("Groen krijtbord"), delegate { return o.BoardMode == Board.Black; }, delegate { o.SetBoard(Board.Black); Invalidate(); });
+            Item zb = Chip(L.T("Zwart bord"), "leeg", Color.Empty, L.T("Zwart bord"), delegate { return o.BoardMode == Board.Dark; }, delegate { o.SetBoard(Board.Dark); Invalidate(); });
             Swatchify(wb, Color.White, () => o.BoardMode == Board.White, L.T("Whiteboard"));
             Swatchify(kb, Overlay.ChalkGreen, () => o.BoardMode == Board.Black, L.T("Krijtbord"));
+            Swatchify(zb, Overlay.DarkBoard, () => o.BoardMode == Board.Dark, L.T("Zwart bord"));
             Sep();
             string[] bgs = { L.T("Leeg"), L.T("Schrijflijnen"), L.T("Ruitjes"), L.T("Lijntjes") };
             string[] icons = { null, "schrijflijnen", "ruitjes", "lijnen" };
@@ -263,6 +275,8 @@ namespace NexusPen
                 Chip(bgs[i], icons[i], Color.Empty, tips[i], delegate { return o.Cfg.BoardBg == idx; },
                     delegate { o.Cfg.BoardBg = idx; o.Cfg.Save(); if (o.BoardMode == Board.None) o.SetBoard(Board.White); else o.Rebuild(); Invalidate(); });
             }
+            string[] zn = { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") };
+            Chip(zn[Math.Max(0, Math.Min(3, o.Cfg.BoardScale))], "zoom", Color.Empty, L.T("Lijnen en ruitjes groter of kleiner. Klik om te wisselen"), null, delegate { o.CycleBoardScale(); Rebuild(); });
             Sep();
             Chip(null, "links", Color.Empty, L.T("Vorige pagina"), null, delegate { o.PrevPage(); Rebuild(); });
             Item pg = Add(new RectangleF(x, pad, 52 * S, h), L.T("Pagina"), null);
@@ -430,6 +444,37 @@ namespace NexusPen
 
         public void Restyle() { Point k = Location; Rebuild(); Location = k; }
 
+        // Lipje langs de rand slepen; gewoon klikken = de balk komt terug
+        bool pressed, dragged;
+        Point downAt, startLoc;
+
+        protected override bool OnPress(MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left) return false;
+            pressed = true; dragged = false; downAt = Control.MousePosition; startLoc = Location; Capture = true;
+            return true;
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            if (!pressed) return;
+            Point m = Control.MousePosition;
+            if (!dragged && Math.Abs(m.X - downAt.X) + Math.Abs(m.Y - downAt.Y) < 5) return;
+            dragged = true;
+            Rectangle sb = Screen.FromPoint(m).Bounds;
+            if (vert) Location = new Point(startLoc.X, Math.Max(sb.Top, Math.Min(sb.Bottom - Height, startLoc.Y + m.Y - downAt.Y)));
+            else Location = new Point(Math.Max(sb.Left, Math.Min(sb.Right - Width, startLoc.X + m.X - downAt.X)), startLoc.Y);
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (!pressed) return;
+            pressed = false; Capture = false;
+            if (!dragged) bar.Undock();
+        }
+
         protected override void Build()
         {
             ClientSize = vert ? new Size((int)(38 * S), (int)(34 * S)) : new Size((int)(34 * S), (int)(38 * S));
@@ -483,23 +528,31 @@ namespace NexusPen
 
         public LogoTile(Overlay o, Toolbar b) : base(o) { bar = b; Text = "NexusPen"; }
 
-        public void PlaceAt(Point p)
+        int side, logo;
+
+        // Precies op de plek en in de maat van het logo in de balk: 'center' is het midden van het logo
+        public void PlaceAt(Point center, float scale, int tileSide, int logoSize)
         {
-            S = W.UiScaleAt(p);
+            S = scale; side = tileSide; logo = logoSize;
             Rebuild();
-            Rectangle wa = Screen.FromPoint(p).WorkingArea;
-            Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, p.X)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, p.Y)));
+            Rectangle wa = Screen.FromPoint(center).WorkingArea;
+            Rectangle sb = Screen.FromPoint(center).Bounds;
+            int x = center.X - Width / 2, y = center.Y - Height / 2;
+            Location = new Point(Math.Max(sb.Left, Math.Min(sb.Right - Width, x)), Math.Max(sb.Top, Math.Min(sb.Bottom - Height, y)));
         }
+
+        public Point LogoCenter { get { return new Point(Left + Width / 2, Top + Height / 2); } }
 
         protected override void Build()
         {
-            ClientSize = new Size((int)(48 * S), (int)(48 * S));
+            int sd = side > 0 ? side : (int)(48 * S);
+            ClientSize = new Size(sd, sd);
             Item it = Add(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), L.T("Klik om alles weer te tonen. Slepen = verplaatsen, rechtsklik = menu"), null);
             it.Paint = delegate(Graphics g, Item item, bool h)
             {
                 Theme t = T;
                 if (h) using (SolidBrush b = new SolidBrush(t.Hover)) g.FillRectangle(b, item.R);
-                float z = 34 * S;
+                float z = logo > 0 ? logo : 34 * S;
                 Logo.Draw(g, new RectangleF((item.R.Width - z) / 2, (item.R.Height - z) / 2, z, z), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
             };
         }

@@ -233,13 +233,14 @@ namespace NexusPen
                 pts[k++] = c1; pts[k++] = c2; pts[k++] = p[i + 1];
             }
             gp.AddBeziers(pts);
+            gp.FillMode = FillMode.Winding;   // een lijn die zichzelf kruist blijft overal dicht
             return gp;
         }
 
         // Alleen de stukjes die het gebied raken (voor natte inkt). Aaneengesloten stukjes blijven een lijn.
         static GraphicsPath PartialPath(List<PointF> p, RectangleF area, float pad)
         {
-            GraphicsPath gp = new GraphicsPath();
+            GraphicsPath gp = new GraphicsPath(FillMode.Winding);
             RectangleF a = RectangleF.Inflate(area, pad, pad);
             int runStart = -1;
             for (int i = 0; i <= p.Count - 2; i++)
@@ -264,7 +265,7 @@ namespace NexusPen
         public static void DrawWet(Graphics g, Stroke s, Rectangle area)
         {
             if (s.Pts.Count < 2 || (s.Tool != Tool.Pen && s.Tool != Tool.Marker && s.Tool != Tool.Laser)) { Draw(g, s, 1f); return; }
-            float widest = s.Tool == Tool.Marker ? MarkerWidth(s.Width) : s.Tool == Tool.Laser ? s.Width * 3 + 10 : s.Width;
+            float widest = s.Tool == Tool.Marker ? MarkerWidth(s.Width) : s.Tool == Tool.Laser ? LaserWidest(s.Width) : s.Width;
             // stukjes ruim meenemen: het begin en eind van een stuk liggen dan altijd buiten 'area',
             // zodat binnen 'area' de lijn precies zo getekend wordt als de hele lijn
             using (GraphicsPath gp = PartialPath(s.Pts, area, widest + 8))
@@ -278,12 +279,42 @@ namespace NexusPen
                         break;
                     case Tool.Marker: using (Pen p = MakePen(Color.FromArgb(110, s.Color), MarkerWidth(s.Width))) g.DrawPath(p, gp); break;
                     case Tool.Laser:
-                        using (Pen p = MakePen(Color.FromArgb(60, s.Color), s.Width * 3 + 10)) g.DrawPath(p, gp);
-                        using (Pen p = MakePen(Color.FromArgb(255, s.Color), s.Width + 2)) g.DrawPath(p, gp);
-                        using (Pen p = MakePen(Color.FromArgb(200, 255, 255, 255), Math.Max(1f, s.Width / 2.5f))) g.DrawPath(p, gp);
+                        foreach (KeyValuePair<Color, float> pass in LaserPasses(s.Color, s.Width, 1f))
+                            using (Pen p = MakePen(pass.Key, pass.Value)) g.DrawPath(p, gp);
                         break;
                 }
             }
+        }
+
+        // ---- laser als een neonlicht: brede zachte gloed, felle kleur en een wit-hete kern
+        public static float LaserWidest(float w) { return w * 7 + 18; }
+
+        public static Color Neon(Color c)
+        {
+            // feller en verzadigder: de helderste versie van dezelfde kleur
+            int max = Math.Max(c.R, Math.Max(c.G, c.B)), min = Math.Min(c.R, Math.Min(c.G, c.B));
+            if (max < 40) return Color.FromArgb(255, 255, 40, 70);   // zwart wordt neonrood
+            if (max - min < 25) return Color.FromArgb(255, 235, 245, 255);   // grijs en wit: koel wit licht
+            float k = 255f / max;
+            return Color.FromArgb(255, Math.Min(255, (int)(c.R * k)), Math.Min(255, (int)(c.G * k)), Math.Min(255, (int)(c.B * k)));
+        }
+
+        static Color Mix(Color a, Color b, float t)
+        {
+            return Color.FromArgb(255, (int)(a.R + (b.R - a.R) * t), (int)(a.G + (b.G - a.G) * t), (int)(a.B + (b.B - a.B) * t));
+        }
+
+        public static List<KeyValuePair<Color, float>> LaserPasses(Color color, float w, float fade)
+        {
+            Color n = Neon(color);
+            Func<int, Color, Color> A = delegate(int a, Color c) { return Color.FromArgb(Math.Max(0, Math.Min(255, (int)(a * fade))), c); };
+            List<KeyValuePair<Color, float>> l = new List<KeyValuePair<Color, float>>();
+            l.Add(new KeyValuePair<Color, float>(A(20, n), LaserWidest(w)));
+            l.Add(new KeyValuePair<Color, float>(A(38, n), w * 4.5f + 11));
+            l.Add(new KeyValuePair<Color, float>(A(95, n), w * 2.4f + 5));
+            l.Add(new KeyValuePair<Color, float>(A(255, n), w + 1.5f));
+            l.Add(new KeyValuePair<Color, float>(A(240, Mix(n, Color.White, 0.8f)), Math.Max(1.2f, w * 0.45f)));
+            return l;
         }
 
         static Pen ChalkPen(Color c, float w)
@@ -448,9 +479,7 @@ namespace NexusPen
                 }
                 case Tool.Marker: Free(g, s.Pts, Color.FromArgb(Math.Max(0, Math.Min(255, (int)(110 * alpha))), s.Color), MarkerWidth(s.Width)); break;
                 case Tool.Laser:
-                    Free(g, s.Pts, Color.FromArgb((int)(60 * fade), s.Color), s.Width * 3 + 10);
-                    Free(g, s.Pts, Color.FromArgb((int)(255 * fade), s.Color), s.Width + 2);
-                    Free(g, s.Pts, Color.FromArgb((int)(200 * fade), 255, 255, 255), Math.Max(1f, s.Width / 2.5f));
+                    foreach (KeyValuePair<Color, float> pass in LaserPasses(s.Color, s.Width, fade)) Free(g, s.Pts, pass.Key, pass.Value);
                     break;
                 case Tool.Line: using (Pen p = MakePen(s.Color, s.Width)) g.DrawLine(p, a, b); break;
                 case Tool.Arrow: Arrow(g, a, b, s.Color, s.Width); break;

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace NexusPen
@@ -297,7 +298,7 @@ namespace NexusPen
                         delegate { return o.DrawMode && o.CurrentTool == Tool.Stamp; }, null);
                     break;
                 case "focus":
-                    it = Button(r, "focus", Shortcuts.Tip(L.T("Spotlicht: alleen rond je muis is het licht. Muiswiel = groter of kleiner"), "focus"),
+                    it = Button(r, "focus", Shortcuts.Tip(L.T("Spotlicht: alleen rond je muis is het licht. Muiswiel = groter of kleiner. Rechtsklik = rond of rechthoek"), "focus"),
                         delegate { Use(key); ClosePopups(); o.ToggleFocus(); }, delegate { return o.DrawMode && o.CurrentTool == Tool.Focus; }, null);
                     break;
                 case "undo":
@@ -512,6 +513,12 @@ namespace NexusPen
         void ShowButtonMenu(Item it)
         {
             ContextMenuStrip m = Menus.Make(T);
+            if (it.Key == "focus")
+            {
+                m.Items.Add((ov.Cfg.FocusShape == 0 ? "\u2713  " : "     ") + L.T("Rond"), null, delegate { ov.SetFocusShape(0); });
+                m.Items.Add((ov.Cfg.FocusShape == 1 ? "\u2713  " : "     ") + L.T("Rechthoek (om te lezen)"), null, delegate { ov.SetFocusShape(1); });
+                m.Items.Add(new ToolStripSeparator());
+            }
             m.Items.Add(L.T("Verbergen uit de balk"), null, delegate { HideKey(it.Key); });
             m.Items.Add(L.T("Werkbalk aanpassen..."), null, delegate { ov.ShowSettings("Werkbalk"); });
             m.Show(PointToScreen(new Point((int)it.R.X, (int)it.R.Bottom)));
@@ -639,9 +646,13 @@ namespace NexusPen
             Invalidate();
         }
 
-        public void ShowMiniBar(Rectangle sel)
+        public void ShowMiniBar(Rectangle sel) { ShowMiniBar(sel, false); }
+
+        // keepPlace: het balkje blijft staan waar het staat (bij groter of kleiner maken), zodat je knop onder je muis blijft
+        public void ShowMiniBar(Rectangle sel, bool keepPlace)
         {
             if (collapsed || hiddenShot) return;
+            if (keepPlace && IsOpen(miniBar)) { Point keep = miniBar.Location; miniBar.Rebuild(); miniBar.Location = keep; return; }
             if (miniBar == null || miniBar.IsDisposed) { miniBar = new MiniBar(ov); miniBar.Owner = this; }
             miniBar.S = W.UiScaleAt(sel.Location);
             miniBar.Rebuild();
@@ -701,10 +712,14 @@ namespace NexusPen
             if (widthTip != null) widthTip.Hide();
             if (lipje != null) lipje.Hide();
             if (tile == null || tile.IsDisposed) tile = new LogoTile(ov, this);
-            Point p;
-            if (ov.Cfg.TileX != -1 || ov.Cfg.TileY != -1) p = new Point(ov.Cfg.TileX, ov.Cfg.TileY);
-            else p = Visible ? PointToScreen(new Point((int)logoItem.R.X, (int)logoItem.R.Y)) : new Point(Left, Top);
-            tile.PlaceAt(p);
+            int logoSize = (int)Math.Round(BW * 26f / 38f);
+            int tileSide = vertical ? Width : Height;
+            Point c;
+            if (Visible && logoItem != null) c = PointToScreen(new Point((int)(logoItem.R.X + logoItem.R.Width / 2), (int)(logoItem.R.Y + logoItem.R.Height / 2)));   // het logo blijft precies staan
+            else if (docked && lipje != null) c = new Point(lipje.Left + lipje.Width / 2, lipje.Top + lipje.Height / 2);
+            else if (ov.Cfg.TileX != -1 || ov.Cfg.TileY != -1) c = new Point(ov.Cfg.TileX + tileSide / 2, ov.Cfg.TileY + tileSide / 2);
+            else c = new Point(Left + tileSide / 2, Top + tileSide / 2);
+            tile.PlaceAt(c, S, tileSide, logoSize);
             tile.Show();
             Hide();
         }
@@ -712,10 +727,39 @@ namespace NexusPen
         public void ShowExpanded()
         {
             collapsed = false;
+            if (tile != null && tile.Visible && logoItem != null && !docked)
+            {
+                // de balk komt terug met zijn logo precies op de plek van het logo (ook als je het logo hebt versleept)
+                Point c = tile.LogoCenter;
+                Location = new Point(c.X - (int)(logoItem.R.X + logoItem.R.Width / 2), c.Y - (int)(logoItem.R.Y + logoItem.R.Height / 2));
+                EnsureOnScreen();
+            }
             if (tile != null) tile.Hide();
             if (docked && lipje != null) { lipje.Show(); return; }
             Show();
             W.KeepOnTop(Handle);
+        }
+
+        // Na het slepen: tegen de zijkant = staand, tegen boven of onder = liggend
+        void AutoOrientation()
+        {
+            if (IsDisposed || !Visible || collapsed || docked) return;
+            Point mouse = Control.MousePosition;
+            Rectangle wa = Screen.FromRectangle(Bounds).WorkingArea, b = Bounds;
+            bool left = b.Left <= wa.Left, right = b.Right >= wa.Right, top = b.Top <= wa.Top, bottom = b.Bottom >= wa.Bottom;
+            bool wantVertical = vertical;
+            if (!vertical && (left || right) && !top && !bottom) wantVertical = true;
+            else if (vertical && (top || bottom) && !left && !right) wantVertical = false;
+            if (wantVertical == vertical) return;
+            ov.Cfg.Vertical = wantVertical;
+            ov.ApplySettings();   // balk opnieuw opbouwen in de andere stand
+            Rectangle nb = Bounds;
+            int x, y;
+            if (wantVertical) { x = left ? wa.Left : wa.Right - nb.Width; y = Math.Max(wa.Top, Math.Min(wa.Bottom - nb.Height, mouse.Y - nb.Height / 2)); }
+            else { y = top ? wa.Top : wa.Bottom - nb.Height; x = Math.Max(wa.Left, Math.Min(wa.Right - nb.Width, mouse.X - nb.Width / 2)); }
+            Location = new Point(x, y);
+            Usage.Log("stand", wantVertical ? "staand" : "liggend", "slepen naar de rand");
+            ov.RefreshSettingsWindow();
         }
 
         bool shotWasVisible, shotLipje, shotTile;
@@ -743,8 +787,23 @@ namespace NexusPen
         // Klik op het icoon in de taakbalk: in- of uitklappen
         protected override void WndProc(ref Message m)
         {
-            const int WM_SYSCOMMAND = 0x0112, SC_MINIMIZE = 0xF020;
+            const int WM_SYSCOMMAND = 0x0112, SC_MINIMIZE = 0xF020, WM_MOVING = 0x0216, WM_EXITSIZEMOVE = 0x0232;
             if (m.Msg == WM_SYSCOMMAND && (m.WParam.ToInt32() & 0xFFF0) == SC_MINIMIZE) { ov.CollapseAll(); m.Result = IntPtr.Zero; return; }
+            if (m.Msg == WM_MOVING)
+            {
+                // tijdens het slepen: dicht bij de rand van het scherm klikt de balk er tegenaan
+                W.RECT r = (W.RECT)Marshal.PtrToStructure(m.LParam, typeof(W.RECT));
+                Rectangle wa = Screen.FromPoint(Control.MousePosition).WorkingArea;
+                int th = (int)(22 * S), w = r.Right - r.Left, h = r.Bottom - r.Top;
+                if (Math.Abs(r.Left - wa.Left) < th) { r.Left = wa.Left; r.Right = r.Left + w; }
+                else if (Math.Abs(wa.Right - r.Right) < th) { r.Right = wa.Right; r.Left = r.Right - w; }
+                if (Math.Abs(r.Top - wa.Top) < th) { r.Top = wa.Top; r.Bottom = r.Top + h; }
+                else if (Math.Abs(wa.Bottom - r.Bottom) < th) { r.Bottom = wa.Bottom; r.Top = r.Bottom - h; }
+                Marshal.StructureToPtr(r, m.LParam, false);
+                m.Result = new IntPtr(1);
+                return;
+            }
+            if (m.Msg == WM_EXITSIZEMOVE) { base.WndProc(ref m); try { BeginInvoke((MethodInvoker)AutoOrientation); } catch { } return; }
             base.WndProc(ref m);
         }
     }

@@ -33,6 +33,10 @@ namespace NexusPen
         public bool WheelWidth = true, PerToolWidth = true, Chalk, Fade;
         public string ToolWidths = "";
         public float FocusRadius = 160;
+        public int FocusShape = 0;              // spotlicht: 0 rond, 1 rechthoek (om zinnen te lezen)
+        public int FadeSeconds = 5;             // vervagen na 3, 5, 7 of 12 seconden
+        public float StampPx = 0;               // eigen stempelgrootte (muiswiel); 0 = S, M of L
+        public int BoardScale = 1;              // lijnen en ruitjes: klein, normaal, groot, extra groot
         // tekst
         public string FontName = "Andika";
         public bool TextOutline = true;
@@ -51,6 +55,10 @@ namespace NexusPen
         // gebruik
         public bool Usage = true;
         public int UsageCats = 127;
+
+        public const float MaxWidth = 68;
+        public static readonly int[] FadeChoices = { 3, 5, 7, 12 };
+        public static readonly float[] BoardScales = { 0.75f, 1f, 1.4f, 2f };
 
         public static bool ParseHotkey(string text, out int mods, out int vk)
         {
@@ -153,7 +161,12 @@ namespace NexusPen
             if (float.IsNaN(Width) || float.IsInfinity(Width)) Width = 4;
             if (float.IsNaN(TextSize) || float.IsInfinity(TextSize)) TextSize = 36;
             if (!Enum.IsDefined(typeof(Tool), Tool)) Tool = Tool.Pen;
-            Width = Math.Max(1, Math.Min(60, Width));
+            Width = Math.Max(1, Math.Min(MaxWidth, Width));
+            FocusShape = Math.Max(0, Math.Min(1, FocusShape));
+            if (FadeSeconds != 3 && FadeSeconds != 5 && FadeSeconds != 7 && FadeSeconds != 12) FadeSeconds = 5;
+            if (float.IsNaN(StampPx) || StampPx < 0) StampPx = 0;
+            StampPx = Math.Min(200, StampPx);
+            BoardScale = Math.Max(0, Math.Min(3, BoardScale));
             FocusRadius = Math.Max(60, Math.Min(700, FocusRadius));
             OutlineWidth = Math.Max(0, Math.Min(2, OutlineWidth));
             OutlineColor = Math.Max(0, Math.Min(2, OutlineColor));
@@ -193,7 +206,7 @@ namespace NexusPen
             {
                 int i = part.IndexOf('=');
                 float f;
-                if (i > 0 && part.Substring(0, i) == t.ToString() && float.TryParse(part.Substring(i + 1), NumberStyles.Float, IC, out f) && !float.IsNaN(f)) return Math.Max(1, Math.Min(60, f));
+                if (i > 0 && part.Substring(0, i) == t.ToString() && float.TryParse(part.Substring(i + 1), NumberStyles.Float, IC, out f) && !float.IsNaN(f)) return Math.Max(1, Math.Min(MaxWidth, f));
             }
             if (t == Tool.Marker) return Math.Max(fallback, 6);
             return fallback;

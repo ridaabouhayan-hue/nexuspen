@@ -16,7 +16,7 @@ using Microsoft.Win32;
 namespace NexusPen
 {
     enum Tool { Mouse, Pen, Marker, Laser, Line, Arrow, Rect, Ellipse, Text, Eraser, Select, Stamp, Focus }
-    enum Board { None, White, Black }
+    enum Board { None, White, Black, Dark }   // Black = groen krijtbord, Dark = zwart bord
 
     class Stroke
     {

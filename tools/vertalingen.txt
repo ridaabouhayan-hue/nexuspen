@@ -30,8 +30,6 @@ Felle kleuren | Bright colours | Couleurs vives | Colores vivos
 Zachte kleuren | Soft colours | Couleurs douces | Colores suaves
 Lijnen zien eruit als krijt op een bord | Lines look like chalk on a board | Les traits ressemblent à de la craie au tableau | Las líneas parecen tiza en una pizarra
 Krijtstreep | Chalk line | Trait de craie | Trazo de tiza
-Wat je tekent verdwijnt na 5 seconden vanzelf | What you draw disappears by itself after 5 seconds | Ce que vous dessinez disparaît tout seul après 5 secondes | Lo que dibujas desaparece solo después de 5 segundos
-Vervaagt na 5 s | Fades after 5 s | S'efface après 5 s | Se borra a los 5 s
 Pen | Pen | Stylo | Lápiz
 Lijn. Shift = recht | Line. Shift = straight | Ligne. Maj = droite | Línea. Mayús = recta
 Pijl. Shift = recht | Arrow. Shift = straight | Flèche. Maj = droite | Flecha. Mayús = recta
@@ -298,7 +296,6 @@ Gum, of rechtermuisknop ingedrukt | Eraser, or hold the right mouse button | Gom
 Vormen: lijn, pijl, rechthoek, cirkel | Shapes: line, arrow, rectangle, circle | Formes : ligne, flèche, rectangle, cercle | Formas: línea, flecha, rectángulo, círculo
 Kleur en dikte (muiswiel of knijpen op het touchpad) | Colour and thickness (mouse wheel or pinch on the touchpad) | Couleur et épaisseur (molette ou pincement sur le pavé tactile) | Color y grosor (rueda o pellizco en el touchpad)
 Stempel: vinkje, kruis, ster, vraagteken of nummer | Stamp: tick, cross, star, question mark or number | Tampon : coche, croix, étoile, point d'interrogation ou numéro | Sello: visto, cruz, estrella, interrogación o número
-Spotlicht: alleen rond je muis is het licht. Muiswiel = groter of kleiner | Spotlight: only the area around your mouse is lit. Mouse wheel = bigger or smaller | Projecteur : seule la zone autour de la souris est éclairée. Molette = plus grand ou plus petit | Foco: solo la zona alrededor del ratón está iluminada. Rueda = más grande o más pequeño
 Rechtsklik = opnieuw | Right-click = redo | Clic droit = rétablir | Clic derecho = rehacer
 Bord: whiteboard of krijtbord, met lijnen en pagina's | Board: whiteboard or chalkboard, with lines and pages | Tableau : blanc ou noir, avec lignes et pages | Pizarra: blanca o de tiza, con líneas y páginas
 Schermafbeelding, naar Afbeeldingen\\NexusPen en het klembord | Screenshot, to Pictures\\NexusPen and the clipboard | Capture d'écran, dans Images\\NexusPen et le presse-papiers | Captura, a Imágenes\\NexusPen y al portapapeles
@@ -316,3 +313,17 @@ Alles wissen | Clear everything | Tout effacer | Borrar todo
 Terug met Ctrl+Z | Undo with Ctrl+Z | Annuler avec Ctrl+Z | Deshacer con Ctrl+Z
 Snelheid sinds het starten: inkt op het scherm na {0} ms (traagst {1} ms), een klik op een knop na {2} ms. | Speed since start: ink on screen after {0} ms (slowest {1} ms), a click on a button after {2} ms. | Vitesse depuis le démarrage : encre à l'écran après {0} ms (au plus lent {1} ms), un clic sur un bouton après {2} ms. | Velocidad desde el inicio: tinta en pantalla tras {0} ms (lo más lento {1} ms), un clic en un botón tras {2} ms.
 De vorige tekening staat er al. | The previous drawing is already back. | Le dessin précédent est déjà revenu. | El dibujo anterior ya ha vuelto.
+Tekstgrootte | Text size | Taille du texte | Tamaño del texto
+Vervaagt na {0} s | Fades after {0} s | S'efface après {0} s | Se borra tras {0} s
+Wat je tekent verdwijnt vanzelf. Klik nog een keer voor een andere tijd: 3, 5, 7 of 12 seconden | What you draw disappears by itself. Click again for another time: 3, 5, 7 or 12 seconds | Ce que vous dessinez disparaît tout seul. Cliquez encore pour une autre durée : 3, 5, 7 ou 12 secondes | Lo que dibujas desaparece solo. Haz clic otra vez para otro tiempo: 3, 5, 7 o 12 segundos
+Zwart bord | Blackboard | Tableau noir | Pizarra negra
+Extra groot | Extra large | Très grand | Muy grande
+Lijnen en ruitjes groter of kleiner. Klik om te wisselen | Lines and squares bigger or smaller. Click to switch | Lignes et carreaux plus grands ou plus petits. Cliquez pour changer | Líneas y cuadros más grandes o más pequeños. Haz clic para cambiar
+Een rechthoek is handig om een zin of een woord te lezen | A rectangle is handy for reading a sentence or a word | Un rectangle est pratique pour lire une phrase ou un mot | Un rectángulo es útil para leer una frase o una palabra
+Vervagen | Fading | Effacement | Desvanecer
+Hoe lang blijft het staan? | How long does it stay? | Combien de temps reste-t-il ? | ¿Cuánto tiempo se queda?
+Grootte van lijnen en ruitjes | Size of lines and squares | Taille des lignes et carreaux | Tamaño de líneas y cuadros
+Groter is handig om in te zoomen of van ver te lezen | Bigger is handy to zoom in or to read from far away | Plus grand est pratique pour zoomer ou lire de loin | Más grande es útil para ampliar o leer desde lejos
+Zwart bord openen | Open blackboard | Ouvrir le tableau noir | Abrir pizarra negra
+Spotlicht: alleen rond je muis is het licht. Muiswiel = groter of kleiner. Rechtsklik = rond of rechthoek | Spotlight: only around your mouse is it light. Mouse wheel = bigger or smaller. Right-click = round or rectangle | Projecteur : seule la zone autour de la souris est éclairée. Molette = plus grand ou plus petit. Clic droit = rond ou rectangle | Foco: solo alrededor del ratón hay luz. Rueda = más grande o más pequeño. Clic derecho = redondo o rectángulo
+Rechthoek (om te lezen) | Rectangle (for reading) | Rectangle (pour lire) | Rectángulo (para leer)

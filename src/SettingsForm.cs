@@ -50,7 +50,7 @@ namespace NexusPen
             DoubleBuffered = true;
             SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
             Rectangle wa = Screen.FromPoint(Control.MousePosition).WorkingArea;
-            S = W.DpiScaleAt(new Point(wa.X + wa.Width / 2, wa.Y + wa.Height / 2));
+            S = W.UiScaleAt(new Point(wa.X + wa.Width / 2, wa.Y + wa.Height / 2));   // groeit mee op een groot scherm
             // past altijd op het scherm, ook op een kleine laptop
             float fit = Math.Min((wa.Width - 40) / 1040f, (wa.Height - 40) / 700f);
             if (fit < S) S = Math.Max(0.75f, fit);
@@ -143,8 +143,19 @@ namespace NexusPen
 
         void Later(Action<Graphics> p) { painters.Add(p); }
 
-        void RoundFill(Graphics g, RectangleF r, Color c, float rad) { using (SolidBrush b = new SolidBrush(c)) using (GraphicsPath gp = Svg.RoundRect(r, rad * S)) g.FillPath(b, gp); }
-        void RoundLine(Graphics g, RectangleF r, Color c, float w, float rad) { using (Pen p = new Pen(c, w * S)) using (GraphicsPath gp = Svg.RoundRect(r, rad * S)) g.DrawPath(p, gp); }
+        void RoundFill(Graphics g, RectangleF r, Color c, float rad)
+        {
+            RectangleF rr = RectangleF.FromLTRB((float)Math.Round(r.Left), (float)Math.Round(r.Top), (float)Math.Round(r.Right), (float)Math.Round(r.Bottom));
+            using (SolidBrush b = new SolidBrush(c)) using (GraphicsPath gp = Svg.RoundRect(rr, rad * S)) g.FillPath(b, gp);
+        }
+        // Randen van hele pixels, precies op de pixels: strak in plaats van rafelig
+        void RoundLine(Graphics g, RectangleF r, Color c, float w, float rad)
+        {
+            float pw = Math.Max(1, (float)Math.Round(w * S));
+            RectangleF rr = RectangleF.FromLTRB((float)Math.Round(r.Left), (float)Math.Round(r.Top), (float)Math.Round(r.Right), (float)Math.Round(r.Bottom));
+            rr.Inflate(-pw / 2, -pw / 2);
+            using (Pen p = new Pen(c, pw)) using (GraphicsPath gp = Svg.RoundRect(rr, rad * S - pw / 2)) g.DrawPath(p, gp);
+        }
 
         float Heading(float y, string title, string sub)
         {
@@ -321,6 +332,7 @@ namespace NexusPen
             y = Section(y + 8 * S, L.T("Tekenen"));
             y = Toggle(y, L.T("Muiswiel en touchpad veranderen de dikte"), L.T("Knijpen op het touchpad werkt ook"), delegate { return c.WheelWidth; }, delegate(bool v) { c.WheelWidth = v; });
             y = Toggle(y, L.T("Elk gereedschap onthoudt zijn eigen dikte"), L.T("Pen dun, markeerstift dik, zonder steeds te wisselen"), delegate { return c.PerToolWidth; }, delegate(bool v) { c.PerToolWidth = v; });
+            y = Segments(y, L.T("Spotlicht"), L.T("Een rechthoek is handig om een zin of een woord te lezen"), new string[] { L.T("Rond"), L.T("Rechthoek") }, delegate { return c.FocusShape; }, delegate(int i) { c.FocusShape = i; });
             y = Segments(y, L.T("Tekening bewaren na afsluiten"), L.T("Na Opslaan staat je tekening er de volgende keer weer"), new string[] { L.T("Nooit"), L.T("Na Opslaan"), L.T("Altijd") },
                 delegate { return c.KeepDrawing; }, delegate(int i) { c.KeepDrawing = i; });
             y = Section(y + 8 * S, L.T("Overig"));
@@ -553,7 +565,7 @@ namespace NexusPen
             for (int i = 0; i < 10; i++)
             {
                 int idx = i;
-                Add(new RectangleF(sx + i * 40 * S, y + 6 * S, 34 * S, 34 * S), L.T(Palette.Labels[ov.PaletteIndex][idx]), delegate { ov.SetColor(idx); Invalidate(); }, delegate(Graphics g, Item it, bool h)
+                Add(new RectangleF(sx + i * 40 * S, y + 6 * S, 34 * S, 34 * S), L.T(Palette.Labels[ov.PaletteIndex][idx]), delegate { ov.ChooseColorQuietly(idx); Invalidate(); }, delegate(Graphics g, Item it, bool h)
                 {
                     Color col = Palette.Sets[ov.PaletteIndex][idx];
                     if (ov.ColorIndex == idx) using (SolidBrush b = new SolidBrush(T.Accent)) g.FillEllipse(b, it.R);
@@ -563,7 +575,8 @@ namespace NexusPen
             }
             y += 54 * S;
             y = Toggle(y, L.T("Krijtstreep"), L.T("Lijnen van de pen zien eruit als krijt op een bord"), delegate { return c.Chalk; }, delegate(bool v) { c.Chalk = v; });
-            y = Toggle(y, L.T("Vervaagt na 5 s"), L.T("Wat je met pen of markeerstift tekent, verdwijnt vanzelf. Handig om iets snel aan te wijzen"), delegate { return c.Fade; }, delegate(bool v) { c.Fade = v; });
+            y = Toggle(y, L.T("Vervagen"), L.T("Wat je met pen of markeerstift tekent, verdwijnt vanzelf. Handig om iets snel aan te wijzen"), delegate { return c.Fade; }, delegate(bool v) { c.Fade = v; });
+            y = Segments(y, L.T("Hoe lang blijft het staan?"), null, new string[] { "3 s", "5 s", "7 s", "12 s" }, delegate { return Array.IndexOf(Settings.FadeChoices, c.FadeSeconds); }, delegate(int i) { c.FadeSeconds = Settings.FadeChoices[i]; });
             y = Para(y + 12 * S, L.T("De laserpen verdwijnt altijd vanzelf na anderhalve seconde. De dikte verander je met het muiswiel, door te knijpen op het touchpad of met het schuifje bij de kleuren."), 50 * S);
         }
 
@@ -654,7 +667,7 @@ namespace NexusPen
                 });
             }
             y += ch + 16 * S;
-            y = Segments(y, L.T("Grootte"), null, new string[] { "S", "M", "L" }, delegate { return c.StampSize; }, delegate(int i) { c.StampSize = i; });
+            y = Segments(y, L.T("Grootte"), null, new string[] { "S", "M", "L" }, delegate { return c.StampPx > 0 ? -1 : c.StampSize; }, delegate(int i) { c.StampSize = i; c.StampPx = 0; });
             y = Segments(y, L.T("Volgende nummer"), L.T("Het nummer telt vanzelf op"), new string[] { c.StampNext.ToString(), L.T("Weer bij 1 beginnen") },
                 delegate { return 0; }, delegate(int i) { if (i == 1) { c.StampNext = 1; BuildItems(); } });
         }
@@ -665,10 +678,12 @@ namespace NexusPen
             Settings c = Cfg;
             float y = Heading(contentTop, L.T("Bord en achtergrond"), L.T("Een leeg bord over je hele scherm, met lijnen als je wilt en meerdere pagina's."));
             y = Segments(y, L.T("Achtergrond"), null, new string[] { L.T("Leeg"), L.T("Schrijflijnen"), L.T("Ruitjes"), L.T("Lijntjes") }, delegate { return c.BoardBg; }, delegate(int i) { c.BoardBg = i; });
+            y = Segments(y, L.T("Grootte van lijnen en ruitjes"), L.T("Groter is handig om in te zoomen of van ver te lezen"), new string[] { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") }, delegate { return c.BoardScale; }, delegate(int i) { c.BoardScale = i; });
             y = Para(y + 12 * S, L.F("Je bord heeft nu {0} pagina's. Met de knop Bord in de werkbalk ga je naar de vorige of volgende pagina, of maak je een nieuwe.", ov.PageCount), 44 * S);
             float bx = contentX;
             bx += Button(bx, y + 6 * S, L.T("Whiteboard openen"), "bord", delegate { Close(); ov.SetBoard(Board.White); }, true) + 10 * S;
-            Button(bx, y + 6 * S, L.T("Krijtbord openen"), "bord", delegate { Close(); ov.SetBoard(Board.Black); }, false);
+            bx += Button(bx, y + 6 * S, L.T("Krijtbord openen"), "bord", delegate { Close(); ov.SetBoard(Board.Black); }, false) + 10 * S;
+            Button(bx, y + 6 * S, L.T("Zwart bord openen"), "bord", delegate { Close(); ov.SetBoard(Board.Dark); }, false);
         }
 
         void BuildSoon()

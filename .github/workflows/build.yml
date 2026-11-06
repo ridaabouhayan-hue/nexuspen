@@ -41,7 +41,7 @@ jobs:
         id: versie
         shell: pwsh
         run: |
-          if ("${{ github.ref }}" -like "refs/tags/v*") { $v = "${{ github.ref_name }}".TrimStart("v") } else { $v = "1.2.2" }
+          if ("${{ github.ref }}" -like "refs/tags/v*") { $v = "${{ github.ref_name }}".TrimStart("v") } else { $v = "1.2.3" }
           "nummer=$v" >> $env:GITHUB_OUTPUT
 
       - name: Installer maken (Inno Setup)

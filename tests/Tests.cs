@@ -196,7 +196,7 @@ static class Tests {
             ws.Pts.Add(cur);
             RectangleF a = RectangleF.Union(before, Render.SegmentBox(ws.Pts, n - 1));
             if (n >= 2) a = RectangleF.Union(a, Render.SegmentBox(ws.Pts, n - 2));
-            float pad = (wt == Tool.Marker ? Render.MarkerWidth(ws.Width) : wt == Tool.Laser ? ws.Width * 3 + 10 : ws.Width) / 2 + 3;
+            float pad = (wt == Tool.Marker ? Render.MarkerWidth(ws.Width) : wt == Tool.Laser ? Render.LaserWidest(ws.Width) : ws.Width) / 2 + 3;
             a.Inflate(pad, pad);
             Rectangle ai = Rectangle.FromLTRB((int)Math.Floor(a.Left), (int)Math.Floor(a.Top), (int)Math.Ceiling(a.Right), (int)Math.Ceiling(a.Bottom));
             ai.Intersect(new Rectangle(0, 0, 500, 420));
