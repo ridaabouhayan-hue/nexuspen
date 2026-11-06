@@ -984,8 +984,11 @@ namespace NexusPen
                             OnMouseUp(Mouse(MouseButtons.Left, TestPoint(0, 1)));
                             strokes.Clear(); undo.Clear(); lasers.Clear(); SetBoard(Board.None);
                             Cfg.FocusShape = 1; SetTool(Tool.Focus); focusAt = TestPoint(0, 1); fullDirty = true; RenderFrame();
+                            Console.WriteLine("Spotlicht direct: buiten alfa " + ((FramePixels(new Rectangle(20, 20, 1, 1))[0] >> 24) & 0xFF) + ", gat alfa " + ((FramePixels(new Rectangle((int)focusAt.X, (int)focusAt.Y, 1, 1))[0] >> 24) & 0xFF) + ", DrawMode " + DrawMode + ", tool " + CurrentTool);
                             break;
-                        case 20: screen("19-spotlicht-rechthoek"); Cfg.FocusShape = 0; SetTool(Tool.Mouse); break;
+                        case 20:
+                            Console.WriteLine("Spotlicht later: buiten alfa " + ((FramePixels(new Rectangle(20, 20, 1, 1))[0] >> 24) & 0xFF) + ", DrawMode " + DrawMode + ", tool " + CurrentTool);
+                            screen("19-spotlicht-rechthoek"); Cfg.FocusShape = 0; SetTool(Tool.Mouse); break;
                         case 21: ShowSettings(null); break;
                         default:
                             if (settingsForm != null && pageStep < pagesToShow.Length)

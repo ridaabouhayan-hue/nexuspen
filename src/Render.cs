@@ -309,9 +309,13 @@ namespace NexusPen
             Color n = Neon(color);
             Func<int, Color, Color> A = delegate(int a, Color c) { return Color.FromArgb(Math.Max(0, Math.Min(255, (int)(a * fade))), c); };
             List<KeyValuePair<Color, float>> l = new List<KeyValuePair<Color, float>>();
-            l.Add(new KeyValuePair<Color, float>(A(20, n), LaserWidest(w)));
-            l.Add(new KeyValuePair<Color, float>(A(38, n), w * 4.5f + 11));
-            l.Add(new KeyValuePair<Color, float>(A(95, n), w * 2.4f + 5));
+            // de gloed in kleine stapjes, dan zie je geen ringen
+            l.Add(new KeyValuePair<Color, float>(A(10, n), LaserWidest(w)));
+            l.Add(new KeyValuePair<Color, float>(A(14, n), w * 6 + 15));
+            l.Add(new KeyValuePair<Color, float>(A(20, n), w * 5 + 12));
+            l.Add(new KeyValuePair<Color, float>(A(28, n), w * 4 + 9));
+            l.Add(new KeyValuePair<Color, float>(A(45, n), w * 3 + 7));
+            l.Add(new KeyValuePair<Color, float>(A(90, n), w * 2 + 4));
             l.Add(new KeyValuePair<Color, float>(A(255, n), w + 1.5f));
             l.Add(new KeyValuePair<Color, float>(A(240, Mix(n, Color.White, 0.8f)), Math.Max(1.2f, w * 0.45f)));
             return l;
