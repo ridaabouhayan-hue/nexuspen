@@ -106,9 +106,12 @@ namespace NexusPen
         }
 
         // Rondje met een witte en een donkere rand, dan zie je het op elke achtergrond
+        // Windows-cursors mogen hoogstens 256 pixels groot zijn (met rand en marge erbij)
+        public const float MaxCircle = 240;
+
         public static Bitmap Circle(float diameter, Color fill)
         {
-            float d = Math.Max(7, Math.Min(150, diameter));
+            float d = Math.Max(7, Math.Min(MaxCircle, diameter));
             Graphics g; float c;
             Bitmap b = Canvas(d + 2, out g, out c);
             using (g)

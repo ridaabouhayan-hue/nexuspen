@@ -1476,7 +1476,9 @@ namespace NexusPen
 
         public void SetWidth(float w)
         {
-            w = Math.Max(1, Math.Min(Settings.MaxWidth, w));
+            // de gum niet groter dan het rondje van de muis kan worden, anders zie je niet wat je gumt
+            float max = CurrentTool == Tool.Eraser ? ToolCursor.MaxCircle / 4 : Settings.MaxWidth;
+            w = Math.Max(1, Math.Min(max, w));
             if (Math.Abs(w - PenWidth) < 0.01f) return;   // niets veranderd: niets opnieuw tekenen
             PenWidth = w;
             if (Cfg.PerToolWidth && HasWidth(CurrentTool)) Cfg.SetWidthFor(CurrentTool, PenWidth);
@@ -1507,7 +1509,8 @@ namespace NexusPen
             float step = PenWidth < 6 ? 1 : 2;
             SetWidth(PenWidth + (delta > 0 ? step : -step));
             if ((DateTime.Now - lastWidthLog).TotalSeconds > 3) { lastWidthLog = DateTime.Now; Usage.Log("dikte", ((int)PenWidth).ToString(), "muiswiel"); }
-            if (toolbar != null) toolbar.ShowWidthTip(Control.MousePosition, PenWidth, 1, Settings.MaxWidth, CurrentTool == Tool.Eraser ? L.T("Gum") : L.T("Dikte"));
+            // bij de gum zie je de grootte al aan het rondje: geen extra venstertje
+            if (toolbar != null && CurrentTool != Tool.Eraser) toolbar.ShowWidthTip(Control.MousePosition, PenWidth, 1, Settings.MaxWidth, L.T("Dikte"));
         }
 
         // Vaste standen voor de grootte van tekst en stempels (zoals bij Epic Pen)
@@ -1946,7 +1949,7 @@ namespace NexusPen
             return new PointF((float)(a.X + Math.Cos(ang) * len), (float)(a.Y + Math.Sin(ang) * len));
         }
 
-        float EraserRadius { get { return Math.Max(4, PenWidth * 2); } }   // ook een kleine gum voor precies werk
+        float EraserRadius { get { return Math.Max(4, Math.Min(ToolCursor.MaxCircle / 2, PenWidth * 2)); } }   // ook een kleine gum voor precies werk
 
         void EraseAt(PointF p)
         {
