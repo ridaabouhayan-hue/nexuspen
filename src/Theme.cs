@@ -72,8 +72,9 @@ namespace NexusPen
         public Color Muted { get { return IsLight ? H("#71717A") : H("#A1A1AA"); } }
         public Color Hover { get { return IsLight ? Color.FromArgb(18, 0, 0, 0) : Color.FromArgb(28, 255, 255, 255); } }
         // de gekozen knop in de rustige stand: alsof hij ingedrukt is
-        public Color Pressed { get { return IsLight ? Color.FromArgb(30, 0, 0, 0) : Color.FromArgb(44, 255, 255, 255); } }
-        public Color PressedEdge { get { return IsLight ? Color.FromArgb(40, 0, 0, 0) : Color.FromArgb(36, 255, 255, 255); } }
+        // duidelijk anders dan Hover, zodat 'muis erover' niet op 'gekozen' lijkt
+        public Color Pressed { get { return IsLight ? Color.FromArgb(40, 0, 0, 0) : Color.FromArgb(60, 255, 255, 255); } }
+        public Color PressedEdge { get { return IsLight ? Color.FromArgb(55, 0, 0, 0) : Color.FromArgb(70, 255, 255, 255); } }
         public Color Text { get { return IsLight ? Color.Black : Color.White; } }
     }
 

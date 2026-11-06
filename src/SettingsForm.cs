@@ -449,8 +449,12 @@ namespace NexusPen
                 float bx = bar.X + 5 * S, by = bar.Y + (bar.Height - cell) / 2;
                 Logo.Draw(g, new RectangleF(bx + 1 * S, by + 1 * S, cell - 2 * S, cell - 2 * S), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
                 bx += cell + 2 * S;
-                RoundFill(g, new RectangleF(bx, by, cell, cell), t.Accent, 5);
-                Icons.Draw(g, "muis", new RectangleF(bx, by, cell, cell), 13 * S, t.OnAccent, 2f);
+                // zoals in de echte balk: rustig (ingedrukt) of in de accentkleur
+                bool quiet = Cfg.ActiveStyle == 0 && !t.Thick;
+                RectangleF sel = new RectangleF(bx, by, cell, cell);
+                RoundFill(g, sel, quiet ? t.Pressed : t.Accent, 5);
+                if (quiet) RoundLine(g, RectangleF.Inflate(sel, -0.5f * S, -0.5f * S), t.PressedEdge, 1, 5);
+                Icons.Draw(g, "muis", sel, 13 * S, quiet ? t.Text : t.OnAccent, 2f);
                 bx += cell;
                 foreach (string ic in ics) { Icons.Draw(g, ic, new RectangleF(bx, by, cell, cell), 13 * S, t.Icon, 2f); bx += cell; }
                 float tx = bar.Right + 12 * S;

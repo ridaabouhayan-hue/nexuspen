@@ -1,10 +1,10 @@
-NexusPen 1.2.8 voor Windows 10 en 11.
+NexusPen 1.2.9 voor Windows 10 en 11.
 
 **Installeren:** download `NexusPen-Setup.exe` en open het. Je installeert gewoon over de vorige versie heen: je tekeningen en instellingen blijven staan. `NexusPen.exe` is hetzelfde programma zonder installeren.
 
-**Nieuw in 1.2.8**
-- De werkbalk is iets smaller, en rond het logo is de afstand tot de rand overal gelijk.
-- De gekozen knop ziet er rustig uit: een ingedrukt grijs vakje in plaats van oranje. Liever oranje? Instellingen > Uiterlijk > Gekozen knop > Accentkleur.
-- Twee nieuwe rustige thema's: Rustig wit en Rustig zwart, zonder kleur.
-- Rechtsklikmenu's hebben nette, gelijke marges, met een rustig vinkje.
-- Typen: na een klik met Tekst kun je meteen typen, ook als je net in een ander programma was.
+**Nieuw in 1.2.9**
+- Gum: het rondje groeit nu mee tot de grootste maat, en de gum is nooit groter dan het rondje. Je ziet dus altijd wat je gumt.
+- Bij de gum verschijnt geen venstertje met de grootte meer: je ziet het aan het rondje.
+- De rustige gekozen knop is duidelijker anders dan "muis erover". Bij Hoog contrast blijft de gekozen knop geel.
+- Het spotlichtmenu heeft een echt vinkje, netjes uitgelijnd.
+- De themakaarten laten de gekozen knop zien zoals in jouw balk (rustig of in de accentkleur).

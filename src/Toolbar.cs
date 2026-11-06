@@ -625,8 +625,10 @@ namespace NexusPen
             ContextMenuStrip m = Menus.Make(T);
             if (it.Key == "focus")
             {
-                m.Items.Add((ov.Cfg.FocusShape == 0 ? "\u2713  " : "     ") + L.T("Rond"), null, delegate { ov.SetFocusShape(0); });
-                m.Items.Add((ov.Cfg.FocusShape == 1 ? "\u2713  " : "     ") + L.T("Rechthoek (om te lezen)"), null, delegate { ov.SetFocusShape(1); });
+                ToolStripMenuItem rond = new ToolStripMenuItem(L.T("Rond"), null, delegate { ov.SetFocusShape(0); });
+                ToolStripMenuItem recht = new ToolStripMenuItem(L.T("Rechthoek (om te lezen)"), null, delegate { ov.SetFocusShape(1); });
+                rond.Checked = ov.Cfg.FocusShape == 0; recht.Checked = ov.Cfg.FocusShape == 1;
+                m.Items.Add(rond); m.Items.Add(recht);
                 m.Items.Add(new ToolStripSeparator());
             }
             m.Items.Add(L.T("Verbergen uit de balk"), null, delegate { HideKey(it.Key); });

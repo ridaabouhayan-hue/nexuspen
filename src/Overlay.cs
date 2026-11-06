@@ -1411,6 +1411,7 @@ namespace NexusPen
             if (t != Tool.Focus && t != Tool.Select) LastDrawTool = t;
             if (IsShape(t)) LastShape = t;
             if (Cfg.PerToolWidth && HasWidth(t)) PenWidth = Cfg.WidthFor(t, PenWidth);
+            if (Cfg.PerToolWidth && t == Tool.Eraser) PenWidth = Math.Min(PenWidth, ToolCursor.MaxCircle / 4);   // oude, te grote gummaat
             Usage.ToolChanged(t.ToString());
             UpdateCursor();
             if (t == Tool.Focus)
@@ -1477,7 +1478,8 @@ namespace NexusPen
         public void SetWidth(float w)
         {
             // de gum niet groter dan het rondje van de muis kan worden, anders zie je niet wat je gumt
-            float max = CurrentTool == Tool.Eraser ? ToolCursor.MaxCircle / 4 : Settings.MaxWidth;
+            // (deelt de gum zijn dikte met de pen en is die al groter, dan alleen kleiner maken, nooit opeens terugspringen)
+            float max = CurrentTool == Tool.Eraser ? Math.Max(ToolCursor.MaxCircle / 4, Math.Min(Settings.MaxWidth, PenWidth)) : Settings.MaxWidth;
             w = Math.Max(1, Math.Min(max, w));
             if (Math.Abs(w - PenWidth) < 0.01f) return;   // niets veranderd: niets opnieuw tekenen
             PenWidth = w;

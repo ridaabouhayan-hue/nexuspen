@@ -346,5 +346,5 @@ Rustig | Calm | Discret | Discreto
 Accentkleur | Accent colour | Couleur d'accent | Color de acento
 Rustig wit | Calm white | Blanc discret | Blanco discreto
 Rustig zwart | Calm black | Noir discret | Negro discreto
-Gewoon wit en grijs, valt niet op | Plain white and grey, does not stand out | Simplement blanc et gris, discret | Solo blanco y gris, discreto
-Gewoon zwart en grijs, valt niet op | Plain black and grey, does not stand out | Simplement noir et gris, discret | Solo negro y gris, discreto
+Gewoon wit en grijs, valt niet op | White and grey, no colour | Simplement blanc et gris, discret | Solo blanco y gris, discreto
+Gewoon zwart en grijs, valt niet op | Black and grey, no colour | Simplement noir et gris, discret | Solo negro y gris, discreto

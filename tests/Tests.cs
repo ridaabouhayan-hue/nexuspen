@@ -85,7 +85,9 @@ static class Tests {
     System.IO.File.WriteAllText(ini, "thema=99\ngrootte=-4\nkleur=55\n");
     var c3 = Settings.Load(ini);
     Check(c3.ThemeIndex == Theme.All.Length - 1 && c3.SizeIndex == 0 && c3.ColorIndex == 9, "Rare waarden in instellingen geven geen crash");
-    Check(Theme.All.Length == 12 && Theme.Order.Length == Theme.All.Length && Theme.All[9].Name == "Eigen" && Theme.All[0].Name == "Nexus" && Theme.All[0].Accent.ToArgb() == Color.FromArgb(255, 0xFF, 0x80, 0x00).ToArgb(), "Nexus is het eerste thema met NOL-oranje");
+    int[] ord = (int[])Theme.Order.Clone(); Array.Sort(ord); bool ordOk = ord.Length == Theme.All.Length && Theme.Order[Theme.Order.Length - 1] == Theme.Custom; for (int oi = 0; oi < ord.Length; oi++) if (ord[oi] != oi) ordOk = false;
+    Check(ordOk, "Elk thema staat precies een keer op de pagina Uiterlijk, Eigen als laatste");
+    Check(Theme.All.Length == 12 && Theme.All[9].Name == "Eigen" && Theme.All[0].Name == "Nexus" && Theme.All[0].Accent.ToArgb() == Color.FromArgb(255, 0xFF, 0x80, 0x00).ToArgb(), "Nexus is het eerste thema met NOL-oranje");
 
     // 9. Icoontjes uit het ontwerp worden goed gelezen (ook bogen als 'a2 2 0 01-2 2')
     bool icOk = true;
