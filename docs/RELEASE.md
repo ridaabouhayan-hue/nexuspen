@@ -1,17 +1,17 @@
-NexusPen 1.2.4 voor Windows 10 en 11.
+NexusPen 1.2.5 voor Windows 10 en 11.
 
-**Installeren:** download `NexusPen-Setup.exe` en open het. Je installeert gewoon over de vorige versie heen: je tekeningen en instellingen blijven staan. Geeft Windows een blauwe waarschuwing, klik dan op "Meer info" en daarna op "Toch uitvoeren". `NexusPen.exe` is hetzelfde programma zonder installeren.
+**Installeren:** download `NexusPen-Setup.exe` en open het. Je installeert gewoon over de vorige versie heen: je tekeningen en instellingen blijven staan. `NexusPen.exe` is hetzelfde programma zonder installeren.
 
-**Nieuw in 1.2.4**
-- De werkbalk sleep je weer vrij over het scherm. Hij klikt alleen tegen de rand als je er heel dichtbij komt, en blijft er niet meer aan plakken.
-- Het logo (na inklappen) en de werkbalk blijven altijd binnen het scherm.
-- Het lipje aan de rand kun je naar elke rand slepen: links, rechts, boven of onder.
-- Een bord kiezen, een kleur kiezen en een gereedschap kiezen zijn losse stappen. Niets springt meer vanzelf naar iets anders.
-- De kleurknop is even groot als de andere knoppen.
-- De knop met verborgen knoppen is gewoon een knop met pijltjes, zonder getal en rand.
-- Beweeg over Vormen, Kleur, Stempel of Bord en het venster gaat vanzelf open. Klik je, dan blijft het open.
-- Geen tekstjes meer als je over een knop beweegt. In Instellingen staat een nieuwe pagina "Wat doet elke knop". Wil je de tekstjes toch, zet ze aan bij Hulp en foutlog.
-- Laserpen: een felle neonlijn met een zachte gloed, zonder ringen of vakjes.
-- Tekst met een rand heeft geen zwarte vakjes meer in letters als de t.
-- Rustiger letters in de instellingen en de werkbalk (Segoe UI Semibold in plaats van vet).
-- Instellingen openen of de tekeningen verbergen haalt je bord niet meer weg. Na het sluiten van de instellingen staat je bord er weer.
+**Nieuw in 1.2.5: tekst als in een tekstverwerker**
+- Met de pijltjes door je tekst, ook omhoog en omlaag tussen regels. Home en End gaan naar het begin en eind van de regel.
+- Ctrl+pijltje springt per woord. Met Shift erbij selecteer je. Typen vervangt wat geselecteerd is.
+- Met de muis: klik in de tekst om het streepje te zetten, sleep om te selecteren, dubbelklik om een woord te kiezen.
+- Ctrl+A, Ctrl+C, Ctrl+X en Ctrl+V. Ctrl+Z en Ctrl+Y binnen de tekst die je typt. Delete en Ctrl+Backspace.
+- Om de tekst die je typt staat een kader. Sleep het rondje linksboven (of de rand) om te verplaatsen, sleep het hoekje rechtsonder om groter of kleiner te maken. Ctrl+plus en Ctrl+min werken ook.
+- Gewone Windows-cursor bij tekst, een dun zwart streepje, en selecteren in het blauw zoals in Windows.
+
+**Verder**
+- De werkbalk wordt al staand of liggend terwijl je hem tegen de rand sleept.
+- Krijt is een eigen knop in de werkbalk.
+- De gum heeft een eigen venster met vier maten en Alles wissen (beweeg over de gum).
+- Het puntje van het vraagteken-stempel is terug.

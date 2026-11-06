@@ -124,7 +124,7 @@ namespace NexusPen
 
         public void Home(bool all, bool shift)
         {
-            if (all) { Set(0, shift); return; }
+            if (all) { Set(0, shift); wantX = -1; return; }
             int i = Caret;
             while (i > 0 && Text[i - 1] != '\n') i--;
             Set(i, shift); wantX = -1;
@@ -132,7 +132,7 @@ namespace NexusPen
 
         public void End(bool all, bool shift)
         {
-            if (all) { Set(Text.Length, shift); return; }
+            if (all) { Set(Text.Length, shift); wantX = -1; return; }
             int i = Caret;
             while (i < Text.Length && Text[i] != '\n') i++;
             Set(i, shift); wantX = -1;
@@ -151,7 +151,7 @@ namespace NexusPen
             wantX = keep;
         }
 
-        public void SelectAll() { Anchor = 0; Caret = Text.Length; }
+        public void SelectAll() { Anchor = 0; Caret = Text.Length; wantX = -1; }
 
         public void SelectWordAt(int pos)
         {
@@ -159,7 +159,7 @@ namespace NexusPen
             int a = pos, b = pos;
             while (a > 0 && IsWord(Text[a - 1])) a--;
             while (b < Text.Length && IsWord(Text[b])) b++;
-            Anchor = a; Caret = b;
+            Anchor = a; Caret = b; wantX = -1;
         }
 
         public void PlaceAt(int pos, bool shift) { Set(pos, shift); wantX = -1; }

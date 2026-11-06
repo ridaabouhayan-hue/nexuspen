@@ -2072,6 +2072,7 @@ namespace NexusPen
         protected override void OnMouseCaptureChanged(EventArgs e)
         {
             base.OnMouseCaptureChanged(e);
+            if (textDrag != 0 && (Control.MouseButtons & MouseButtons.Left) == 0) textDrag = 0;   // muis kwijt: stoppen met slepen
             if (Program.SelfTest) return;
             if ((Control.MouseButtons & (MouseButtons.Left | MouseButtons.Right)) != 0) return;
             if (current != null || erasing || dragging || resizing)
@@ -2279,7 +2280,7 @@ namespace NexusPen
             if (textDrag == 3)
             {
                 float d = (float)Math.Sqrt(Dist2(p, typing.Pts[0]));
-                typing.FontSize = Math.Max(10, Math.Min(300, textSizeFrom * d / textDistFrom));
+                typing.FontSize = Math.Max(8, Math.Min(400, textSizeFrom * d / textDistFrom));
                 Cfg.TextSize = typing.FontSize;
                 TypingChanged();
                 return true;
@@ -2290,8 +2291,9 @@ namespace NexusPen
             Cursor want = Dist2(p, SizeHandle(f)) <= grab ? Cursors.SizeNWSE
                 : Dist2(p, MoveHandle(f)) <= grab || (RectangleF.Inflate(f, 8, 8).Contains(p) && !RectangleF.Inflate(f, -4, -4).Contains(p)) ? Cursors.SizeAll
                 : Cursors.IBeam;
-            if (Cursor != want) Cursor = want;
-            return CurrentTool == Tool.Text;
+            bool near = RectangleF.Inflate(f, HandleR * 2 + 4, HandleR * 2 + 4).Contains(p);
+            if (near || CurrentTool == Tool.Text) { if (Cursor != want) Cursor = want; return true; }
+            return false;
         }
 
         // Tekst die je typt: selectie in Windows-blauw, het gewone zwarte streepje, en een kader met handvatten
@@ -2412,10 +2414,11 @@ namespace NexusPen
                 Stroke s = new Stroke();
                 s.Tool = Tool.Text; s.Color = CurrentColor; s.Width = PenWidth; s.FontSize = Cfg.TextSize; s.Text = "";
                 s.FontName = Cfg.FontName; s.Outline = Cfg.TextOutline; s.OutlineWidth = Cfg.OutlineWidth; s.OutlineColor = Cfg.OutlineColor;
-                float lh = 0;
-                try { lh = Render.LineHeight(s); } catch { lh = s.FontSize * 1.2f; }
                 // de klik komt midden in de eerste regel, zoals bij Epic Pen
-                s.Pts.Add(new PointF(clientPt.X - Render.OutlineWidth(s), clientPt.Y - lh / 2 - Render.OutlineWidth(s)));
+                s.Pts.Add(new PointF(clientPt.X, clientPt.Y));
+                float lh = s.FontSize * 1.2f;
+                try { lh = Render.LineHeight(s); } catch { }
+                s.Pts[0] = new PointF(clientPt.X - Render.OutlineWidth(s), clientPt.Y - lh / 2 - Render.OutlineWidth(s));
                 typing = s; typingOld = null; typingIndex = -1;
                 ed = new TextEditor(typing, 0);
             }
@@ -2452,6 +2455,7 @@ namespace NexusPen
             Stroke t = typing;
             typing = null;
             ed = null; textDrag = 0;
+            UpdateCursor();
             bool empty = string.IsNullOrEmpty(t.Text) || t.Text.Trim().Length == 0;
             if (typingOld != null)
             {

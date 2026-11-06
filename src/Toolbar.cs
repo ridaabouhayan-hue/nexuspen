@@ -278,11 +278,11 @@ namespace NexusPen
                 case "muis": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Muis: gewoon klikken op je scherm"), "") + "  (Esc)", Tool.Mouse); break;
                 case "selecteer": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Selecteren en verplaatsen"), "selecteer"), Tool.Select); break;
                 case "pen":
-                    it = Button(r, "pen", Shortcuts.Tip(L.T("Pen"), "pen"), delegate { Use(key); ClosePopups(); o.Cfg.Chalk = false; o.SetTool(Tool.Pen); },
+                    it = Button(r, "pen", Shortcuts.Tip(L.T("Pen"), "pen"), delegate { Use(key); ClosePopups(); o.Cfg.Chalk = false; o.Cfg.Save(); o.SetTool(Tool.Pen); o.RefreshSettingsWindow(); },
                         delegate { return o.DrawMode && o.CurrentTool == Tool.Pen && !o.Cfg.Chalk; }, null);
                     break;
                 case "krijt":
-                    it = Button(r, "krijt", L.T("Krijt: een pen met een korrelige streep, zoals krijt op een bord"), delegate { Use(key); ClosePopups(); o.Cfg.Chalk = true; o.SetTool(Tool.Pen); },
+                    it = Button(r, "krijt", L.T("Krijt: een pen met een korrelige streep, zoals krijt op een bord"), delegate { Use(key); ClosePopups(); o.Cfg.Chalk = true; o.Cfg.Save(); o.SetTool(Tool.Pen); o.RefreshSettingsWindow(); },
                         delegate { return o.DrawMode && o.CurrentTool == Tool.Pen && o.Cfg.Chalk; }, null);
                     break;
                 case "markeer": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Markeerstift"), "markeer"), Tool.Marker); break;
@@ -499,10 +499,12 @@ namespace NexusPen
             Point m = Control.MousePosition;
             Rectangle wa = Screen.FromPoint(m).WorkingArea;
             int edge = (int)(28 * S);
-            bool nl = m.X - wa.Left < edge, nr = wa.Right - m.X < edge, nt = m.Y - wa.Top < edge, nb = wa.Bottom - m.Y < edge;
+            // alleen aan een echte buitenrand (niet de naad tussen twee schermen), en alleen als de balk in de andere stand past
+            bool nl = m.X - wa.Left < edge && Outer(new Point(wa.Left - 4, m.Y)), nr = wa.Right - m.X < edge && Outer(new Point(wa.Right + 4, m.Y));
+            bool nt = m.Y - wa.Top < edge && Outer(new Point(m.X, wa.Top - 4)), nb = wa.Bottom - m.Y < edge && Outer(new Point(m.X, wa.Bottom + 4));
             bool want = vertical;
-            if (!vertical && (nl || nr) && !nt && !nb) want = true;
-            else if (vertical && (nt || nb) && !nl && !nr) want = false;
+            if (!vertical && (nl || nr) && !nt && !nb && Width <= wa.Height - 20) want = true;
+            else if (vertical && (nt || nb) && !nl && !nr && Height <= wa.Width - 20) want = false;
             if (want != vertical)
             {
                 float along = vertical ? (float)grab.Y / Math.Max(1, Height) : (float)grab.X / Math.Max(1, Width);
@@ -525,6 +527,13 @@ namespace NexusPen
         {
             base.OnMouseCaptureChanged(e);
             if (dragging && !Capture) EndDrag();
+        }
+
+        // Ligt hier geen ander scherm? Dan is dit een echte rand.
+        static bool Outer(Point p)
+        {
+            foreach (Screen sc in Screen.AllScreens) if (sc.Bounds.Contains(p)) return false;
+            return true;
         }
 
         void EndDrag()

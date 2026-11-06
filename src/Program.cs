@@ -16,7 +16,7 @@ using Microsoft.Win32;
 [assembly: System.Reflection.AssemblyTitle("NexusPen")]
 [assembly: System.Reflection.AssemblyProduct("NexusPen")]
 [assembly: System.Reflection.AssemblyCompany("Nexus of Language")]
-[assembly: System.Reflection.AssemblyVersion("1.2.4.0")]
+[assembly: System.Reflection.AssemblyVersion("1.2.5.0")]
 
 namespace NexusPen
 {
@@ -118,6 +118,6 @@ namespace NexusPen
             }
         }
 
-        public const string Version = "1.2.4";
+        public const string Version = "1.2.5";
     }
 }

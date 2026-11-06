@@ -92,19 +92,19 @@ namespace NexusPen
             return ToIndex(line, ColAt(line, p.X));
         }
 
+        // Dichtstbijzijnde letterpositie: zoeken door steeds te halveren (ook lange regels blijven snel)
         public int ColAt(int line, float x)
         {
             string l = Lines[line];
-            int best = 0; float bestD = float.MaxValue, prev = Origin.X;
-            for (int c = 0; c <= l.Length; c++)
+            int lo = 0, hi = l.Length;
+            while (lo < hi)
             {
-                float cx = c == 0 ? Origin.X : Origin.X + Width(l.Substring(0, c));
-                float d = Math.Abs(cx - x);
-                if (d < bestD) { bestD = d; best = c; }
-                if (cx > x && c > 0) break;   // verder naar rechts wordt het alleen maar verder weg
-                prev = cx;
+                int mid = (lo + hi) / 2;
+                if (X(line, mid) < x) lo = mid + 1; else hi = mid;
             }
-            return best;
+            // lo is de eerste positie op of na x; kies tussen lo en de positie ervoor
+            if (lo > 0 && Math.Abs(X(line, lo - 1) - x) <= Math.Abs(X(line, lo) - x)) return lo - 1;
+            return lo;
         }
 
         public RectangleF CaretRect(int index, float w)

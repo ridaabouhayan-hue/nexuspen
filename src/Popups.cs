@@ -78,7 +78,7 @@ namespace NexusPen
             y += 20 * S + 14 * S;
             // krijtstreep en vervagen (voor de pen)
             float half = (w - pad * 2 - 8 * S) / 2;
-            Item chalk = Add(new RectangleF(pad, y, half, 32 * S), L.T("Lijnen zien eruit als krijt op een bord"), delegate { o.Cfg.Chalk = !o.Cfg.Chalk; o.Cfg.Save(); Invalidate(); });
+            Item chalk = Add(new RectangleF(pad, y, half, 32 * S), L.T("Lijnen zien eruit als krijt op een bord"), delegate { o.Cfg.Chalk = !o.Cfg.Chalk; o.Cfg.Save(); Invalidate(); if (o.Bar != null) o.Bar.Refresh2(); });
             chalk.Paint = delegate(Graphics g, Item item, bool h) { PaintChip(g, item.R, o.Cfg.Chalk, h, L.T("Krijtstreep"), null, Color.Empty); };
             // klikken: uit, 3, 5, 7, 12 seconden en weer uit
             Item fade = Add(new RectangleF(pad + half + 8 * S, y, half, 32 * S), L.T("Wat je tekent verdwijnt vanzelf. Klik nog een keer voor een andere tijd: 3, 5, 7 of 12 seconden"), delegate
