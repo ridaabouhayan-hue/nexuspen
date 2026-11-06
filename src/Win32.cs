@@ -136,6 +136,7 @@ namespace NexusPen
         [DllImport("user32.dll")] static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool attach);
         [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
         [DllImport("user32.dll")] static extern IntPtr SetFocus(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern bool IsHungAppWindow(IntPtr hWnd);
 
         // Het toetsenbord echt naar dit venster halen. Windows weigert dat soms als een ander programma
         // vooraan stond; dan koppelen we heel even aan dat programma, zodat het wel mag.
@@ -146,7 +147,8 @@ namespace NexusPen
                 IntPtr fg = GetForegroundWindow();
                 if (fg == h) { SetFocus(h); return; }
                 uint me = GetCurrentThreadId(), other = fg != IntPtr.Zero ? GetWindowThreadProcessId(fg, IntPtr.Zero) : 0;
-                bool attached = other != 0 && other != me && AttachThreadInput(me, other, true);
+                // nooit koppelen aan een programma dat vastzit: dan zou NexusPen meehangen
+                bool attached = other != 0 && other != me && !IsHungAppWindow(fg) && AttachThreadInput(me, other, true);
                 try { SetForegroundWindow(h); SetFocus(h); }
                 finally { if (attached) AttachThreadInput(me, other, false); }
             }

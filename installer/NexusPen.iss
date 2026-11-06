@@ -1,6 +1,6 @@
 ﻿; NexusPen installer (Inno Setup 6). Installeert voor de huidige gebruiker, zonder beheerdersrechten.
 #ifndef AppVersion
-  #define AppVersion "1.2.7"
+  #define AppVersion "1.2.8"
 #endif
 
 [Setup]
