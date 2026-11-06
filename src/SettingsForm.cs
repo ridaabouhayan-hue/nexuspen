@@ -910,6 +910,12 @@ namespace NexusPen
                 float x = contentX + (i / rows) * (colW + 20 * S), yy = y + (i % rows) * rowH;
                 string name = Toolbar.NameOf(k);
                 string tipText = ov.Bar != null ? ov.Bar.TipFor(k) : "";
+                // de naam staat er al boven: niet nog een keer aan het begin van de uitleg
+                if (tipText.StartsWith(name, StringComparison.OrdinalIgnoreCase))
+                {
+                    tipText = tipText.Substring(name.Length).TrimStart(' ', ':', ',');
+                    if (tipText.Length > 0) tipText = char.ToUpper(tipText[0]) + tipText.Substring(1);
+                }
                 Later(delegate(Graphics g)
                 {
                     Theme t = T;
