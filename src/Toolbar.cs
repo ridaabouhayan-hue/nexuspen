@@ -203,7 +203,12 @@ namespace NexusPen
         }
 
         // ---- opbouw
-        public float BW { get { int i = ov.Cfg.SizeIndex; return (i == 0 ? 32 : i == 2 ? 46 : 38) * S; } }
+        public float BW { get { int i = ov.Cfg.SizeIndex; return (i == 0 ? 31 : i == 2 ? 44 : 36) * S; } }
+
+        // ruimte langs de balk en dwars erop; het logo krijgt rondom dezelfde afstand tot de rand
+        float PadMain { get { return (vertical ? 5 : 6) * S; } }
+        float PadCross { get { return (vertical ? 6 : 4) * S; } }
+        float LogoLen { get { return BW + 2 * (PadCross - PadMain); } }
 
         float Long(float bw, float bh) { return vertical ? bh : bw; }
         float Cross(float bw, float bh) { return vertical ? bw : bh; }
@@ -214,12 +219,12 @@ namespace NexusPen
         protected override void Build()
         {
             float bw = BW, bh = vertical ? bw - 6 * S : bw, gap = 2 * S;
-            float padMain = (vertical ? 5 : 6) * S, padCross = (vertical ? 8 : 5) * S;
+            float padMain = PadMain, padCross = PadCross;
             float pos = padMain, cross = padCross;
             float thick = vertical ? bw : bh;
 
             // geen greep meer: met het logo versleep je de balk, en een klik op het logo klapt alles in
-            float lb = vertical ? bh + 4 * S : bw;
+            float lb = LogoLen;
             logoItem = Add(Rect(pos, cross, lb, thick), L.T("Klik = alles inklappen, slepen = de balk verplaatsen") + "  (" + ov.Cfg.HotkeyHide + ")", null);
             gripItem = logoItem;
             logoItem.Paint = PaintLogo;
@@ -456,7 +461,7 @@ namespace NexusPen
         {
             float bw = BW, bh = vertical ? bw - 6 * S : bw, gap = 2 * S;
             float m = (vertical ? 4 : 5) * S, sepW = m * 2 + 1 * S;
-            float pos = (vertical ? 5 : 6) * S + (vertical ? bh + 4 * S : bw);
+            float pos = PadMain + LogoLen;
             int placed = 0, rest = 0;
             bool needSep = true;
             foreach (string k in Layout(ov.Cfg))
@@ -1033,11 +1038,18 @@ namespace NexusPen
             m.Padding = new Padding((int)(6 * sc));
             m.Opening += delegate
             {
-                foreach (ToolStripItem it in m.Items)
+                // zit er een vinkje in het menu, dan krijgt elke regel dezelfde ruimte links (anders springen de teksten heen en weer)
+                bool checks = false;
+                foreach (ToolStripItem it in m.Items) { ToolStripMenuItem mi = it as ToolStripMenuItem; if (mi != null && (mi.Checked || mi.CheckOnClick)) checks = true; }
+                m.ShowCheckMargin = checks;
+                int n = m.Items.Count;
+                for (int i = 0; i < n; i++)
                 {
+                    ToolStripItem it = m.Items[i];
                     if (it is ToolStripSeparator) { it.Margin = new Padding(0, (int)(4 * sc), 0, (int)(4 * sc)); continue; }
-                    it.Padding = new Padding((int)(10 * sc), (int)(7 * sc), (int)(18 * sc), (int)(7 * sc));
-                    it.Margin = new Padding(0, (int)(1 * sc), 0, (int)(1 * sc));
+                    it.Padding = new Padding((int)((checks ? 4 : 10) * sc), (int)(7 * sc), (int)(18 * sc), (int)(7 * sc));
+                    // de eerste en laatste regel net zo ver van de rand als van elkaar
+                    it.Margin = new Padding(0, (int)((i == 0 ? 3 : 1) * sc), 0, (int)((i == n - 1 ? 3 : 1) * sc));
                 }
             };
             // Windows 11: echt afgeronde hoeken voor het menu
@@ -1063,8 +1075,17 @@ namespace NexusPen
                 if (!e.Item.Selected || !e.Item.Enabled) return;
                 Graphics g = e.Graphics;
                 g.SmoothingMode = SmoothingMode.AntiAlias;
-                RectangleF r = new RectangleF(2 * sc, 0, e.Item.Width - 4 * sc, e.Item.Height);
+                RectangleF r = new RectangleF(2 * sc, 1 * sc, e.Item.Width - 4 * sc, e.Item.Height - 2 * sc);
                 using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(r, 6 * sc)) g.FillPath(b, gp);
+            }
+
+            protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs e)
+            {
+                Graphics g = e.Graphics;
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                RectangleF r = e.ImageRectangle;
+                float sz = 16 * sc;
+                Icons.Draw(g, "vink", new RectangleF(r.X + (r.Width - sz) / 2, r.Y + (r.Height - sz) / 2, sz, sz), sz, t.Accent, 2.2f);
             }
 
             protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)

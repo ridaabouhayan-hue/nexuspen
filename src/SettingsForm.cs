@@ -407,11 +407,11 @@ namespace NexusPen
         {
             Settings c = Cfg;
             float y = Heading(contentTop, L.T("Uiterlijk"), L.T("Kleuren van de werkbalk. Het logo kleurt mee met de accentkleur."));
-            float tw = (contentW - 10 * S) / 2, th = 54 * S;
-            for (int i = 0; i < Theme.All.Length; i++)
+            float tw = (contentW - 10 * S) / 2, th = 48 * S;
+            for (int i = 0; i < Theme.Order.Length; i++)
             {
-                int idx = i;
-                RectangleF r = new RectangleF(contentX + (i % 2) * (tw + 10 * S), y + (i / 2) * (th + 8 * S), tw, th);
+                int idx = Theme.Order[i];
+                RectangleF r = new RectangleF(contentX + (i % 2) * (tw + 10 * S), y + (i / 2) * (th + 6 * S), tw, th);
                 Add(r, idx == Theme.Custom ? L.T("Klik om je eigen accentkleur te kiezen") : null, delegate
                 {
                     if (idx == Theme.Custom)
@@ -424,8 +424,9 @@ namespace NexusPen
                     c.ThemeIndex = idx; Changed();
                 }, PaintTheme(idx));
             }
-            y += 5 * (th + 8 * S) + 12 * S;
+            y += (Theme.Order.Length + 1) / 2 * (th + 6 * S) + 8 * S;
             y = Segments(y, L.T("Grootte van de knoppen"), null, new string[] { L.T("Klein"), L.T("Normaal"), L.T("Groot") }, delegate { return c.SizeIndex; }, delegate(int i) { c.SizeIndex = i; });
+            y = Segments(y, L.T("Gekozen knop"), L.T("Rustig valt minder op tijdens de les"), new string[] { L.T("Rustig"), L.T("Accentkleur") }, delegate { return c.ActiveStyle; }, delegate(int i) { c.ActiveStyle = i; });
             y = Segments(y, L.T("Hoeken"), null, new string[] { L.T("Rond"), L.T("Strak") }, delegate { return c.Square ? 1 : 0; }, delegate(int i) { c.Square = i == 1; });
             y = Segments(y, L.T("Doorzichtigheid"), null, new string[] { L.T("Dekkend"), "90%", "80%" }, delegate { return c.OpacityIndex; }, delegate(int i) { c.OpacityIndex = i; });
         }
@@ -453,8 +454,8 @@ namespace NexusPen
                 bx += cell;
                 foreach (string ic in ics) { Icons.Draw(g, ic, new RectangleF(bx, by, cell, cell), 13 * S, t.Icon, 2f); bx += cell; }
                 float tx = bar.Right + 12 * S;
-                Txt(g, L.T(t.Name), new RectangleF(tx, it.R.Y + 8 * S, it.R.Right - tx - 8 * S, 20 * S), cur.Text, 14, true, StringAlignment.Near, false);
-                Txt(g, L.T(t.Desc), new RectangleF(tx, it.R.Y + 28 * S, it.R.Right - tx - 8 * S, 18 * S), cur.Muted, 12, false, StringAlignment.Near, false);
+                Txt(g, L.T(t.Name), new RectangleF(tx, it.R.Y + 5 * S, it.R.Right - tx - 8 * S, 20 * S), cur.Text, 14, true, StringAlignment.Near, false);
+                Txt(g, L.T(t.Desc), new RectangleF(tx, it.R.Y + 25 * S, it.R.Right - tx - 8 * S, 18 * S), cur.Muted, 12, false, StringAlignment.Near, false);
             };
         }
 

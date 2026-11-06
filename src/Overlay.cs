@@ -2495,7 +2495,16 @@ namespace NexusPen
             }
             if (!StrokesVisible) { StrokesVisible = true; Rebuild(); }
             caretOn = true; caretAt = DateTime.Now;
-            try { Activate(); Focus(); } catch { }
+            // meteen kunnen typen: het toetsenbord zeker naar de tekenlaag halen (ook als je net in een ander programma was)
+            try { Activate(); Focus(); W.ForceForeground(Handle); } catch { }
+            try
+            {
+                BeginInvoke((MethodInvoker)delegate
+                {
+                    if (typing != null && !IsDisposed && W.GetForegroundWindow() != Handle) { W.ForceForeground(Handle); Focus(); }
+                });
+            }
+            catch { }
             RenderSoon();
         }
 

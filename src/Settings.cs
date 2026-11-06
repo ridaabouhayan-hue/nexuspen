@@ -38,6 +38,7 @@ namespace NexusPen
         public float StampPx = 0;               // eigen stempelgrootte (muiswiel); 0 = S, M of L
         public int BoardScale = 1;              // (oud, niet meer gebruikt)
         public float BoardZoom = 1;             // lijnen en ruitjes: van 0,5 (veel kleine regels) tot 6 (een grote regel)
+        public int ActiveStyle = 0;             // gekozen knop: 0 rustig (ingedrukt), 1 in de accentkleur
         public bool ChalkChecked;               // eenmalige controle bij het bijwerken naar 1.2.6
         // tekst
         public string FontName = "Andika";
@@ -168,6 +169,7 @@ namespace NexusPen
             if (!Enum.IsDefined(typeof(Tool), Tool)) Tool = Tool.Pen;
             Width = Math.Max(1, Math.Min(MaxWidth, Width));
             FocusShape = Math.Max(0, Math.Min(1, FocusShape));
+            ActiveStyle = Math.Max(0, Math.Min(1, ActiveStyle));
             if (FadeSeconds != 3 && FadeSeconds != 5 && FadeSeconds != 7 && FadeSeconds != 12) FadeSeconds = 5;
             if (float.IsNaN(StampPx) || StampPx < 0) StampPx = 0;
             StampPx = Math.Min(200, StampPx);

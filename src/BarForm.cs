@@ -357,11 +357,15 @@ namespace NexusPen
             bool active = it.Active != null && it.Active();
             bool hov = it == hover;
             if (it.Paint != null) { it.Paint(g, it, hov); return; }
+            bool quiet = ov.Cfg.ActiveStyle == 0;   // rustig: ingedrukt in plaats van een gekleurd vlak
             if (active || hov)
-                using (SolidBrush b = new SolidBrush(active ? t.Accent : t.Hover))
+                using (SolidBrush b = new SolidBrush(active ? (quiet ? t.Pressed : t.Accent) : t.Hover))
                 using (GraphicsPath gp = Svg.RoundRect(Highlight(it.R), 7 * S))
+                {
                     g.FillPath(b, gp);
-            Color c = active ? t.OnAccent : (it.Lit != null && it.Lit()) ? t.Accent : it.Muted ? t.Muted : t.Icon;
+                    if (active && quiet) using (Pen p = new Pen(t.PressedEdge, Math.Max(1, Px(S)))) g.DrawPath(p, gp);
+                }
+            Color c = active ? (quiet ? t.Text : t.OnAccent) : (it.Lit != null && it.Lit()) ? t.Accent : it.Muted ? t.Muted : t.Icon;
             if (it.Icon != null) Icons.Draw(g, it.Icon, it.R, IconSize, c, StrokeW);
         }
 

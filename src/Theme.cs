@@ -42,8 +42,14 @@ namespace NexusPen
             T("Krijtbord", "Bordgroen met krijtgeel", "#1B2E26", "#2E4A3E", "#E8F0E8", "#3B5A4C", "#253D33", "#F7D774", "#1B1405", false),
             T("Licht", "Wit met blauw", "#FFFFFF", "#D4D4D8", "#3F3F46", "#E4E4E7", "#F4F4F5", "#2563EB", "#FFFFFF", false),
             T("Hoog contrast", "Zwart, wit en geel", "#000000", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#1A1A1A", "#FFE600", "#000000", true),
-            T("Eigen", "Je eigen accentkleur", "#18181B", "#27272A", "#D4D4D8", "#3F3F46", "#27272A", "#A3E635", "#111407", false)
+            T("Eigen", "Je eigen accentkleur", "#18181B", "#27272A", "#D4D4D8", "#3F3F46", "#27272A", "#A3E635", "#111407", false),
+            // rustig: geen kleur, alleen wit of zwart met grijs (nieuw achteraan, dan blijven oude keuzes kloppen)
+            T("Rustig wit", "Gewoon wit en grijs, valt niet op", "#FFFFFF", "#E4E4E7", "#3F3F46", "#E4E4E7", "#F4F4F5", "#52525B", "#FFFFFF", false),
+            T("Rustig zwart", "Gewoon zwart en grijs, valt niet op", "#121212", "#262626", "#D4D4D4", "#2E2E2E", "#1E1E1E", "#A3A3A3", "#121212", false)
         };
+
+        // volgorde op de pagina Uiterlijk: de rustige bij de huisstijl, Eigen als laatste
+        public static readonly int[] Order = { 0, 1, 10, 11, 2, 3, 4, 5, 6, 7, 8, 9 };
 
         public const int Custom = 9;
 
@@ -65,6 +71,9 @@ namespace NexusPen
         public bool IsLight { get { return Luma(Bar) > 0.6; } }
         public Color Muted { get { return IsLight ? H("#71717A") : H("#A1A1AA"); } }
         public Color Hover { get { return IsLight ? Color.FromArgb(18, 0, 0, 0) : Color.FromArgb(28, 255, 255, 255); } }
+        // de gekozen knop in de rustige stand: alsof hij ingedrukt is
+        public Color Pressed { get { return IsLight ? Color.FromArgb(30, 0, 0, 0) : Color.FromArgb(44, 255, 255, 255); } }
+        public Color PressedEdge { get { return IsLight ? Color.FromArgb(40, 0, 0, 0) : Color.FromArgb(36, 255, 255, 255); } }
         public Color Text { get { return IsLight ? Color.Black : Color.White; } }
     }
 

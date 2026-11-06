@@ -131,6 +131,27 @@ namespace NexusPen
         [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT p);
         [DllImport("user32.dll")] public static extern IntPtr SetCursor(IntPtr hCursor);
         [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+        [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr pid);
+        [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+        [DllImport("user32.dll")] static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool attach);
+        [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
+        [DllImport("user32.dll")] static extern IntPtr SetFocus(IntPtr hWnd);
+
+        // Het toetsenbord echt naar dit venster halen. Windows weigert dat soms als een ander programma
+        // vooraan stond; dan koppelen we heel even aan dat programma, zodat het wel mag.
+        public static void ForceForeground(IntPtr h)
+        {
+            try
+            {
+                IntPtr fg = GetForegroundWindow();
+                if (fg == h) { SetFocus(h); return; }
+                uint me = GetCurrentThreadId(), other = fg != IntPtr.Zero ? GetWindowThreadProcessId(fg, IntPtr.Zero) : 0;
+                bool attached = other != 0 && other != me && AttachThreadInput(me, other, true);
+                try { SetForegroundWindow(h); SetFocus(h); }
+                finally { if (attached) AttachThreadInput(me, other, false); }
+            }
+            catch { }
+        }
 
         // Staat er nu een ander programma bovenop dat zelf 'altijd bovenop' wil zijn (Knipprogramma, Win+Shift+S,
         // schermopname)? Dan gaan wij er niet overheen, anders botsen we met het maken van een schermafbeelding.
