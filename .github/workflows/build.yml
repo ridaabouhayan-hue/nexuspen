@@ -57,6 +57,22 @@ jobs:
           path: out/schermen/*.png
           if-no-files-found: warn
 
+      - name: Schermafbeeldingen op een aparte tak zetten (om te bekijken)
+        if: always() && github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          if (-not (Test-Path out\schermen)) { exit 0 }
+          $d = Join-Path $env:RUNNER_TEMP "schermen"
+          New-Item -ItemType Directory -Force $d | Out-Null
+          Copy-Item out\schermen\*.png $d
+          Set-Location $d
+          git init -q -b zelftest-schermen
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Schermen van ${{ github.sha }}"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" zelftest-schermen
+
       - name: Release maken bij een versietag
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
