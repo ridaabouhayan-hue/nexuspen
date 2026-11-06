@@ -34,6 +34,7 @@ namespace NexusPen
         protected ToolTip tip = new ToolTip();
         public float S = 1;
         protected bool draggable;
+        protected Point moveStart, moveMouse;
         protected bool vertical;
 
         public BarForm(Overlay o)
@@ -74,6 +75,26 @@ namespace NexusPen
         protected override void WndProc(ref Message m)
         {
             if (m.Msg == W.WM_TABLET_QUERYSYSTEMGESTURESTATUS) { m.Result = new IntPtr(W.TABLET_FLAGS); return; }
+            if (m.Msg == 0x0231) { moveStart = Location; moveMouse = Control.MousePosition; }   // WM_ENTERSIZEMOVE: slepen begint
+            if (m.Msg == 0x0216)   // WM_MOVING
+            {
+                // Positie rekenen vanaf waar je begon te slepen (anders blijft het venster aan de rand plakken),
+                // dicht bij de rand ertegenaan klikken, en nooit buiten het scherm
+                W.RECT r = (W.RECT)Marshal.PtrToStructure(m.LParam, typeof(W.RECT));
+                Point mouse = Control.MousePosition;
+                int w = r.Right - r.Left, h = r.Bottom - r.Top;
+                int x = moveStart.X + mouse.X - moveMouse.X, y = moveStart.Y + mouse.Y - moveMouse.Y;
+                Rectangle wa = Screen.FromPoint(mouse).WorkingArea;
+                int th = (int)(12 * S);
+                if (Math.Abs(x - wa.Left) < th) x = wa.Left; else if (Math.Abs(wa.Right - (x + w)) < th) x = wa.Right - w;
+                if (Math.Abs(y - wa.Top) < th) y = wa.Top; else if (Math.Abs(wa.Bottom - (y + h)) < th) y = wa.Bottom - h;
+                x = Math.Max(wa.Left, Math.Min(wa.Right - w, x));
+                y = Math.Max(wa.Top, Math.Min(wa.Bottom - h, y));
+                r.Left = x; r.Top = y; r.Right = x + w; r.Bottom = y + h;
+                Marshal.StructureToPtr(r, m.LParam, false);
+                m.Result = new IntPtr(1);
+                return;
+            }
             if (m.Msg == W.WM_DPICHANGED)
             {
                 // Naar een scherm met andere schaal gesleept: opnieuw opbouwen op de juiste grootte
@@ -376,7 +397,7 @@ namespace NexusPen
             {
                 hover = it;
                 RenderNow();
-                if (it != null && !string.IsNullOrEmpty(it.Tip))
+                if (it != null && !string.IsNullOrEmpty(it.Tip) && ov.Cfg.ShowTips)
                 {
                     Point at = vertical
                         ? new Point((int)(it.R.Right + 10 * S), (int)(it.R.Y + 6 * S))
@@ -420,7 +441,7 @@ namespace NexusPen
 
         protected void Label(Graphics g, string text, RectangleF r, Color c, float px, bool bold, StringAlignment align)
         {
-            using (Font f = Fonts.Make(UiFont.Name, px * S, bold ? FontStyle.Bold : FontStyle.Regular))
+            using (Font f = UiFont.Make(px * S, bold))
             using (SolidBrush b = new SolidBrush(c))
             using (StringFormat sf = new StringFormat())
             {
@@ -454,7 +475,7 @@ namespace NexusPen
 
         protected float TextWidth(string text, float px)
         {
-            using (Font f = Fonts.Make(UiFont.Name, px * S, FontStyle.Bold))
+            using (Font f = UiFont.Make(px * S, true))
             using (Graphics g = CreateGraphics()) return g.MeasureString(text, f).Width;
         }
 
@@ -489,5 +510,12 @@ namespace NexusPen
     static class UiFont
     {
         public static string Name { get { return "Segoe UI"; } }
+
+        // Vet wordt Semibold: rustiger en minder dik, zoals in het ontwerp
+        public static Font Make(float px, bool bold)
+        {
+            if (bold && Fonts.Has("Segoe UI Semibold")) return Fonts.Make("Segoe UI Semibold", px, FontStyle.Regular);
+            return Fonts.Make(Name, px, bold ? FontStyle.Bold : FontStyle.Regular);
+        }
     }
 }

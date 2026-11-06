@@ -330,3 +330,6 @@ Rechthoek (om te lezen) | Rectangle (for reading) | Rectangle (pour lire) | Rect
 NexusPen afsluiten. Je tekening wordt eerst bewaard | Quit NexusPen. Your drawing is saved first | Quitter NexusPen. Votre dessin est d'abord enregistré | Salir de NexusPen. Tu dibujo se guarda primero
 NexusPen afsluiten? Wil je je tekening de volgende keer terugzien, druk dan eerst op Opslaan. | Quit NexusPen? If you want to see your drawing again next time, press Save first. | Quitter NexusPen ? Si vous voulez retrouver votre dessin la prochaine fois, appuyez d'abord sur Enregistrer. | ¿Salir de NexusPen? Si quieres ver tu dibujo la próxima vez, pulsa primero Guardar.
 NexusPen afsluiten? | Quit NexusPen? | Quitter NexusPen ? | ¿Salir de NexusPen?
+Wat doet elke knop | What each button does | À quoi sert chaque bouton | Qué hace cada botón
+Uitleg bij de knoppen | Button explanations | Explications des boutons | Explicación de los botones
+Een tekstje tonen als je met de muis over een knop gaat | Show a short text when the mouse is over a button | Afficher un petit texte quand la souris passe sur un bouton | Mostrar un texto corto cuando el ratón pasa por un botón

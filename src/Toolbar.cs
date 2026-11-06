@@ -240,7 +240,7 @@ namespace NexusPen
             if (overflow.Count > 0)
             {
                 AddSep(ref pos, cross, thick);
-                float ow = vertical ? bh : bw + 8 * S;
+                float ow = vertical ? bh : bw;
                 Item more = Add(Rect(pos, cross, ow, Cross(bw, bh)), L.F("Nog {0} knoppen", overflow.Count), delegate { ToggleOverflow(); });
                 more.Paint = PaintOverflow;
                 byKey["meer"] = more;
@@ -408,13 +408,16 @@ namespace NexusPen
         {
             Theme t = T;
             bool open = IsOpen(colorPopup);
-            using (SolidBrush b = new SolidBrush(h || open ? (t.IsLight ? ColorTranslator.FromHtml("#E4E4E7") : ColorTranslator.FromHtml("#3F3F46")) : t.Chip))
-            using (GraphicsPath gp = Svg.RoundRect(it.R, 9 * S)) g.FillPath(b, gp);
-            float d = 18 * S * (BW / (38 * S));
-            float cx = it.R.X + it.R.Width / 2, cy = it.R.Y + it.R.Height / 2;
-            using (SolidBrush b = new SolidBrush(t.IsLight ? Color.Black : Color.White)) g.FillEllipse(b, cx - d / 2 - 3.5f * S, cy - d / 2 - 3.5f * S, d + 7 * S, d + 7 * S);
-            using (SolidBrush b = new SolidBrush(t.Chip)) g.FillEllipse(b, cx - d / 2 - 2 * S, cy - d / 2 - 2 * S, d + 4 * S, d + 4 * S);
-            using (SolidBrush b = new SolidBrush(ov.CurrentColor)) g.FillEllipse(b, cx - d / 2, cy - d / 2, d, d);
+            // net als de andere knoppen: alleen een achtergrond als je erover beweegt of als het venster open is
+            if (h || open)
+                using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(it.R, 9 * S)) g.FillPath(b, gp);
+            // even groot als een icoontje: een ring en een gekleurd rondje binnen de maat van IconSize
+            float outer = Px(IconSize), ring = Math.Max(1, Px(1.5f * S)), gap = Math.Max(1, Px(1.5f * S));
+            float cx = Px(it.R.X + it.R.Width / 2), cy = Px(it.R.Y + it.R.Height / 2);
+            RectangleF ro = new RectangleF(cx - outer / 2, cy - outer / 2, outer, outer);
+            using (Pen p = new Pen(t.Icon, ring)) g.DrawEllipse(p, RectangleF.Inflate(ro, -ring / 2, -ring / 2));
+            float inner = outer - 2 * (ring + gap);
+            using (SolidBrush b = new SolidBrush(ov.CurrentColor)) g.FillEllipse(b, cx - inner / 2, cy - inner / 2, inner, inner);
         }
 
         void PaintShapeButton(Graphics g, Item it, bool h)
@@ -441,22 +444,12 @@ namespace NexusPen
 
         void PaintOverflow(Graphics g, Item it, bool h)
         {
+            // gewoon een knop met pijltjes, zoals de andere knoppen (zonder rand en zonder getal)
             Theme t = T;
             bool open = IsOpen(overflowPopup);
-            using (SolidBrush b = new SolidBrush(open || h ? (t.IsLight ? ColorTranslator.FromHtml("#E4E4E7") : ColorTranslator.FromHtml("#3F3F46")) : t.Chip))
-            using (GraphicsPath gp = Svg.RoundRect(it.R, 9 * S)) g.FillPath(b, gp);
-            using (Pen p = new Pen(t.Accent, 1.5f * S)) using (GraphicsPath gp = Svg.RoundRect(RectangleF.Inflate(it.R, -0.75f * S, -0.75f * S), 9 * S)) g.DrawPath(p, gp);
-            float half = it.R.Width / 2;
-            if (vertical)
-            {
-                Icons.Draw(g, "neer", new RectangleF(it.R.X, it.R.Y + 1 * S, it.R.Width, it.R.Height * 0.5f), 14 * S, t.Text, 2.2f);
-                Label(g, overflow.Count.ToString(), new RectangleF(it.R.X, it.R.Y + it.R.Height * 0.42f, it.R.Width, it.R.Height * 0.55f), t.Text, 12, true, StringAlignment.Center);
-            }
-            else
-            {
-                Icons.Draw(g, "meer", new RectangleF(it.R.X + 3 * S, it.R.Y, half, it.R.Height), 15 * S, t.Text, 2.2f);
-                Label(g, overflow.Count.ToString(), new RectangleF(it.R.X + half - 2 * S, it.R.Y, half, it.R.Height), t.Text, 13, true, StringAlignment.Center);
-            }
+            if (h || open)
+                using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(it.R, 9 * S)) g.FillPath(b, gp);
+            Icons.Draw(g, vertical ? "neer" : "meer", it.R, IconSize, t.Icon, StrokeW);
         }
 
         // ---- inkorten met het sleeprandje
@@ -489,8 +482,9 @@ namespace NexusPen
                 Invalidate();
                 return;
             }
+            HoverCheck();
             bool hh = handleItem != null && RectangleF.Inflate(handleItem.R, 4 * S, 4 * S).Contains(e.Location);
-            if (hh != hoverHandle) { hoverHandle = hh; Invalidate(); if (hh) tip.Show(handleItem.Tip, this, TipPoint(handleItem), 2500); }
+            if (hh != hoverHandle) { hoverHandle = hh; Invalidate(); if (hh && ov.Cfg.ShowTips) tip.Show(handleItem.Tip, this, TipPoint(handleItem), 2500); }
             base.OnMouseMove(e);
             if (hh) Cursor = vertical ? Cursors.SizeNS : Cursors.SizeWE;
         }
@@ -564,6 +558,8 @@ namespace NexusPen
         void TogglePopup<T2>(ref T2 popup, string key) where T2 : BarForm
         {
             bool open = IsOpen(popup);
+            // al open door erover te bewegen: een klik laat hem gewoon open (dan sluit hij niet meer vanzelf)
+            if (open && popup != null && (object)popup == (object)hoverPopup) { hoverPopup = null; return; }
             ClosePopups();
             if (open) return;
             if (popup == null || popup.IsDisposed)
@@ -609,6 +605,79 @@ namespace NexusPen
             ClosePopups();
             Point k = Location; Rebuild(); Location = k;
             ov.RefreshSettingsWindow();
+        }
+
+        // ---- vensters openen door er alleen over te bewegen (vormen, kleur, stempel, bord)
+        System.Windows.Forms.Timer hoverOpen, hoverClose;
+        string hoverKey;
+        BarForm hoverPopup;
+        string hoverPopupKey;
+        int leaveTicks;
+
+        static bool HasPopup(string k) { return k == "vormen" || k == "kleur" || k == "stempel" || k == "bord"; }
+
+        void HoverCheck()
+        {
+            string k = hover != null ? hover.Key : null;
+            if (k != null && HasPopup(k))
+            {
+                if (k == hoverKey) return;
+                hoverKey = k;
+                if (hoverOpen == null)
+                {
+                    hoverOpen = new System.Windows.Forms.Timer(); hoverOpen.Interval = 280;
+                    hoverOpen.Tick += delegate { hoverOpen.Stop(); if (hover != null && hover.Key == hoverKey) OpenByHover(hoverKey); };
+                }
+                hoverOpen.Stop(); hoverOpen.Start();
+            }
+            else { hoverKey = null; if (hoverOpen != null) hoverOpen.Stop(); }
+        }
+
+        void OpenByHover(string k)
+        {
+            BarForm f = k == "vormen" ? (BarForm)shapePopup : k == "kleur" ? (BarForm)colorPopup : k == "stempel" ? (BarForm)stampPopup : boardPopup;
+            if (IsOpen(f)) return;
+            switch (k)
+            {
+                case "vormen": TogglePopup(ref shapePopup, k); f = shapePopup; break;
+                case "kleur": TogglePopup(ref colorPopup, k); f = colorPopup; break;
+                case "stempel": TogglePopup(ref stampPopup, k); f = stampPopup; break;
+                default: TogglePopup(ref boardPopup, k); f = boardPopup; break;
+            }
+            hoverPopup = f; hoverPopupKey = k; leaveTicks = 0;
+            if (hoverClose == null)
+            {
+                hoverClose = new System.Windows.Forms.Timer(); hoverClose.Interval = 150;
+                hoverClose.Tick += delegate { HoverCloseTick(); };
+            }
+            hoverClose.Start();
+        }
+
+        // Ben je met de muis weg van de knop en het venster, dan gaat het venster na een halve seconde dicht
+        void HoverCloseTick()
+        {
+            if (hoverPopup == null || hoverPopup.IsDisposed || !hoverPopup.Visible) { hoverPopup = null; hoverClose.Stop(); return; }
+            Point m = Control.MousePosition;
+            // het venster, de knop, en de strook ertussen
+            Rectangle pr = hoverPopup.Bounds, br = byKey.ContainsKey(hoverPopupKey) ? ScreenRect(hoverPopupKey) : Bounds;
+            pr.Inflate((int)(10 * S), (int)(10 * S)); br.Inflate((int)(4 * S), (int)(4 * S));
+            bool over = pr.Contains(m) || br.Contains(m);
+            // de strook tussen knop en venster (zo breed als de knop), zodat je er rustig naartoe kunt
+            Rectangle bridge = vertical ? Rectangle.FromLTRB(Math.Min(br.Right, pr.Left), br.Top, Math.Max(br.Right, pr.Left), br.Bottom)
+                                        : Rectangle.FromLTRB(br.Left, Math.Min(br.Bottom, pr.Top), br.Right, Math.Max(br.Bottom, pr.Top));
+            if (over || bridge.Contains(m)) { leaveTicks = 0; return; }
+            if (++leaveTicks >= 4) { hoverPopup.Hide(); hoverPopup = null; hoverClose.Stop(); Invalidate(); }
+        }
+
+        // De uitleg van een knop (voor de pagina "Wat doet elke knop" in Instellingen)
+        public string TipFor(string key)
+        {
+            Item old;
+            bool had = byKey.TryGetValue(key, out old);
+            Item it = AddButton(key, new RectangleF(0, 0, 1, 1));
+            items.Remove(it);
+            if (had) byKey[key] = old; else byKey.Remove(key);
+            return it.Tip ?? "";
         }
 
         // Kleine vensters alvast klaarzetten (onzichtbaar), zodat ze bij de eerste klik meteen openen
@@ -761,8 +830,6 @@ namespace NexusPen
             W.KeepOnTop(Handle);
         }
 
-        Point moveStart;
-
         // Na het slepen: tegen de zijkant = staand, tegen boven of onder = liggend
         void AutoOrientation()
         {
@@ -819,23 +886,8 @@ namespace NexusPen
         // Klik op het icoon in de taakbalk: in- of uitklappen
         protected override void WndProc(ref Message m)
         {
-            const int WM_SYSCOMMAND = 0x0112, SC_MINIMIZE = 0xF020, WM_MOVING = 0x0216, WM_EXITSIZEMOVE = 0x0232;
+            const int WM_SYSCOMMAND = 0x0112, SC_MINIMIZE = 0xF020, WM_EXITSIZEMOVE = 0x0232;
             if (m.Msg == WM_SYSCOMMAND && (m.WParam.ToInt32() & 0xFFF0) == SC_MINIMIZE) { ov.CollapseAll(); m.Result = IntPtr.Zero; return; }
-            if (m.Msg == WM_MOVING)
-            {
-                // tijdens het slepen: dicht bij de rand van het scherm klikt de balk er tegenaan
-                W.RECT r = (W.RECT)Marshal.PtrToStructure(m.LParam, typeof(W.RECT));
-                Rectangle wa = Screen.FromPoint(Control.MousePosition).WorkingArea;
-                int th = (int)(22 * S), w = r.Right - r.Left, h = r.Bottom - r.Top;
-                if (Math.Abs(r.Left - wa.Left) < th) { r.Left = wa.Left; r.Right = r.Left + w; }
-                else if (Math.Abs(wa.Right - r.Right) < th) { r.Right = wa.Right; r.Left = r.Right - w; }
-                if (Math.Abs(r.Top - wa.Top) < th) { r.Top = wa.Top; r.Bottom = r.Top + h; }
-                else if (Math.Abs(wa.Bottom - r.Bottom) < th) { r.Bottom = wa.Bottom; r.Top = r.Bottom - h; }
-                Marshal.StructureToPtr(r, m.LParam, false);
-                m.Result = new IntPtr(1);
-                return;
-            }
-            if (m.Msg == 0x0231) moveStart = Location;   // WM_ENTERSIZEMOVE
             if (m.Msg == WM_EXITSIZEMOVE) { base.WndProc(ref m); try { BeginInvoke((MethodInvoker)AutoOrientation); } catch { } return; }
             base.WndProc(ref m);
         }
@@ -848,7 +900,7 @@ namespace NexusPen
         {
             ContextMenuStrip m = new ContextMenuStrip();
             m.ShowImageMargin = false;
-            m.Font = Fonts.Make(UiFont.Name, 13 * Math.Max(1f, W.UiScaleAt(Control.MousePosition)), FontStyle.Bold);
+            m.Font = UiFont.Make(13 * Math.Max(1f, W.UiScaleAt(Control.MousePosition)), true);
             m.Renderer = new MenuRenderer(t);
             m.BackColor = t.Bar;
             m.ForeColor = t.Text;

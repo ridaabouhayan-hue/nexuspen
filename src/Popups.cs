@@ -106,7 +106,7 @@ namespace NexusPen
             base.OnMouseMove(e);
             int idx;
             if (hover != before && hover != null && tipFor.TryGetValue(hover, out idx))
-                tip.Show(L.T(Palette.Labels[ov.PaletteIndex][idx]) + (Shortcuts.ColorCombo(idx).Length > 0 ? "  (" + Shortcuts.ColorCombo(idx) + ")" : ""), this, new Point((int)hover.R.X, (int)(hover.R.Bottom + 4 * S)), 2500);
+                if (ov.Cfg.ShowTips) tip.Show(L.T(Palette.Labels[ov.PaletteIndex][idx]) + (Shortcuts.ColorCombo(idx).Length > 0 ? "  (" + Shortcuts.ColorCombo(idx) + ")" : ""), this, new Point((int)hover.R.X, (int)(hover.R.Bottom + 4 * S)), 2500);
         }
 
         protected override bool OnPress(MouseEventArgs e)
@@ -427,31 +427,41 @@ namespace NexusPen
     class Lipje : BarForm
     {
         Toolbar bar;
-        bool vert;
+        int edge;   // aan welke rand: 0 links, 1 boven, 2 rechts, 3 onder
+        bool vert { get { return edge == 0 || edge == 2; } }
 
         public Lipje(Overlay o, Toolbar b) : base(o) { bar = b; Text = "NexusPen"; }
 
         public void Place(Rectangle barBounds, bool vertical)
         {
-            vert = vertical;
             S = W.UiScaleAt(barBounds.Location);
+            Rectangle wa = Screen.FromRectangle(barBounds).WorkingArea;
+            Point c = new Point(barBounds.Left + barBounds.Width / 2, barBounds.Top + barBounds.Height / 2);
+            // staande balk naar de dichtstbijzijnde zijkant, liggende naar boven of onder
+            if (vertical) edge = c.X - wa.Left <= wa.Right - c.X ? 0 : 2;
+            else edge = c.Y - wa.Top <= wa.Bottom - c.Y ? 1 : 3;
             Rebuild();
-            Screen sc = Screen.FromRectangle(barBounds);
-            Rectangle bnd = sc.Bounds;
-            if (vertical) Location = new Point(bnd.Left, Math.Max(bnd.Top, Math.Min(bnd.Bottom - Height, barBounds.Top + barBounds.Height / 2 - Height / 2)));
-            else Location = new Point(Math.Max(bnd.Left, Math.Min(bnd.Right - Width, barBounds.Left + barBounds.Width / 2 - Width / 2)), bnd.Top);
+            PutAt(c, wa);
+        }
+
+        void PutAt(Point c, Rectangle wa)
+        {
+            int x, y;
+            if (vert) { x = edge == 0 ? wa.Left : wa.Right - Width; y = Math.Max(wa.Top, Math.Min(wa.Bottom - Height, c.Y - Height / 2)); }
+            else { y = edge == 1 ? wa.Top : wa.Bottom - Height; x = Math.Max(wa.Left, Math.Min(wa.Right - Width, c.X - Width / 2)); }
+            Location = new Point(x, y);
         }
 
         public void Restyle() { Point k = Location; Rebuild(); Location = k; }
 
-        // Lipje langs de rand slepen; gewoon klikken = de balk komt terug
+        // Lipje slepen naar elke rand van het scherm; gewoon klikken = de balk komt terug
         bool pressed, dragged;
-        Point downAt, startLoc;
+        Point downAt;
 
         protected override bool OnPress(MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Left) return false;
-            pressed = true; dragged = false; downAt = Control.MousePosition; startLoc = Location; Capture = true;
+            pressed = true; dragged = false; downAt = Control.MousePosition; Capture = true;
             return true;
         }
 
@@ -463,9 +473,12 @@ namespace NexusPen
             if (!dragged && Math.Abs(m.X - downAt.X) + Math.Abs(m.Y - downAt.Y) < 5) return;
             if (!dragged) bar.LipjeMoved();
             dragged = true;
-            Rectangle sb = Screen.FromPoint(m).Bounds;
-            if (vert) Location = new Point(startLoc.X, Math.Max(sb.Top, Math.Min(sb.Bottom - Height, startLoc.Y + m.Y - downAt.Y)));
-            else Location = new Point(Math.Max(sb.Left, Math.Min(sb.Right - Width, startLoc.X + m.X - downAt.X)), startLoc.Y);
+            Rectangle wa = Screen.FromPoint(m).WorkingArea;
+            int[] d = { m.X - wa.Left, m.Y - wa.Top, wa.Right - m.X, wa.Bottom - m.Y };
+            int best = 0;
+            for (int i = 1; i < 4; i++) if (d[i] < d[best]) best = i;
+            if (best != edge) { edge = best; Rebuild(); }
+            PutAt(m, wa);
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
@@ -489,44 +502,41 @@ namespace NexusPen
         protected override void Build()
         {
             ClientSize = vert ? new Size((int)(38 * S), (int)(34 * S)) : new Size((int)(34 * S), (int)(38 * S));
-            Item it = Add(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), L.T("Werkbalk terughalen"), delegate { bar.Undock(); });
+            Item it = Add(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), null, delegate { bar.Undock(); });
             it.Paint = delegate(Graphics g, Item item, bool h)
             {
                 Theme t = T;
+                float W0 = item.R.Width, H0 = item.R.Height;
                 if (h) using (SolidBrush b = new SolidBrush(t.Hover)) g.FillRectangle(b, item.R);
-                RectangleF bar2 = vert ? new RectangleF(4 * S, item.R.Height / 2 - 7 * S, 3 * S, 14 * S) : new RectangleF(item.R.Width / 2 - 7 * S, 4 * S, 14 * S, 3 * S);
+                // oranje streepje aan de randkant, logo ernaast
+                RectangleF bar2 = edge == 0 ? new RectangleF(4 * S, H0 / 2 - 7 * S, 3 * S, 14 * S)
+                    : edge == 2 ? new RectangleF(W0 - 7 * S, H0 / 2 - 7 * S, 3 * S, 14 * S)
+                    : edge == 1 ? new RectangleF(W0 / 2 - 7 * S, 4 * S, 14 * S, 3 * S)
+                    : new RectangleF(W0 / 2 - 7 * S, H0 - 7 * S, 14 * S, 3 * S);
                 using (SolidBrush b = new SolidBrush(t.Accent)) using (GraphicsPath gp = Svg.RoundRect(bar2, 1.5f * S)) g.FillPath(b, gp);
-                RectangleF lr = vert ? new RectangleF(14 * S, (item.R.Height - 20 * S) / 2, 20 * S, 20 * S) : new RectangleF((item.R.Width - 20 * S) / 2, 13 * S, 20 * S, 20 * S);
+                float z = 20 * S;
+                RectangleF lr = edge == 0 ? new RectangleF(14 * S, (H0 - z) / 2, z, z)
+                    : edge == 2 ? new RectangleF(W0 - 14 * S - z, (H0 - z) / 2, z, z)
+                    : edge == 1 ? new RectangleF((W0 - z) / 2, 13 * S, z, z)
+                    : new RectangleF((W0 - z) / 2, H0 - 13 * S - z, z, z);
                 Logo.Draw(g, lr, t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
             };
         }
 
-        // Alleen de kant van het scherm af is rond
-        protected override int ShapeKind { get { return vert ? 1 : 2; } }
+        // Alleen de kant van het scherm af is rond: de afgeronde rechthoek loopt aan de randkant door buiten het venster
+        protected override int ShapeKind { get { return 1 + edge; } }
         protected override GraphicsPath ShapePath(float w, float h) { return LipShape(w, h, 0); }
         protected override GraphicsPath BorderPath(float w, float h, float bw) { return LipShape(w, h, bw / 2); }
 
         GraphicsPath LipShape(float w, float h, float i)
         {
-            float r = 10 * S - i;
-            GraphicsPath gp = new GraphicsPath();
-            // aan de schermrand loopt de vorm 1 pixel door, zodat daar geen randje te zien is
-            RectangleF b = vert ? RectangleF.FromLTRB(-i - 1, i, w - i, h - i) : RectangleF.FromLTRB(i, -i - 1, w - i, h - i);
-            if (vert)
-            {
-                gp.AddLine(b.X, b.Y, b.Right - r, b.Y);
-                gp.AddArc(b.Right - 2 * r, b.Y, 2 * r, 2 * r, 270, 90);
-                gp.AddArc(b.Right - 2 * r, b.Bottom - 2 * r, 2 * r, 2 * r, 0, 90);
-                gp.AddLine(b.Right - r, b.Bottom, b.X, b.Bottom);
-            }
-            else
-            {
-                gp.AddLine(b.X, b.Y, b.Right, b.Y);
-                gp.AddArc(b.Right - 2 * r, b.Bottom - 2 * r, 2 * r, 2 * r, 0, 90);
-                gp.AddArc(b.X, b.Bottom - 2 * r, 2 * r, 2 * r, 90, 90);
-            }
-            gp.CloseFigure();
-            return gp;
+            float r = 10 * S, out1 = r + 2;
+            RectangleF b = RectangleF.FromLTRB(i, i, w - i, h - i);
+            if (edge == 0) b = RectangleF.FromLTRB(-out1, i, w - i, h - i);
+            else if (edge == 2) b = RectangleF.FromLTRB(i, i, w + out1, h - i);
+            else if (edge == 1) b = RectangleF.FromLTRB(i, -out1, w - i, h - i);
+            else b = RectangleF.FromLTRB(i, i, w - i, h + out1);
+            return Svg.RoundRect(b, r - i);
         }
     }
 
@@ -669,7 +679,7 @@ namespace NexusPen
             Theme t = T;
             Icons.Draw(g, "foto", new RectangleF(14 * S, 0, 20 * S, ClientSize.Height), 18 * S, t.Accent, 2f);
             using (Font f = Fonts.Make(UiFont.Name, 13 * S, FontStyle.Regular))
-            using (Font fb = Fonts.Make(UiFont.Name, 13 * S, FontStyle.Bold))
+            using (Font fb = UiFont.Make(13 * S, true))
             using (SolidBrush b = new SolidBrush(t.Text))
             {
                 float x = 44 * S, y = (ClientSize.Height - f.GetHeight(g)) / 2;

@@ -53,6 +53,7 @@ namespace NexusPen
         public int ShortcutMode = 0;            // Ctrl+Shift + letter, alleen een letter, uit
         public string ShortcutOverrides = "";   // actie=combinatie;actie=combinatie
         // gebruik
+        public bool ShowTips = false;           // uitleg tonen als je met de muis over een knop gaat
         public bool Usage = true;
         public int UsageCats = 127;
 

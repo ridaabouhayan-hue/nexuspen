@@ -13,9 +13,9 @@ namespace NexusPen
     // ------------------------------------------------------------------ Instellingen (eigen tekenwerk, volgt het thema, alle teksten vertaald)
     class SettingsForm : Form
     {
-        public static readonly string[] PageIds = { "Algemeen", "Taal", "Uiterlijk", "Werkbalk", "Pen", "Tekst", "Stempels", "Bord", "Voorlezen", "Sneltoetsen", "Opslaan", "Schermdelen", "Gebruik", "Hulp" };
-        static readonly string[] PageNames = { "Algemeen", "Taal", "Uiterlijk", "Werkbalk", "Pen en kleuren", "Tekst", "Stempels", "Bord en achtergrond", "Voorlezen", "Sneltoetsen", "Opslaan", "Schermdelen", "Gebruik", "Hulp en foutlog" }; // vertaal
-        static readonly string[] PageIcons = { "huis", "taal", "kleuren", "rechthoek", "pen", "tekst", "stempel", "bord", "voorlezen", "toetsen", "opslaan", "schermdelen", "grafiek", "info" };
+        public static readonly string[] PageIds = { "Algemeen", "Taal", "Uiterlijk", "Werkbalk", "Pen", "Tekst", "Stempels", "Bord", "Voorlezen", "Sneltoetsen", "Opslaan", "Schermdelen", "Gebruik", "Knoppen", "Hulp" };
+        static readonly string[] PageNames = { "Algemeen", "Taal", "Uiterlijk", "Werkbalk", "Pen en kleuren", "Tekst", "Stempels", "Bord en achtergrond", "Voorlezen", "Sneltoetsen", "Opslaan", "Schermdelen", "Gebruik", "Wat doet elke knop", "Hulp en foutlog" }; // vertaal
+        static readonly string[] PageIcons = { "huis", "taal", "kleuren", "rechthoek", "pen", "tekst", "stempel", "bord", "voorlezen", "toetsen", "opslaan", "schermdelen", "grafiek", "muis", "info" };
         static readonly string[] FontChoices = { "Segoe UI", "Andika", "Atkinson Hyperlegible", "Lexend", "Nunito", "Patrick Hand" };
         static readonly string[] FontDescs = { "Standaard van Windows", "Gemaakt voor beginnende lezers en Alfa", "Extra goed leesbaar, ook voor slechtzienden", "Rustig en ruim, prettig bij lange zinnen", "Rond en vriendelijk, de huisstijl van Nexus", "Handschrift, toch goed te lezen" }; // vertaal
 
@@ -109,7 +109,7 @@ namespace NexusPen
         }
 
         // ---- tekenhulpjes
-        Font F(float px, bool bold) { return Fonts.Make(UiFont.Name, px * S, bold ? FontStyle.Bold : FontStyle.Regular); }
+        Font F(float px, bool bold) { return UiFont.Make(px * S, bold); }
 
         // Tekst via Windows zelf (ClearType): scherp en met de normale letterafstand
         void Txt(Graphics g, string text, RectangleF r, Color c, float px, bool bold, StringAlignment align, bool wrap)
@@ -298,6 +298,7 @@ namespace NexusPen
                 case "Opslaan": BuildSave(); break;
                 case "Schermdelen": BuildShare(); break;
                 case "Gebruik": BuildUsage(); break;
+                case "Knoppen": BuildButtons(); break;
                 case "Hulp": BuildHelp(); break;
             }
         }
@@ -896,9 +897,35 @@ namespace NexusPen
             }, false);
         }
 
+        // Uitleg bij elke knop van de werkbalk (in plaats van een tekstje als je erover beweegt)
+        void BuildButtons()
+        {
+            float y = Heading(contentTop, L.T("Wat doet elke knop"), null);
+            string[] keys = Toolbar.Catalog;
+            int rows = (keys.Length + 1) / 2;
+            float colW = (contentW - 20 * S) / 2, rowH = 46 * S;
+            for (int i = 0; i < keys.Length; i++)
+            {
+                string k = keys[i];
+                float x = contentX + (i / rows) * (colW + 20 * S), yy = y + (i % rows) * rowH;
+                string name = Toolbar.NameOf(k);
+                string tipText = ov.Bar != null ? ov.Bar.TipFor(k) : "";
+                Later(delegate(Graphics g)
+                {
+                    Theme t = T;
+                    if (k == "kleur")
+                        using (SolidBrush b = new SolidBrush(ov.CurrentColor)) g.FillEllipse(b, x + 2 * S, yy + 4 * S, 16 * S, 16 * S);
+                    else Icons.Draw(g, Toolbar.IconOf(k), new RectangleF(x, yy + 2 * S, 20 * S, 20 * S), 18 * S, t.Icon, 2f);
+                    Txt(g, name, new RectangleF(x + 30 * S, yy, colW - 30 * S, 22 * S), t.Text, 13, true, StringAlignment.Near, false);
+                    Txt(g, tipText, new RectangleF(x + 30 * S, yy + 20 * S, colW - 30 * S, rowH - 20 * S), t.Muted, 11, false, StringAlignment.Near, true);
+                });
+            }
+        }
+
         void BuildHelp()
         {
             float y = Heading(contentTop, L.T("Hulp en foutlog"), "NexusPen " + Program.Version + ", Nexus of Language");
+            y = Toggle(y, L.T("Uitleg bij de knoppen"), L.T("Een tekstje tonen als je met de muis over een knop gaat"), delegate { return Cfg.ShowTips; }, delegate(bool v) { Cfg.ShowTips = v; }) + 8 * S;
             y = Para(y, L.T("Loopt er iets vast? Druk op Esc: je bent dan altijd terug bij de muis. Werkt dat niet, rechtsklik dan op het logo bij de klok en kies Noodstop. Is je tekening weg, kies daar Vorige tekening terughalen."), 64 * S);
             float bx = contentX;
             bx += Button(bx, y + 6 * S, L.T("Foutlog openen"), "info", delegate

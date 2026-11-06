@@ -1174,6 +1174,16 @@ namespace NexusPen
                 TypingKey(new KeyEventArgs(Keys.Enter));
                 foreach (char ch in "Één, twee: café!") OnKeyPress(new KeyPressEventArgs(ch));
                 if (typing == null || typing.Text != "Ik ga met de trein.\nÉén, twee: café!") { Program.SelfTestErrors++; Console.Error.WriteLine("Typen werkt niet"); }
+                // tekst met rand in alle lettertypes: geen zwarte vakjes in letters als de t
+                float ty = 40;
+                foreach (string fn in new string[] { "Andika", "Nunito", "Lexend", "Atkinson Hyperlegible", "Patrick Hand", "Segoe UI" })
+                {
+                    Stroke ts = new Stroke(); ts.Tool = Tool.Text; ts.Text = "testen " + fn; ts.FontName = fn; ts.FontSize = 40;
+                    ts.Color = ColorTranslator.FromHtml("#FF8000"); ts.Outline = true; ts.OutlineWidth = 2; ts.OutlineColor = 0;
+                    ts.Pts.Add(new PointF(40, 120 + ty)); ty += 52;
+                    strokes.Add(ts);
+                }
+                Rebuild();
             }
             catch (Exception ex) { Program.SelfTestErrors++; Log.Error("Zelftest typen", ex); Console.Error.WriteLine(ex); }
         }
@@ -1323,9 +1333,8 @@ namespace NexusPen
             if (on) ex &= ~W.WS_EX_TRANSPARENT; else ex |= W.WS_EX_TRANSPARENT;
             W.SetWindowLong(Handle, W.GWL_EXSTYLE, ex);
             if (!on) { current = null; erasing = false; CloseTextInput(true); Deselect(); Usage.ToolChanged("Mouse"); }
-            // Met de muis werk je op je gewone scherm: het bord gaat even weg en komt terug zodra je weer tekent
-            if (!on && BoardMode != Board.None) { boardBeforeMouse = BoardMode; SetBoard(Board.None, false); }
-            else if (on && boardBeforeMouse != Board.None) { Board b = boardBeforeMouse; boardBeforeMouse = Board.None; SetBoard(b, false); }
+            // Met de muis werk je op je gewone scherm: het bord gaat weg. Het komt pas terug als je zelf weer een bord kiest.
+            if (!on && BoardMode != Board.None) SetBoard(Board.None, false);
             Rebuild();
             RenderFrame();
             if (on) Activate();
@@ -1365,8 +1374,8 @@ namespace NexusPen
             ColorIndex = Math.Max(0, Math.Min(9, i));
             Usage.Log("kleur", Palette.Labels[PaletteIndex][ColorIndex], "");
             if (selected != null) { RecolorSelected(CurrentColor); return; }
-            if (!DrawMode || CurrentTool == Tool.Eraser || CurrentTool == Tool.Focus || CurrentTool == Tool.Stamp)
-                SetTool(CurrentTool == Tool.Eraser || CurrentTool == Tool.Mouse || CurrentTool == Tool.Focus || CurrentTool == Tool.Stamp ? LastDrawTool : CurrentTool);
+            // alleen de kleur: geen ander gereedschap en geen bord erbij (dat kies je zelf)
+            Cfg.ColorIndex = ColorIndex;
             RefreshUi();
         }
 
@@ -1502,7 +1511,8 @@ namespace NexusPen
             BoardMode = b;
             strokes = b == Board.None ? screenStrokes : pages[pageIndex];
             if (byUser) Usage.Log("bord", b.ToString(), "");
-            if (byUser && b != Board.None && !DrawMode) SetTool(LastDrawTool);
+            // een bord kiezen zet geen tekengereedschap aan: je komt op Selecteren en kiest zelf wat je nodig hebt
+            if (byUser && b != Board.None && !DrawMode) SetTool(Tool.Select);
             Rebuild();
             RefreshUi();
         }

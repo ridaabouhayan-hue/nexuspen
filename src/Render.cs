@@ -287,7 +287,7 @@ namespace NexusPen
         }
 
         // ---- laser als een neonlicht: brede zachte gloed, felle kleur en een wit-hete kern
-        public static float LaserWidest(float w) { return w * 7 + 18; }
+        public static float LaserWidest(float w) { return w * 4 + 14; }
 
         public static Color Neon(Color c)
         {
@@ -309,15 +309,17 @@ namespace NexusPen
             Color n = Neon(color);
             Func<int, Color, Color> A = delegate(int a, Color c) { return Color.FromArgb(Math.Max(0, Math.Min(255, (int)(a * fade))), c); };
             List<KeyValuePair<Color, float>> l = new List<KeyValuePair<Color, float>>();
-            // de gloed in kleine stapjes, dan zie je geen ringen
-            l.Add(new KeyValuePair<Color, float>(A(10, n), LaserWidest(w)));
-            l.Add(new KeyValuePair<Color, float>(A(14, n), w * 6 + 15));
-            l.Add(new KeyValuePair<Color, float>(A(20, n), w * 5 + 12));
-            l.Add(new KeyValuePair<Color, float>(A(28, n), w * 4 + 9));
-            l.Add(new KeyValuePair<Color, float>(A(45, n), w * 3 + 7));
-            l.Add(new KeyValuePair<Color, float>(A(90, n), w * 2 + 4));
+            // zachte gloed in veel kleine stapjes (van breed en heel licht naar smal), dan zie je geen ringen of vakjes
+            const int steps = 9;
+            float glowOut = LaserWidest(w), glowIn = w + 3;
+            for (int i = 0; i < steps; i++)
+            {
+                float f = (float)i / (steps - 1);
+                l.Add(new KeyValuePair<Color, float>(A(8 + (int)(10 * f), n), glowOut + (glowIn - glowOut) * f));
+            }
+            // de felle lijn zelf, en een wit-hete kern
             l.Add(new KeyValuePair<Color, float>(A(255, n), w + 1.5f));
-            l.Add(new KeyValuePair<Color, float>(A(240, Mix(n, Color.White, 0.8f)), Math.Max(1.2f, w * 0.45f)));
+            l.Add(new KeyValuePair<Color, float>(A(235, Mix(n, Color.White, 0.75f)), Math.Max(1.2f, w * 0.45f)));
             return l;
         }
 
@@ -344,7 +346,9 @@ namespace NexusPen
         // Tekst als vorm, zodat er een nette zwarte rand omheen kan
         static GraphicsPath TextPath(Stroke s)
         {
-            GraphicsPath gp = new GraphicsPath();
+            // Winding: letters die uit stukken bestaan die over elkaar liggen (zoals de t) blijven dicht,
+            // anders kwam de rand als zwarte vakjes in de letter
+            GraphicsPath gp = new GraphicsPath(FillMode.Winding);
             FontFamily ff = Fonts.Family(s.FontName);
             using (StringFormat sf = (StringFormat)StringFormat.GenericTypographic.Clone())
             {
