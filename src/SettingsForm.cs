@@ -114,12 +114,17 @@ namespace NexusPen
         // Tekst via Windows zelf (ClearType): scherp en met de normale letterafstand
         void Txt(Graphics g, string text, RectangleF r, Color c, float px, bool bold, StringAlignment align, bool wrap)
         {
+            Txt(g, text, r, c, px, bold, align, wrap, T.Bar);
+        }
+
+        // bg: de kleur waar de tekst echt op staat, zodat de randjes van de letters goed mengen
+        void Txt(Graphics g, string text, RectangleF r, Color c, float px, bool bold, StringAlignment align, bool wrap, Color bg)
+        {
             if (string.IsNullOrEmpty(text)) return;
             if (c.A < 255)
             {
                 // Windows tekent tekst altijd dekkend: doorzichtige kleur zelf mengen met de achtergrond
-                Color bg = T.Bar; float a = c.A / 255f;
-                c = Color.FromArgb((int)(c.R * a + bg.R * (1 - a)), (int)(c.G * a + bg.G * (1 - a)), (int)(c.B * a + bg.B * (1 - a)));
+                c = Mix(bg, c);
             }
             TextFormatFlags fl = TextFormatFlags.NoPrefix;
             fl |= align == StringAlignment.Center ? TextFormatFlags.HorizontalCenter : align == StringAlignment.Far ? TextFormatFlags.Right : TextFormatFlags.Left;
@@ -127,6 +132,13 @@ namespace NexusPen
             else fl |= TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis;
             Rectangle ri = Rectangle.FromLTRB((int)Math.Round(r.Left), (int)Math.Round(r.Top), (int)Math.Round(r.Right), (int)Math.Round(r.Bottom));
             using (Font f = F(px, bold)) TextRenderer.DrawText(g, text, f, ri, c, fl);
+        }
+
+        // een doorzichtige kleur over een dekkende: wat je echt ziet
+        static Color Mix(Color under, Color over)
+        {
+            float a = over.A / 255f;
+            return Color.FromArgb((int)(over.R * a + under.R * (1 - a)), (int)(over.G * a + under.G * (1 - a)), (int)(over.B * a + under.B * (1 - a)));
         }
 
         float Measure(string text, float px, bool bold)
@@ -233,7 +245,10 @@ namespace NexusPen
                     bool on = get() == idx;
                     if (on) { RoundFill(g, it.R, t.IsLight ? Color.White : ColorTranslator.FromHtml("#3F3F46"), 7); RoundLine(g, RectangleF.Inflate(it.R, -0.75f * S, -0.75f * S), t.Accent, 1.5f, 7); }
                     else if (hv) RoundFill(g, it.R, t.Hover, 7);
-                    Txt(g, options[idx], it.R, on ? t.Text : t.Muted, 12, true, StringAlignment.Center, false);
+                    // op een licht thema is grijs op lichtgrijs te zwak en ziet er rafelig uit: iets donkerder
+                    Color fg = on ? t.Text : t.IsLight ? ColorTranslator.FromHtml("#52525B") : t.Muted;
+                    Color under = on ? (t.IsLight ? Color.White : ColorTranslator.FromHtml("#3F3F46")) : hv ? Mix(Field, t.Hover) : Field;
+                    Txt(g, options[idx], it.R, fg, 12, true, StringAlignment.Center, false, under);
                 });
             }
             return y + h + 2 * S;
