@@ -148,6 +148,10 @@ namespace NexusPen
             {
                 building = true;
                 try { ClientSize = want; } finally { building = false; }
+                // kan intussen naar een ander scherm met een andere schaal zijn gegaan: dan opnieuw de goede maat nemen
+                want = wantSize.IsEmpty ? ClientSize : wantSize;
+                w = want.Width; h = want.Height;
+                if (w <= 0 || h <= 0) return;
             }
             try
             {

@@ -64,7 +64,7 @@ namespace NexusPen
         NotifyIcon tray;
         // tekst typen, direct op het scherm (zonder tekstvak)
         Stroke typing, typingOld;
-        int typingIndex = -1;
+        int typingIndex = -1, typingUndoCount = -1;
         bool caretOn;
         DateTime caretAt;
         SettingsForm settingsForm;
@@ -373,6 +373,7 @@ namespace NexusPen
 
             // Esc werkt altijd, ook als de tekenlaag niet het actieve venster is
             bool esc = (W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0;
+            if (esc && !lastEsc && DrawMode && typing != null) { CloseTextInput(true); lastEsc = true; return; }   // ook als het toetsenbord ergens anders zat
             if (esc && !lastEsc && DrawMode && typing == null)
             {
                 if (selected != null) Deselect(); else SetTool(Tool.Mouse);
@@ -416,6 +417,7 @@ namespace NexusPen
 
         void SaveNow()
         {
+            if (typingOld != null) return;   // je bent een tekst aan het wijzigen: pas bewaren als die klaar is
             needSave = false;
             StoreActive();
             try
@@ -431,6 +433,7 @@ namespace NexusPen
         // De knop Opslaan: tekening en instellingen vastleggen, en de tekening komt bij de volgende start terug
         public bool SaveExplicit()
         {
+            CloseTextInput(true);
             SyncCfg();
             Cfg.Save();
             needSave = false;
@@ -496,6 +499,7 @@ namespace NexusPen
 
         public void RestorePrevious()
         {
+            CloseTextInput(true);
             if (previousRestored)
             {
                 if (tray != null) tray.ShowBalloonTip(2500, "NexusPen", L.T("De vorige tekening staat er al."), ToolTipIcon.Info);
@@ -537,6 +541,7 @@ namespace NexusPen
                     int ex = W.GetWindowLong(Handle, W.GWL_EXSTYLE);
                     W.SetWindowLong(Handle, W.GWL_EXSTYLE, ex | W.WS_EX_TRANSPARENT);
                 }
+                try { CloseTextInput(true); } catch { typing = null; }
                 DrawMode = false;
                 current = null;
                 erasing = false;
@@ -1171,6 +1176,7 @@ namespace NexusPen
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            try { CloseTextInput(true); } catch (Exception ex) { Log.Error("Tekst afmaken bij afsluiten", ex); }   // getypte tekst niet kwijtraken
             for (int i = 1; i <= 2; i++) W.UnregisterHotKey(Handle, i);
             SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
             timer.Stop();
@@ -1865,6 +1871,7 @@ namespace NexusPen
             if (typing == null) return;
             e.Handled = true;
             if (e.KeyChar < ' ' || e.KeyChar == (char)127) return;
+            if ((Control.ModifierKeys & Keys.Alt) != 0 && (Control.ModifierKeys & Keys.Control) == 0) return;   // Alt+letter is geen letter
             typing.Text = (typing.Text ?? "") + e.KeyChar;
             TypingChanged();
         }
@@ -1891,7 +1898,7 @@ namespace NexusPen
                     }
                     break;
                 case Keys.V:
-                    if (!e.Control) return true;
+                    if (!e.Control || e.Alt) return true;   // AltGr+V is gewoon een letter
                     try
                     {
                         if (Clipboard.ContainsText())
@@ -1975,6 +1982,7 @@ namespace NexusPen
             {
                 // de oude tekst even uit de tekening halen; Ongedaan maken zet hem terug
                 Checkpoint();
+                typingUndoCount = undo.Count;
                 typingIndex = strokes.IndexOf(editing);
                 if (typingIndex >= 0) strokes.RemoveAt(typingIndex);
                 typingOld = editing;
@@ -2031,10 +2039,12 @@ namespace NexusPen
                 if (!commit || t.Text == typingOld.Text)
                 {
                     strokes.Insert(i, typingOld);
-                    if (undo.Count > 0) undo.RemoveAt(undo.Count - 1);   // er is niets veranderd
+                    // er is niets veranderd: de stap voor Ongedaan maken weer weghalen (alleen als hij nog bovenop ligt)
+                    if (undo.Count > 0 && undo.Count == typingUndoCount) undo.RemoveAt(undo.Count - 1);
                 }
                 else if (!empty) strokes.Insert(i, t);
-                typingOld = null; typingIndex = -1;
+                typingOld = null; typingIndex = -1; typingUndoCount = -1;
+                MarkChanged();
                 Rebuild();
                 return;
             }
