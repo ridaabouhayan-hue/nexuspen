@@ -394,7 +394,9 @@ namespace NexusPen
                 double life = Cfg.FadeSeconds * 1000.0 + 1000;
                 fading.RemoveAll(delegate(Stroke s) { return (now - s.Born).TotalMilliseconds > life; });
                 if (fading.Count != before) pendingDirty = full2();
-                dirty = true;
+                // alleen opnieuw tekenen als er echt iets aan het verdwijnen is (niet tijdens de wachttijd)
+                foreach (Stroke s in lasers) if (Animating(s, true, now)) { dirty = true; break; }
+                if (!dirty) foreach (Stroke s in fading) if (Animating(s, false, now)) { dirty = true; break; }
             }
             if (dirty) RenderFrame();
 
@@ -447,16 +449,16 @@ namespace NexusPen
         void SaveNow()
         {
             if (typingOld != null) return;   // je bent een tekst aan het wijzigen: pas bewaren als die klaar is
-            needSave = false;
             StoreActive();
             try
             {
                 StrokeStore.Save(screenStrokes, StrokeStore.CurrentPath);
                 StrokeStore.SaveBoard(pages);
+                needSave = false;   // pas na gelukt; anders probeert de timer het straks opnieuw
                 autoSavedAt = DateTime.Now;
                 if (BoardMode != Board.None && DrawMode) RebuildArea(BoardInfoRect());   // alleen de regel "Automatisch bewaard" bijwerken
             }
-            catch (Exception ex) { Log.Error("Tekening bewaren mislukt", ex); }
+            catch (Exception ex) { Log.Error("Tekening bewaren mislukt", ex); changedAt = DateTime.Now.AddSeconds(5); }   // over ongeveer 6 s nog eens
         }
 
         // De knop Opslaan: tekening en instellingen vastleggen, en de tekening komt bij de volgende start terug
@@ -541,7 +543,10 @@ namespace NexusPen
                 if (tray != null) tray.ShowBalloonTip(2500, "NexusPen", L.T("Er is geen vorige tekening gevonden."), ToolTipIcon.Info);
                 return;
             }
-            Checkpoint();
+            // alleen schermtekening terug en je zit niet op het bord: dan kan Ongedaan maken het weer weghalen.
+            // Anders verandert er meer dan een lijst; dan beginnen Ongedaan maken en Opnieuw vanaf hier.
+            bool simple = BoardMode == Board.None && prevPages.Count == 0;
+            if (simple) Checkpoint(); else { MarkChanged(); undo.Clear(); redo.Clear(); }
             StoreActive();
             screenStrokes.AddRange(prev);
             if (prevPages.Count > 0)
@@ -627,6 +632,15 @@ namespace NexusPen
             if (perfForceRender || Perf.Now - lastRenderAt >= 4) RenderFrame();
         }
 
+        // Is deze laser- of vervaaglijn net nieuw of aan het verdwijnen? In de wachttijd ertussen staat hij al
+        // op het beeld, en wordt hij alleen opnieuw getekend waar iets anders over hem heen verandert.
+        bool Animating(Stroke s, bool laser, DateTime now)
+        {
+            double age = (now - s.Born).TotalMilliseconds;
+            if (age < 400) return true;
+            return laser ? age > 700 : age > Cfg.FadeSeconds * 1000.0;
+        }
+
         void RenderFrame()
         {
             dirty = false;
@@ -638,8 +652,9 @@ namespace NexusPen
             Rectangle transient = Rectangle.Empty;
             bool wet = IsWet(current);
             if (current != null && !wet) transient = U(transient, StrokeBounds(current));
-            foreach (Stroke s in lasers) transient = U(transient, StrokeBounds(s));
-            foreach (Stroke s in fading) transient = U(transient, StrokeBounds(s));
+            DateTime nowT = DateTime.Now;
+            foreach (Stroke s in lasers) if (Animating(s, true, nowT)) transient = U(transient, StrokeBounds(s));
+            foreach (Stroke s in fading) if (Animating(s, false, nowT)) transient = U(transient, StrokeBounds(s));
             if (selected != null)
             {
                 RectangleF sb = SelectionBox(); sb.Inflate(3, 3);
@@ -1219,7 +1234,7 @@ namespace NexusPen
             ContextMenu m = new ContextMenu();
             m.MenuItems.Add(L.T("Tekenen aan of uit") + "\t" + Cfg.HotkeyDraw, delegate { ToggleDraw(); });
             m.MenuItems.Add(L.T("Alles in- of uitklappen") + "\t" + Cfg.HotkeyHide, delegate { ToggleAllHidden(); });
-            m.MenuItems.Add(L.T("Opslaan voor de volgende keer") + "\tCtrl+S", delegate { SaveExplicit(); });
+            m.MenuItems.Add(L.T("Opslaan voor de volgende keer") + (Shortcuts.Combo("opslaan").Length > 0 ? "\t" + Shortcuts.Combo("opslaan") : ""), delegate { SaveExplicit(); });
             m.MenuItems.Add(L.T("Schermafbeelding maken"), delegate { Screenshot(); });
             m.MenuItems.Add(L.T("Instellingen..."), delegate { ShowSettings(null); });
             m.MenuItems.Add(L.T("Werkbalk terugzetten"), delegate { if (allHidden) ExpandAll(); toolbar.ResetPosition(); });
@@ -1461,7 +1476,9 @@ namespace NexusPen
 
         public void SetWidth(float w)
         {
-            PenWidth = Math.Max(1, Math.Min(Settings.MaxWidth, w));
+            w = Math.Max(1, Math.Min(Settings.MaxWidth, w));
+            if (Math.Abs(w - PenWidth) < 0.01f) return;   // niets veranderd: niets opnieuw tekenen
+            PenWidth = w;
             if (Cfg.PerToolWidth && HasWidth(CurrentTool)) Cfg.SetWidthFor(CurrentTool, PenWidth);
             RefreshUi();
         }
@@ -1536,10 +1553,9 @@ namespace NexusPen
         }
 
         // ---------- bord en pagina's
-        Board boardBeforeMouse = Board.None;
         List<List<Stroke>> screenUndo = new List<List<Stroke>>(), screenRedo = new List<List<Stroke>>();
 
-        public void SetBoard(Board b) { boardBeforeMouse = Board.None; SetBoard(b, true); }
+        public void SetBoard(Board b) { SetBoard(b, true); }
 
         void SetBoard(Board b, bool byUser)
         {

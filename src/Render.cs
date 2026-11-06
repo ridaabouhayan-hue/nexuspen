@@ -144,8 +144,6 @@ namespace NexusPen
     // ------------------------------------------------------------------ Tekenen van lijnen, vormen, tekst en stempels
     static class Render
     {
-        static readonly Graphics measureG = Graphics.FromImage(new Bitmap(1, 1));
-        static readonly Dictionary<string, bool> installed = new Dictionary<string, bool>();
 
         public static float MarkerWidth(float w) { return w * 3 + 8; }
         public static float StampSize(float w) { return 22 + w * 4; }
@@ -367,6 +365,8 @@ namespace NexusPen
         static TextureBrush ChalkBrush(Color c)
         {
             TextureBrush tb;
+            // bij vervagen verandert de doorzichtigheid elk beeldje: afronden, dan blijft het bij een paar plaatjes
+            c = Color.FromArgb(Math.Min(255, (c.A + 8) / 16 * 16), c);
             if (chalkCache.TryGetValue(c.ToArgb(), out tb)) return tb;
             Bitmap b = new Bitmap(48, 48, PixelFormat.Format32bppArgb);
             Random rnd = new Random(c.ToArgb());
@@ -377,8 +377,9 @@ namespace NexusPen
                     int a = r < 12 ? 40 : r < 30 ? 150 : 235;
                     b.SetPixel(x, y, Color.FromArgb(a * c.A / 255, c));
                 }
-            tb = new TextureBrush(b, WrapMode.Tile);
-            if (chalkCache.Count > 40) { foreach (TextureBrush old in chalkCache.Values) { try { old.Image.Dispose(); } catch { } old.Dispose(); } chalkCache.Clear(); }
+            tb = new TextureBrush(b, WrapMode.Tile);   // de brush maakt een eigen kopie
+            b.Dispose();
+            if (chalkCache.Count > 40) { foreach (TextureBrush old in chalkCache.Values) old.Dispose(); chalkCache.Clear(); }
             chalkCache[c.ToArgb()] = tb;
             return tb;
         }

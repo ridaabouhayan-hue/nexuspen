@@ -14,7 +14,7 @@ namespace NexusPen
     {
         public const string DefaultLayout = "muis,selecteer|pen,markeer,laser|vormen,tekst,gum|kleur,stempel,focus|undo,bord,foto|opslaan,oog,wis,instellingen,afsluiten,weg";
 
-        // alle knoppen die in de balk kunnen; de losse vormen en Opnieuw staan standaard in de bak
+        // alle knoppen die in de balk kunnen; de losse vormen, Krijt en Opnieuw staan standaard in de bak
         public static readonly string[] Catalog = { "muis", "selecteer", "pen", "krijt", "markeer", "laser", "vormen", "lijn", "pijl", "rechthoek", "cirkel",
             "tekst", "gum", "kleur", "stempel", "focus", "undo", "redo", "wis", "bord", "foto", "opslaan", "oog", "instellingen", "afsluiten", "weg" };
 
@@ -142,7 +142,8 @@ namespace NexusPen
             get
             {
                 CreateParams cp = base.CreateParams;
-                if (ov != null && ov.Cfg.InTaakbalk) { cp.ExStyle &= ~W.WS_EX_TOOLWINDOW; cp.ExStyle |= 0x40000; }
+                madeInTaskbar = ov != null && ov.Cfg.InTaakbalk;
+                if (madeInTaskbar) { cp.ExStyle &= ~W.WS_EX_TOOLWINDOW; cp.ExStyle |= 0x40000; }
                 return cp;
             }
         }
@@ -167,6 +168,7 @@ namespace NexusPen
         }
 
         // Thema, grootte, stand, hoeken, volgorde of taal veranderd
+        bool madeInTaskbar;
         public void Restyle()
         {
             Point keep = Location;
@@ -174,7 +176,9 @@ namespace NexusPen
             BarAlpha = OpacityValue;
             ClosePopups();
             HideMiniBar();
-            if (IsHandleCreated) RecreateHandle();
+            // het venster alleen opnieuw maken als de taakbalk-keuze verandert (dat zit in CreateParams)
+            if (IsHandleCreated && madeInTaskbar != ov.Cfg.InTaakbalk) RecreateHandle();
+            madeInTaskbar = ov.Cfg.InTaakbalk;
             Rebuild();
             Location = keep;
             EnsureOnScreen();
@@ -315,13 +319,13 @@ namespace NexusPen
                         delegate { Use(key); ClosePopups(); o.ToggleFocus(); }, delegate { return o.DrawMode && o.CurrentTool == Tool.Focus; }, null);
                     break;
                 case "undo":
-                    it = Button(r, "undo", L.T("Ongedaan maken") + "  (Ctrl+Z). " + L.T("Rechtsklik = opnieuw") + " (Ctrl+Y)", delegate { Use(key); o.Undo(); }, null, null);
+                    it = Button(r, "undo", Shortcuts.Tip(L.T("Ongedaan maken"), "undo") + ". " + Shortcuts.Tip(L.T("Rechtsklik = opnieuw"), "redo"), delegate { Use(key); o.Undo(); }, null, null);
                     break;
                 case "wis":
                     it = Button(r, "prullenbak", L.T("Alles wissen") + "  (Delete). " + L.T("Terug met Ctrl+Z"), delegate { Use(key); o.ClearAll(); }, null, null);
                     break;
                 case "redo":
-                    it = Button(r, "redo", L.T("Opnieuw") + "  (Ctrl+Y)", delegate { Use(key); o.Redo(); }, null, null);
+                    it = Button(r, "redo", Shortcuts.Tip(L.T("Opnieuw"), "redo"), delegate { Use(key); o.Redo(); }, null, null);
                     break;
                 case "bord":
                     it = Button(r, "bord", Shortcuts.Tip(L.T("Bord: whiteboard of krijtbord, met lijnen en pagina's"), "bord"),
@@ -332,7 +336,7 @@ namespace NexusPen
                         delegate { Use(key); ClosePopups(); o.Screenshot(); }, null, null);
                     break;
                 case "opslaan":
-                    it = Button(r, "opslaan", L.T("Opslaan: je tekening staat er de volgende keer weer") + "  (Ctrl+S)",
+                    it = Button(r, "opslaan", Shortcuts.Tip(L.T("Opslaan: je tekening staat er de volgende keer weer"), "opslaan"),
                         delegate { Use(key); ClosePopups(); if (o.SaveExplicit()) { flash.Stop(); flash.Start(); } }, null, null);
                     it.Paint = PaintSave;
                     break;
@@ -377,24 +381,6 @@ namespace NexusPen
             if (handleItem != null) PaintHandle(g, handleItem, hoverHandle || shortening);
         }
 
-        protected override void PaintOverlay(Graphics g)
-        {
-            // tijdens het inkorten: wat achter het randje valt, wordt doorzichtig
-            // (tijdens het inkorten groeit of krimpt de balk zelf, er hoeft niets doorzichtig)
-        }
-
-        void PaintGrip(Graphics g, Item it, bool h)
-        {
-            int cols = vertical ? 3 : 2, rows = vertical ? 2 : 3;
-            float d = 4 * S, gp = 4 * S;
-            float w = cols * d + (cols - 1) * gp, hh = rows * d + (rows - 1) * gp;
-            float x0 = vertical ? it.R.X + (it.R.Width - w) / 2 : it.R.X + 4 * S;
-            float y0 = vertical ? it.R.Y + 4 * S : it.R.Y + (it.R.Height - hh) / 2;
-            using (SolidBrush b = new SolidBrush(T.IsLight ? ColorTranslator.FromHtml("#A1A1AA") : ColorTranslator.FromHtml("#71717A")))
-                for (int c = 0; c < cols; c++)
-                    for (int r = 0; r < rows; r++)
-                        g.FillEllipse(b, x0 + c * (d + gp), y0 + r * (d + gp), d, d);
-        }
 
         void PaintHandle(Graphics g, Item it, bool h)
         {
@@ -462,7 +448,28 @@ namespace NexusPen
 
         // ---- inkorten met het sleeprandje
         bool hoverHandle;
-        List<float> fullMids = new List<float>();
+        int shortenTotal;
+        float shortenOffset;   // afstand tussen de muis en het begin van het randje bij het vastpakken
+
+        // Waar zou het randje beginnen met n knoppen? Zelfde rekensom als Build, maar zonder iets te tekenen.
+        float HandleStart(int n)
+        {
+            float bw = BW, bh = vertical ? bw - 6 * S : bw, gap = 2 * S;
+            float m = (vertical ? 4 : 5) * S, sepW = m * 2 + 1 * S;
+            float pos = (vertical ? 5 : 6) * S + (vertical ? bh + 4 * S : bw);
+            int placed = 0, rest = 0;
+            bool needSep = true;
+            foreach (string k in Layout(ov.Cfg))
+            {
+                if (k == "|") { needSep = true; continue; }
+                if (placed >= n) { rest++; continue; }
+                if (needSep) { pos += sepW; needSep = false; }
+                pos += Long(bw, bh) + gap;
+                placed++;
+            }
+            if (rest > 0) pos += sepW + (vertical ? bh : bw) + gap;
+            return pos;
+        }
 
         bool logoDown;
         Point logoDownAt;
@@ -478,15 +485,14 @@ namespace NexusPen
             if (e.Button == MouseButtons.Left && handleItem != null && RectangleF.Inflate(handleItem.R, 4 * S, 4 * S).Contains(e.Location))
             {
                 // eerst de hele balk opmeten (waar zou elke knop staan), dan laten we hem live groeien of krimpen
+                // het randje volgt de muis; de balk groeit of krimpt per knop, zonder eerst de hele balk te tonen
                 Capture = true;
                 ClosePopups();
+                shortenTotal = 0;
+                foreach (string k in Layout(ov.Cfg)) if (k != "|") shortenTotal++;
+                shortenPreview = ov.Cfg.ShortenAt > 0 ? Math.Min(ov.Cfg.ShortenAt, shortenTotal) : shortenTotal;
+                shortenOffset = (vertical ? e.Y : e.X) - HandleStart(shortenPreview);
                 shortening = true;
-                shortenPreview = int.MaxValue;
-                Rebuild();
-                fullMids.Clear();
-                foreach (Item it in buttonOrder) fullMids.Add(vertical ? it.R.Y + it.R.Height / 2 : it.R.X + it.R.Width / 2);
-                shortenPreview = ov.Cfg.ShortenAt > 0 ? Math.Min(ov.Cfg.ShortenAt, fullMids.Count) : fullMids.Count;
-                Rebuild();
                 return true;
             }
             return false;
@@ -516,7 +522,6 @@ namespace NexusPen
             else if (vertical && (nt || nb) && !nl && !nr && Height <= wa.Width - 20) want = false;
             if (want != vertical)
             {
-                float along = vertical ? (float)grab.Y / Math.Max(1, Height) : (float)grab.X / Math.Max(1, Width);
                 vertical = want; ov.Cfg.Vertical = want;
                 Rebuild();
                 // de muis houdt de balk op ongeveer dezelfde plek vast (bij de greep)
@@ -537,6 +542,7 @@ namespace NexusPen
             base.OnMouseCaptureChanged(e);
             if (dragging && !Capture) EndDrag();
             if (logoDown && !Capture) logoDown = false;
+            if (shortening && !Capture) { shortening = false; Rebuild(); }   // muis kwijt (Alt+Tab): terug naar de bewaarde stand
         }
 
         // Ligt hier geen ander scherm? Dan is dit een echte rand.
@@ -569,10 +575,14 @@ namespace NexusPen
             if (shortening)
             {
                 // een knop erbij of eraf zodra je de muis voorbij het midden van die knop sleept
-                float p = vertical ? e.Y : e.X;
-                int n = 0;
-                foreach (float mid in fullMids) if (mid < p) n++;
-                n = Math.Max(1, n);
+                float p = (vertical ? e.Y : e.X) - shortenOffset;
+                int n = shortenPreview;
+                float best = float.MaxValue;
+                for (int i = 1; i <= shortenTotal; i++)
+                {
+                    float d = Math.Abs(HandleStart(i) - p);
+                    if (d < best - 0.5f) { best = d; n = i; }
+                }
                 if (n != shortenPreview) { shortenPreview = n; Rebuild(); }
                 return;
             }
@@ -591,7 +601,7 @@ namespace NexusPen
             if (!shortening) return;
             shortening = false;
             Capture = false;
-            ov.Cfg.ShortenAt = shortenPreview >= fullMids.Count ? 0 : shortenPreview;
+            ov.Cfg.ShortenAt = shortenPreview >= shortenTotal ? 0 : shortenPreview;
             ov.Cfg.Save();
             Usage.Log("inkorten", ov.Cfg.ShortenAt.ToString(), "balk");
             Point k = Location;
@@ -828,9 +838,10 @@ namespace NexusPen
         public void ClosePopups()
         {
             StopHoverOpen();
+            bool any = false;
             foreach (Form f in new Form[] { colorPopup, shapePopup, stampPopup, boardPopup, eraserPopup, overflowPopup })
-                if (IsOpen(f)) f.Hide();
-            Invalidate();
+                if (IsOpen(f)) { f.Hide(); any = true; }
+            if (any) Invalidate();   // bij slepen van de balk niet elke beweging opnieuw tekenen
         }
 
         public void ShowMiniBar(Rectangle sel) { ShowMiniBar(sel, false); }

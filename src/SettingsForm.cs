@@ -440,8 +440,8 @@ namespace NexusPen
                 RoundFill(g, it.R, h && !on ? Raised : Card, 10);
                 if (on) RoundLine(g, RectangleF.Inflate(it.R, -1 * S, -1 * S), t.Accent, 2, 10);
                 // een klein stukje werkbalk: logo, gekozen knop in de accentkleur, en een paar echte icoontjes
-                string[] ics = { "pen", "tekst", "gum", "bord" };
-                float cell = 22 * S;
+                string[] ics = { "pen", "tekst", "gum" };
+                float cell = 20 * S;
                 RectangleF bar = new RectangleF(it.R.X + 10 * S, it.R.Y + (it.R.Height - 30 * S) / 2, 8 * S + cell * (2 + ics.Length) + 4 * S, 30 * S);
                 RoundFill(g, bar, t.Bar, 8);
                 using (Pen p = new Pen(t.Border, t.Thick ? 2 : 1)) using (GraphicsPath gp = Svg.RoundRect(bar, 8 * S)) g.DrawPath(p, gp);
@@ -449,9 +449,9 @@ namespace NexusPen
                 Logo.Draw(g, new RectangleF(bx + 1 * S, by + 1 * S, cell - 2 * S, cell - 2 * S), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
                 bx += cell + 2 * S;
                 RoundFill(g, new RectangleF(bx, by, cell, cell), t.Accent, 5);
-                Icons.Draw(g, "muis", new RectangleF(bx, by, cell, cell), 14 * S, t.OnAccent, 2f);
+                Icons.Draw(g, "muis", new RectangleF(bx, by, cell, cell), 13 * S, t.OnAccent, 2f);
                 bx += cell;
-                foreach (string ic in ics) { Icons.Draw(g, ic, new RectangleF(bx, by, cell, cell), 14 * S, t.Icon, 2f); bx += cell; }
+                foreach (string ic in ics) { Icons.Draw(g, ic, new RectangleF(bx, by, cell, cell), 13 * S, t.Icon, 2f); bx += cell; }
                 float tx = bar.Right + 12 * S;
                 Txt(g, L.T(t.Name), new RectangleF(tx, it.R.Y + 8 * S, it.R.Right - tx - 8 * S, 20 * S), cur.Text, 14, true, StringAlignment.Near, false);
                 Txt(g, L.T(t.Desc), new RectangleF(tx, it.R.Y + 28 * S, it.R.Right - tx - 8 * S, 18 * S), cur.Muted, 12, false, StringAlignment.Near, false);
@@ -575,8 +575,7 @@ namespace NexusPen
                 clean.Add(k);
             }
             while (clean.Count > 0 && clean[clean.Count - 1] == "|") clean.RemoveAt(clean.Count - 1);
-            Cfg.BarLayout = Toolbar.LayoutString(clean);
-            Cfg.ShortenAt = 0;
+            Cfg.BarLayout = Toolbar.LayoutString(clean);   // inkorten blijft staan, net als bij verbergen met rechtsklik
             Changed();
             BuildItems();
         }
@@ -760,7 +759,12 @@ namespace NexusPen
                 string rid = id;
                 laterItems.Add(delegate
                 {
-                    Add(offR, L.T("Deze sneltoets uitzetten"), delegate { recording = null; Shortcuts.SetOverride(rid, ""); Changed(); Invalidate(); }, delegate(Graphics g, Item it, bool h) { });
+                    Add(offR, L.T("Deze sneltoets uitzetten"), delegate
+                    {
+                        // tijdens het opnemen staat hier "Annuleren": dan alleen stoppen met opnemen
+                        if (recording == rid) { recording = null; Invalidate(); return; }
+                        recording = null; Shortcuts.SetOverride(rid, ""); Changed(); Invalidate();
+                    }, delegate(Graphics g, Item it, bool h) { });
                 });
             }
             Add(new RectangleF(x, y, w, 38 * S), L.T("Klik op Wijzigen en druk je toetsen in. Backspace = geen sneltoets"), delegate { recording = recording == id ? null : id; Invalidate(); }, delegate(Graphics g, Item it, bool h)
@@ -780,7 +784,7 @@ namespace NexusPen
                     // "Uit": deze ene sneltoets uitzetten (het knopje zelf staat hieronder als apart vakje)
                     string off = L.T("Uit");
                     float ow = Measure(off, 12, true);
-                    Txt(g, off, new RectangleF(right - ow, it.R.Y, ow + 2 * S, it.R.Height), string.IsNullOrEmpty(combo()) ? Color.FromArgb(90, t.Muted) : t.Muted, 12, true, StringAlignment.Far, false);
+                    Txt(g, off, new RectangleF(right - ow, it.R.Y, ow + 2 * S, it.R.Height), string.IsNullOrEmpty(combo()) ? Color.FromArgb(90, t.Muted) : t.Muted, 12, true, StringAlignment.Far, false, Card);
                     right -= ow + 14 * S;
                 }
                 if (rec)
@@ -824,7 +828,7 @@ namespace NexusPen
 
         void OnKey(object sender, KeyEventArgs e)
         {
-            if (recording == null) { if (e.KeyCode == Keys.Escape) Close(); return; }
+            if (recording == null) return;   // Esc om te sluiten: zie ProcessCmdKey
             e.Handled = true; e.SuppressKeyPress = true;
             if (e.KeyCode == Keys.Escape) { recording = null; Invalidate(); return; }
             Keys code = e.KeyCode;
@@ -1111,11 +1115,18 @@ namespace NexusPen
         {
             base.OnMouseUp(e);
             if (pressed == null) return;
-            Capture = false;
             bool was = dragActive;
-            pressed = null; dragActive = false;
+            pressed = null; dragActive = false;   // eerst opruimen, dan loslaten (anders ruimt CaptureChanged het al op)
+            Capture = false;
             if (was) DropKey(e.Location);
             Invalidate();
+        }
+
+        // muis kwijt tijdens slepen (Alt+Tab): geen spookknop laten hangen
+        protected override void OnMouseCaptureChanged(EventArgs e)
+        {
+            base.OnMouseCaptureChanged(e);
+            if (!Capture && pressed != null) { pressed = null; dragActive = false; Invalidate(); }
         }
 
         protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hover = null; Invalidate(); }

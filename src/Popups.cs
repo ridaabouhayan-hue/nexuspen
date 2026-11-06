@@ -425,7 +425,7 @@ namespace NexusPen
                 x += rw + 2 * S;
             }
             barSeps.Add(Px(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, Math.Max(1, Px(S)), 20 * S))); x += 9 * S;
-            Button(new RectangleF(x, pad, h, h), "dupliceer", L.T("Kopie maken") + "  (Ctrl+D)", delegate { o.DuplicateSelected(); }, null, null); x += h + 2 * S;
+            Button(new RectangleF(x, pad, h, h), "dupliceer", Shortcuts.Tip(L.T("Kopie maken"), "kopie"), delegate { o.DuplicateSelected(); }, null, null); x += h + 2 * S;
             Button(new RectangleF(x, pad, h, h), "voren", L.T("Naar voren"), delegate { o.BringSelectedToFront(); }, null, null); x += h + 2 * S;
             barSeps.Add(Px(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, Math.Max(1, Px(S)), 20 * S))); x += 9 * S;
             Item del = Add(new RectangleF(x, pad, h, h), L.T("Verwijderen") + "  (Delete)", delegate { o.DeleteSelected(); });

@@ -37,8 +37,8 @@ namespace NexusPen
         public int FadeSeconds = 5;             // vervagen na 3, 5, 7 of 12 seconden
         public float StampPx = 0;               // eigen stempelgrootte (muiswiel); 0 = S, M of L
         public int BoardScale = 1;              // (oud, niet meer gebruikt)
-        public float BoardZoom = 1;
-        public bool ChalkChecked;               // eenmalige controle bij het bijwerken naar 1.2.6             // lijnen en ruitjes: van 0,5 (veel kleine regels) tot 6 (een grote regel)
+        public float BoardZoom = 1;             // lijnen en ruitjes: van 0,5 (veel kleine regels) tot 6 (een grote regel)
+        public bool ChalkChecked;               // eenmalige controle bij het bijwerken naar 1.2.6
         // tekst
         public string FontName = "Andika";
         public bool TextOutline = true;

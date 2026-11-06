@@ -229,6 +229,7 @@ Twijfel en fouten | Hesitation and mistakes | Hésitations et erreurs | Dudas y 
 Lessen | Lessons | Cours | Clases
 Scherm en snelheid | Screen and speed | Écran et vitesse | Pantalla y velocidad
 Deze combinatie gebruikt Windows of NexusPen al. | Windows or NexusPen already uses this combination. | Windows ou NexusPen utilise déjà cette combinaison. | Windows o NexusPen ya usa esta combinación.
+Deze combinatie kiest al een kleur. | This combination already picks a colour. | Cette combinaison choisit déjà une couleur. | Esta combinación ya elige un color.
 Deze combinatie hoort al bij {0}. | This combination already belongs to {0}. | Cette combinaison est déjà utilisée pour {0}. | Esta combinación ya pertenece a {0}.
 Markeerstift | Highlighter | Surligneur | Resaltador
 Laserpen | Laser pointer | Pointeur laser | Puntero láser
@@ -286,7 +287,6 @@ Vormen | Shapes | Formes | Formas
 Kleur en dikte | Colour and thickness | Couleur et épaisseur | Color y grosor
 Wegschuiven | Slide away | Ranger sur le côté | Apartar
 Streep | Divider | Séparateur | Separador
-Alles inklappen: balk en tekeningen even weg | Collapse everything: bar and drawings out of the way | Tout réduire : barre et dessins masqués un instant | Contraer todo: barra y dibujos fuera un momento
 Nog {0} knoppen | {0} more buttons | Encore {0} boutons | {0} botones más
 Sleep om de balk in te korten | Drag to shorten the bar | Faites glisser pour raccourcir la barre | Arrastra para acortar la barra
 Muis: gewoon klikken op je scherm | Mouse: just click on your screen | Souris : cliquer normalement sur l'écran | Ratón: hacer clic normal en la pantalla
@@ -317,12 +317,10 @@ Vervaagt na {0} s | Fades after {0} s | S'efface après {0} s | Se borra tras {0
 Wat je tekent verdwijnt vanzelf. Klik nog een keer voor een andere tijd: 3, 5, 7 of 12 seconden | What you draw disappears by itself. Click again for another time: 3, 5, 7 or 12 seconds | Ce que vous dessinez disparaît tout seul. Cliquez encore pour une autre durée : 3, 5, 7 ou 12 secondes | Lo que dibujas desaparece solo. Haz clic otra vez para otro tiempo: 3, 5, 7 o 12 segundos
 Zwart bord | Blackboard | Tableau noir | Pizarra negra
 Extra groot | Extra large | Très grand | Muy grande
-Lijnen en ruitjes groter of kleiner. Klik om te wisselen | Lines and squares bigger or smaller. Click to switch | Lignes et carreaux plus grands ou plus petits. Cliquez pour changer | Líneas y cuadros más grandes o más pequeños. Haz clic para cambiar
 Een rechthoek is handig om een zin of een woord te lezen | A rectangle is handy for reading a sentence or a word | Un rectangle est pratique pour lire une phrase ou un mot | Un rectángulo es útil para leer una frase o una palabra
 Vervagen | Fading | Effacement | Desvanecer
 Hoe lang blijft het staan? | How long does it stay? | Combien de temps reste-t-il ? | ¿Cuánto tiempo se queda?
 Grootte van lijnen en ruitjes | Size of lines and squares | Taille des lignes et carreaux | Tamaño de líneas y cuadros
-Groter is handig om in te zoomen of van ver te lezen | Bigger is handy to zoom in or to read from far away | Plus grand est pratique pour zoomer ou lire de loin | Más grande es útil para ampliar o leer desde lejos
 Zwart bord openen | Open blackboard | Ouvrir le tableau noir | Abrir pizarra negra
 Spotlicht: alleen rond je muis is het licht. Muiswiel = groter of kleiner. Rechtsklik = rond of rechthoek | Spotlight: only around your mouse is it light. Mouse wheel = bigger or smaller. Right-click = round or rectangle | Projecteur : seule la zone autour de la souris est éclairée. Molette = plus grand ou plus petit. Clic droit = rond ou rectangle | Foco: solo alrededor del ratón hay luz. Rueda = más grande o más pequeño. Clic derecho = redondo o rectángulo
 Rechthoek (om te lezen) | Rectangle (for reading) | Rectangle (pour lire) | Rectángulo (para leer)
@@ -335,7 +333,6 @@ Een tekstje tonen als je met de muis over een knop gaat | Show a short text when
 Grootte van de gum. Muiswiel = groter of kleiner | Eraser size. Mouse wheel = bigger or smaller | Taille de la gomme. Molette = plus grand ou plus petit | Tamaño del borrador. Rueda = más grande o más pequeño
 Krijt | Chalk | Craie | Tiza
 Krijt: een pen met een korrelige streep, zoals krijt op een bord | Chalk: a pen with a grainy line, like chalk on a board | Craie : un stylo au trait granuleux, comme la craie sur un tableau | Tiza: un bolígrafo con trazo granulado, como tiza en una pizarra
-Gum, of rechtermuisknop ingedrukt. Beweeg erover voor de grootte | Eraser, or hold the right mouse button. Hover for the size | Gomme, ou maintenez le bouton droit. Survolez pour la taille | Borrador, o mantén pulsado el botón derecho. Pasa el ratón para el tamaño
 Er is niets om opnieuw te doen. Opnieuw werkt na Ongedaan maken, tot je iets nieuws tekent. | There is nothing to redo. Redo works after Undo, until you draw something new. | Rien à rétablir. Rétablir fonctionne après Annuler, jusqu'à ce que vous dessiniez autre chose. | No hay nada que rehacer. Rehacer funciona después de Deshacer, hasta que dibujes algo nuevo.
 Gum, of rechtermuisknop ingedrukt. Muiswiel of knijpen = groter of kleiner | Eraser, or hold the right mouse button. Mouse wheel or pinch = bigger or smaller | Gomme, ou maintenez le bouton droit. Molette ou pincement = plus grand ou plus petit | Borrador, o mantén pulsado el botón derecho. Rueda o pellizco = más grande o más pequeño
 Klik = alles inklappen, slepen = de balk verplaatsen | Click = collapse everything, drag = move the toolbar | Clic = tout réduire, glisser = déplacer la barre | Clic = contraer todo, arrastrar = mover la barra

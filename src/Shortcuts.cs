@@ -169,6 +169,10 @@ namespace NexusPen
             foreach (Shortcut s in All)
                 if (s.Id != id && Combo(s.Id).Equals(combo, StringComparison.OrdinalIgnoreCase))
                     return L.F("Deze combinatie hoort al bij {0}.", L.T(s.Label));
+            // de kleurtoetsen (1 tot 0) en Ctrl+Shift+Z (ook Opnieuw) tellen ook mee
+            for (int i = 0; i < 10; i++)
+                if (Same(ColorCombo(i), combo)) return L.T("Deze combinatie kiest al een kleur.");
+            if (id != "redo" && Same("Ctrl+Shift+Z", combo) && Combo("redo").Length > 0) return L.F("Deze combinatie hoort al bij {0}.", L.T("Opnieuw"));
             return null;
         }
     }

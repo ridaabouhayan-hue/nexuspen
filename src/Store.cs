@@ -104,7 +104,13 @@ namespace NexusPen
             if (File.Exists(path))
             {
                 try { File.Replace(tmp, path, null); return; }
-                catch { File.Delete(path); }
+                catch
+                {
+                    // lukt vervangen niet (bijv. op een netwerkschijf): overschrijven, dan is er nooit een moment zonder bestand
+                    File.Copy(tmp, path, true);
+                    try { File.Delete(tmp); } catch { }
+                    return;
+                }
             }
             File.Move(tmp, path);
         }
@@ -114,6 +120,7 @@ namespace NexusPen
         public static List<Stroke> Load(string path)
         {
             List<Stroke> list = new List<Stroke>();
+            if (!File.Exists(path) && File.Exists(path + ".tmp")) path += ".tmp";   // halverwege bewaren gestopt: dan de nieuwe kopie
             if (!File.Exists(path)) return list;
             if (new FileInfo(path).Length > 64L * 1024 * 1024) { Log.Info("Tekening te groot, niet geladen: " + Path.GetFileName(path)); return list; }
             string[] lines = File.ReadAllLines(path, Encoding.UTF8);
