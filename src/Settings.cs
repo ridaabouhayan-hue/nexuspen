@@ -1,0 +1,208 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
+using System.Text;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.Drawing.Text;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows.Forms;
+using Microsoft.Win32;
+
+namespace NexusPen
+{
+    // ------------------------------------------------------------------ Instellingen (instellingen.ini in %APPDATA%\NexusPen)
+    // Elk publiek veld wordt automatisch bewaard en geladen onder zijn eigen naam.
+    class Settings
+    {
+        // werkbalk
+        public int ToolbarX = -1, ToolbarY = -1, TileX = -1, TileY = -1;
+        public int ThemeIndex = 0, SizeIndex = 1, OpacityIndex = 0;
+        public Color CustomAccent = ColorTranslator.FromHtml("#A3E635");
+        public bool Vertical, Square, HideFromCapture;
+        public string BarLayout = "";          // leeg = standaardvolgorde
+        public int ShortenAt = 0;               // 0 = niet ingekort, anders het aantal knoppen voor het menu met het getal
+        // tekenen
+        public int ColorIndex = 0, PaletteIndex = 0;
+        public float Width = 4;
+        public Tool Tool = Tool.Pen;
+        public bool WheelWidth = true, PerToolWidth = true, Chalk, Fade;
+        public string ToolWidths = "";
+        public float FocusRadius = 160;
+        // tekst
+        public string FontName = "Andika";
+        public bool TextOutline = true;
+        public int OutlineWidth = 1, OutlineColor = 0;   // dun, middel, dik / zwart, wit, automatisch
+        public float TextSize = 36;
+        // stempels en bord
+        public int StampKind = 0, StampSize = 1, StampNext = 1, BoardBg = 0;
+        // algemeen
+        public string Language = "nl";
+        public bool ShowInTaskbar = true, UpdateCheck = true;
+        public int KeepDrawing = 1;             // nooit, na Opslaan, altijd
+        // sneltoetsen
+        public string HotkeyDraw = "Ctrl+Shift+D", HotkeyHide = "Ctrl+Shift+H";
+        public int ShortcutMode = 0;            // Ctrl+Shift + letter, alleen een letter, uit
+        public string ShortcutOverrides = "";   // actie=combinatie;actie=combinatie
+        // gebruik
+        public bool Usage = true;
+        public int UsageCats = 127;
+
+        public static bool ParseHotkey(string text, out int mods, out int vk)
+        {
+            mods = 0; vk = 0;
+            if (string.IsNullOrEmpty(text)) return false;
+            foreach (string raw in text.Split('+'))
+            {
+                string part = raw.Trim().ToLowerInvariant();
+                if (part == "ctrl" || part == "control") mods |= W.MOD_CONTROL;
+                else if (part == "shift") mods |= W.MOD_SHIFT;
+                else if (part == "alt") mods |= 1;
+                else if (part == "win") mods |= 8;
+                else if (part.Length > 0)
+                {
+                    try { vk = (int)(Keys)Enum.Parse(typeof(Keys), part, true); } catch { return false; }
+                }
+            }
+            return vk != 0;
+        }
+
+        public static string FilePath
+        {
+            get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "NexusPen", "instellingen.ini"); }
+        }
+
+        static readonly CultureInfo IC = CultureInfo.InvariantCulture;
+
+        // namen uit versie 1.1
+        static readonly Dictionary<string, string> OldNames = new Dictionary<string, string> {
+            { "toolbarX", "ToolbarX" }, { "toolbarY", "ToolbarY" }, { "kleur", "ColorIndex" }, { "palet", "PaletteIndex" },
+            { "dikte", "Width" }, { "spotlicht", "FocusRadius" }, { "gereedschap", "Tool" }, { "thema", "ThemeIndex" },
+            { "eigenKleur", "CustomAccent" }, { "grootte", "SizeIndex" }, { "doorzichtig", "OpacityIndex" }, { "staand", "Vertical" },
+            { "strak", "Square" }, { "verbergenBijDelen", "HideFromCapture" }, { "tekstRand", "TextOutline" }, { "lettertype", "FontName" },
+            { "sneltoetsTekenen", "HotkeyDraw" }, { "sneltoetsVerbergen", "HotkeyHide" } };
+
+        static string Write(object v)
+        {
+            if (v is Color) return ColorTranslator.ToHtml((Color)v);
+            if (v is bool) return (bool)v ? "1" : "0";
+            if (v is float) return ((float)v).ToString(IC);
+            return v == null ? "" : v.ToString();
+        }
+
+        static bool Read(System.Reflection.FieldInfo f, string v, Settings s)
+        {
+            Type t = f.FieldType;
+            try
+            {
+                if (t == typeof(int)) { int n; if (!int.TryParse(v, NumberStyles.Integer, IC, out n)) return false; f.SetValue(s, n); }
+                else if (t == typeof(float)) { float n; if (!float.TryParse(v, NumberStyles.Float, IC, out n)) return false; f.SetValue(s, n); }
+                else if (t == typeof(bool)) f.SetValue(s, v == "1" || v.Equals("true", StringComparison.OrdinalIgnoreCase));
+                else if (t == typeof(string)) f.SetValue(s, v);
+                else if (t == typeof(Color)) f.SetValue(s, ColorTranslator.FromHtml(v));
+                else if (t.IsEnum) f.SetValue(s, Enum.Parse(t, v));
+                return true;
+            }
+            catch { return false; }
+        }
+
+        static System.Reflection.FieldInfo[] Fields { get { return typeof(Settings).GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance); } }
+
+        public static Settings Load() { return Load(FilePath); }
+
+        public static Settings Load(string path)
+        {
+            Settings s = new Settings();
+            bool isOld = false;
+            try
+            {
+                if (File.Exists(path))
+                {
+                    Dictionary<string, System.Reflection.FieldInfo> byName = new Dictionary<string, System.Reflection.FieldInfo>();
+                    foreach (System.Reflection.FieldInfo f in Fields) byName[f.Name] = f;
+                    foreach (string line in File.ReadAllLines(path))
+                    {
+                        int i = line.IndexOf('=');
+                        if (i < 0) continue;
+                        string k = line.Substring(0, i).Trim(), v = line.Substring(i + 1).Trim();
+                        string mapped;
+                        if (OldNames.TryGetValue(k, out mapped)) { k = mapped; isOld = true; }
+                        System.Reflection.FieldInfo f;
+                        if (byName.TryGetValue(k, out f)) Read(f, v, s);
+                    }
+                }
+            }
+            catch { }
+            if (isOld && s.FontName == "") s.FontName = "Andika";
+            s.Clamp();
+            return s;
+        }
+
+        public void Clamp()
+        {
+            ThemeIndex = Math.Max(0, Math.Min(Theme.All.Length - 1, ThemeIndex));
+            SizeIndex = Math.Max(0, Math.Min(2, SizeIndex));
+            OpacityIndex = Math.Max(0, Math.Min(2, OpacityIndex));
+            PaletteIndex = Math.Max(0, Math.Min(Palette.Sets.Length - 1, PaletteIndex));
+            ColorIndex = Math.Max(0, Math.Min(9, ColorIndex));
+            Width = Math.Max(1, Math.Min(60, Width));
+            FocusRadius = Math.Max(60, Math.Min(700, FocusRadius));
+            OutlineWidth = Math.Max(0, Math.Min(2, OutlineWidth));
+            OutlineColor = Math.Max(0, Math.Min(2, OutlineColor));
+            TextSize = Math.Max(12, Math.Min(160, TextSize));
+            StampKind = Math.Max(0, Math.Min(Render.StampKinds.Length - 1, StampKind));
+            StampSize = Math.Max(0, Math.Min(2, StampSize));
+            StampNext = Math.Max(1, Math.Min(999, StampNext));
+            BoardBg = Math.Max(0, Math.Min(3, BoardBg));
+            KeepDrawing = Math.Max(0, Math.Min(2, KeepDrawing));
+            ShortcutMode = Math.Max(0, Math.Min(2, ShortcutMode));
+            ShortenAt = Math.Max(0, ShortenAt);
+            if (Tool == Tool.Focus || Tool == Tool.Select || Tool == Tool.Mouse) Tool = Tool.Pen;
+            if (Array.IndexOf(L.Codes, Language) < 0) Language = "nl";
+        }
+
+        public void Save() { Save(FilePath); }
+
+        public void Save(string path)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                List<string> lines = new List<string>();
+                lines.Add("# NexusPen instellingen");
+                foreach (System.Reflection.FieldInfo f in Fields) lines.Add(f.Name + "=" + Write(f.GetValue(this)));
+                string tmp = path + ".tmp";
+                File.WriteAllLines(tmp, lines.ToArray(), Encoding.UTF8);
+                if (File.Exists(path)) File.Delete(path);
+                File.Move(tmp, path);
+            }
+            catch (Exception ex) { Log.Error("Instellingen bewaren mislukt", ex); }
+        }
+
+        // ---- breedte per gereedschap
+        public float WidthFor(Tool t, float fallback)
+        {
+            foreach (string part in ToolWidths.Split(';'))
+            {
+                int i = part.IndexOf('=');
+                float f;
+                if (i > 0 && part.Substring(0, i) == t.ToString() && float.TryParse(part.Substring(i + 1), NumberStyles.Float, IC, out f)) return f;
+            }
+            if (t == Tool.Marker) return Math.Max(fallback, 6);
+            return fallback;
+        }
+
+        public void SetWidthFor(Tool t, float w)
+        {
+            List<string> keep = new List<string>();
+            foreach (string part in ToolWidths.Split(';'))
+                if (part.Length > 0 && !part.StartsWith(t + "=")) keep.Add(part);
+            keep.Add(t + "=" + w.ToString(IC));
+            ToolWidths = string.Join(";", keep.ToArray());
+        }
+    }
+}

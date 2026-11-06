@@ -1,0 +1,313 @@
+# Vertalingen van NexusPen. Per regel: Nederlands | Engels | Frans | Spaans
+# Schrijf teksten zoals in C# (een backslash als \\). Nooit het lange gedachtestreepje gebruiken.
+Pagina {0} van {1} | Page {0} of {1} | Page {0} sur {1} | Página {0} de {1}
+Automatisch bewaren staat aan | Autosave is on | L'enregistrement automatique est activé | El guardado automático está activado
+Automatisch bewaard | Saved automatically | Enregistré automatiquement | Guardado automáticamente
+pagina {0} van {1} | page {0} of {1} | page {0} sur {1} | página {0} de {1}
+Opslaan is niet gelukt | Saving failed | L'enregistrement a échoué | No se pudo guardar
+Er is geen vorige tekening gevonden. | No previous drawing was found. | Aucun dessin précédent n'a été trouvé. | No se encontró ningún dibujo anterior.
+{0} is al in gebruik door een ander programma. | {0} is already used by another program. | {0} est déjà utilisé par un autre programme. | {0} ya lo usa otro programa.
+Je tekening van de vorige keer is teruggezet, want NexusPen was onverwacht gestopt. Wissen kan met de prullenbak. | Your drawing from last time is back, because NexusPen stopped unexpectedly. Use the bin to clear it. | Votre dessin de la dernière fois est revenu, car NexusPen s'est arrêté de façon inattendue. Effacez-le avec la corbeille. | Tu dibujo de la última vez ha vuelto, porque NexusPen se cerró de forma inesperada. Bórralo con la papelera.
+Je opgeslagen tekening staat er weer. Liever leeg beginnen? Wis alles en druk op Opslaan. | Your saved drawing is back. Rather start empty? Clear everything and press Save. | Votre dessin enregistré est revenu. Vous préférez une page vide ? Effacez tout et appuyez sur Enregistrer. | Tu dibujo guardado ha vuelto. ¿Prefieres empezar en blanco? Borra todo y pulsa Guardar.
+tekenen aan of uit | drawing on or off | dessin activé ou désactivé | dibujo activado o desactivado
+Tekenen aan of uit | Drawing on or off | Activer ou désactiver le dessin | Activar o desactivar el dibujo
+Alles in- of uitklappen | Collapse or expand everything | Tout réduire ou déplier | Contraer o expandir todo
+Opslaan voor de volgende keer | Save for next time | Enregistrer pour la prochaine fois | Guardar para la próxima vez
+Schermafbeelding maken | Take a screenshot | Faire une capture d'écran | Hacer una captura de pantalla
+Instellingen... | Settings... | Paramètres... | Ajustes...
+Werkbalk terugzetten | Reset toolbar position | Replacer la barre d'outils | Restablecer la barra
+Vorige tekening terughalen | Restore previous drawing | Récupérer le dessin précédent | Recuperar el dibujo anterior
+Noodstop: terug naar de muis | Emergency stop: back to the mouse | Arrêt d'urgence : retour à la souris | Parada de emergencia: volver al ratón
+Foutlog openen | Open error log | Ouvrir le journal des erreurs | Abrir el registro de errores
+Er zijn nog geen fouten gelogd. | No errors have been logged yet. | Aucune erreur n'a encore été enregistrée. | Todavía no se ha registrado ningún error.
+Afsluiten | Quit | Quitter | Salir
+Dikte | Thickness | Épaisseur | Grosor
+Opgeslagen in | Saved in | Enregistré dans | Guardado en
+Afbeeldingen | Pictures | Images | Imágenes
+en gekopieerd naar het klembord | and copied to the clipboard | et copié dans le presse-papiers | y copiado al portapapeles
+Schermafbeelding mislukt | Screenshot failed | La capture d'écran a échoué | No se pudo hacer la captura
+Felle kleuren | Bright colours | Couleurs vives | Colores vivos
+Zachte kleuren | Soft colours | Couleurs douces | Colores suaves
+Lijnen zien eruit als krijt op een bord | Lines look like chalk on a board | Les traits ressemblent à de la craie au tableau | Las líneas parecen tiza en una pizarra
+Krijtstreep | Chalk line | Trait de craie | Trazo de tiza
+Wat je tekent verdwijnt na 5 seconden vanzelf | What you draw disappears by itself after 5 seconds | Ce que vous dessinez disparaît tout seul après 5 secondes | Lo que dibujas desaparece solo después de 5 segundos
+Vervaagt na 5 s | Fades after 5 s | S'efface après 5 s | Se borra a los 5 s
+Pen | Pen | Stylo | Lápiz
+Lijn. Shift = recht | Line. Shift = straight | Ligne. Maj = droite | Línea. Mayús = recta
+Pijl. Shift = recht | Arrow. Shift = straight | Flèche. Maj = droite | Flecha. Mayús = recta
+Rechthoek. Shift = vierkant | Rectangle. Shift = square | Rectangle. Maj = carré | Rectángulo. Mayús = cuadrado
+Cirkel. Shift = rond | Circle. Shift = round | Cercle. Maj = rond | Círculo. Mayús = redondo
+Stempel | Stamp | Tampon | Sello
+Vinkje | Tick | Coche | Visto
+Kruis | Cross | Croix | Cruz
+Ster | Star | Étoile | Estrella
+Vraagteken | Question mark | Point d'interrogation | Interrogación
+Nummer | Number | Numéro | Número
+Telt vanzelf op: 1, 2, 3. Rechtsklik = weer bij 1 beginnen | Counts up by itself: 1, 2, 3. Right-click = start at 1 again | Compte tout seul : 1, 2, 3. Clic droit = recommencer à 1 | Cuenta solo: 1, 2, 3. Clic derecho = volver a empezar en 1
+Grootte van de stempel | Stamp size | Taille du tampon | Tamaño del sello
+Bord | Board | Tableau | Pizarra
+Scherm | Screen | Écran | Pantalla
+Gewoon over je scherm tekenen | Draw right on your screen | Dessiner directement sur l'écran | Dibujar directamente sobre la pantalla
+Whiteboard | Whiteboard | Tableau blanc | Pizarra blanca
+Wit bord | White board | Tableau blanc | Pizarra blanca
+Krijtbord | Chalkboard | Tableau noir | Pizarra de tiza
+Groen krijtbord | Green chalkboard | Tableau vert | Pizarra verde
+Leeg | Empty | Vide | Vacío
+Schrijflijnen | Writing lines | Lignes d'écriture | Líneas de escritura
+Ruitjes | Squares | Quadrillage | Cuadrícula
+Lijntjes | Ruled lines | Lignes | Renglones
+Geen lijnen | No lines | Sans lignes | Sin líneas
+Schrijflijnen, handig voor Alfa | Writing lines, useful for literacy classes | Lignes d'écriture, pratiques pour l'alphabétisation | Líneas de escritura, útiles para alfabetización
+Lijntjes, zoals in een schrift | Ruled lines, like in a notebook | Lignes, comme dans un cahier | Renglones, como en un cuaderno
+Vorige pagina | Previous page | Page précédente | Página anterior
+Pagina | Page | Page | Página
+Volgende pagina | Next page | Page suivante | Página siguiente
+Nieuwe pagina | New page | Nouvelle page | Página nueva
+Het sleeprandje gaat weer naar het einde | The drag handle moves back to the end | La poignée revient à la fin | El tirador vuelve al final
+Alles weer tonen | Show everything again | Tout réafficher | Mostrar todo de nuevo
+Verborgen knoppen | Hidden buttons | Boutons masqués | Botones ocultos
+Andere kleur | Other colour | Autre couleur | Otro color
+Kleiner | Smaller | Plus petit | Más pequeño
+Grootte | Size | Taille | Tamaño
+Groter | Bigger | Plus grand | Más grande
+Rand | Outline | Contour | Borde
+Rand om de tekst aan of uit | Text outline on or off | Contour du texte activé ou désactivé | Borde del texto activado o desactivado
+Kopie maken | Make a copy | Faire une copie | Hacer una copia
+Naar voren | Bring to front | Mettre au premier plan | Traer al frente
+Verwijderen | Delete | Supprimer | Eliminar
+Werkbalk terughalen | Bring the toolbar back | Rappeler la barre d'outils | Recuperar la barra
+Klik om alles weer te tonen. Slepen = verplaatsen, rechtsklik = menu | Click to show everything again. Drag = move, right-click = menu | Cliquez pour tout réafficher. Glisser = déplacer, clic droit = menu | Haz clic para mostrar todo. Arrastrar = mover, clic derecho = menú
+{0} tot {1}, scrol of knijp | {0} to {1}, scroll or pinch | {0} à {1}, molette ou pincement | {0} a {1}, rueda o pellizco
+Map openen | Open folder | Ouvrir le dossier | Abrir carpeta
+NexusPen instellingen | NexusPen settings | Paramètres de NexusPen | Ajustes de NexusPen
+Sluiten | Close | Fermer | Cerrar
+Algemeen | General | Général | General
+Starten | Start-up | Démarrage | Inicio
+Starten met Windows | Start with Windows | Démarrer avec Windows | Iniciar con Windows
+NexusPen staat klaar zodra je inlogt, ingeklapt | NexusPen is ready as soon as you sign in, collapsed | NexusPen est prêt dès la connexion, réduit | NexusPen está listo al iniciar sesión, contraído
+Tonen in de taakbalk | Show in the taskbar | Afficher dans la barre des tâches | Mostrar en la barra de tareas
+Klik op het icoon in de taakbalk om alles in of uit te klappen | Click the taskbar icon to collapse or expand everything | Cliquez sur l'icône de la barre des tâches pour tout réduire ou déplier | Haz clic en el icono de la barra de tareas para contraer o expandir todo
+Tekenen | Drawing | Dessin | Dibujo
+Muiswiel en touchpad veranderen de dikte | Mouse wheel and touchpad change the thickness | La molette et le pavé tactile changent l'épaisseur | La rueda y el touchpad cambian el grosor
+Knijpen op het touchpad werkt ook | Pinching on the touchpad works too | Le pincement sur le pavé tactile fonctionne aussi | Pellizcar en el touchpad también funciona
+Elk gereedschap onthoudt zijn eigen dikte | Each tool remembers its own thickness | Chaque outil garde sa propre épaisseur | Cada herramienta recuerda su propio grosor
+Pen dun, markeerstift dik, zonder steeds te wisselen | Thin pen, thick highlighter, without switching all the time | Stylo fin, surligneur épais, sans changer sans cesse | Lápiz fino, resaltador grueso, sin cambiar todo el rato
+Tekening bewaren na afsluiten | Keep the drawing after closing | Garder le dessin après fermeture | Conservar el dibujo al cerrar
+Na Opslaan staat je tekening er de volgende keer weer | After Save, your drawing is back next time | Après Enregistrer, votre dessin revient la prochaine fois | Después de Guardar, tu dibujo vuelve la próxima vez
+Nooit | Never | Jamais | Nunca
+Na Opslaan | After Save | Après Enregistrer | Tras Guardar
+Altijd | Always | Toujours | Siempre
+Overig | Other | Autres | Otros
+Melding als er een nieuwe versie is | Notify me when there is a new version | Prévenir quand une nouvelle version existe | Avisar cuando haya una versión nueva
+Bijwerken met een klik, je instellingen blijven staan | Update with one click, your settings stay | Mise à jour en un clic, vos paramètres restent | Actualiza con un clic, tus ajustes se mantienen
+Alles terugzetten naar standaard | Reset everything to default | Tout remettre par défaut | Restablecer todo
+Alle instellingen terugzetten naar standaard? Je tekeningen blijven staan. | Reset all settings to default? Your drawings stay. | Remettre tous les paramètres par défaut ? Vos dessins restent. | ¿Restablecer todos los ajustes? Tus dibujos se mantienen.
+Alles staat weer op standaard. | Everything is back to default. | Tout est revenu par défaut. | Todo ha vuelto a los valores predeterminados.
+Taal | Language | Langue | Idioma
+De taal van alle knoppen, tips, menu's en instellingen. Je tekeningen en teksten veranderen niet. | The language of all buttons, tips, menus and settings. Your drawings and texts do not change. | La langue des boutons, astuces, menus et paramètres. Vos dessins et textes ne changent pas. | El idioma de todos los botones, consejos, menús y ajustes. Tus dibujos y textos no cambian.
+Taal van Windows gebruiken | Use the Windows language | Utiliser la langue de Windows | Usar el idioma de Windows
+Uiterlijk | Appearance | Apparence | Aspecto
+Kleuren van de werkbalk. Het logo kleurt mee met de accentkleur. | Toolbar colours. The logo follows the accent colour. | Couleurs de la barre d'outils. Le logo suit la couleur d'accent. | Colores de la barra. El logo sigue el color de acento.
+Klik om je eigen accentkleur te kiezen | Click to choose your own accent colour | Cliquez pour choisir votre couleur d'accent | Haz clic para elegir tu color de acento
+Grootte van de knoppen | Button size | Taille des boutons | Tamaño de los botones
+Klein | Small | Petit | Pequeño
+Normaal | Normal | Normal | Normal
+Groot | Large | Grand | Grande
+Hoeken | Corners | Coins | Esquinas
+Rond | Round | Arrondis | Redondas
+Strak | Square | Droits | Rectas
+Doorzichtigheid | Transparency | Transparence | Transparencia
+Dekkend | Solid | Opaque | Opaco
+Werkbalk | Toolbar | Barre d'outils | Barra de herramientas
+Sleep knoppen tussen je balk en de bak eronder. Binnen de balk sleep je ze naar een andere plek. | Drag buttons between your bar and the tray below. Inside the bar, drag them to another spot. | Faites glisser les boutons entre votre barre et le bac en dessous. Dans la barre, déplacez-les à un autre endroit. | Arrastra botones entre tu barra y la bandeja de abajo. Dentro de la barra, muévelos a otro sitio.
+Jouw balk | Your bar | Votre barre | Tu barra
+Niet in je balk | Not in your bar | Pas dans votre barre | No están en tu barra
+Erbij zetten: sleep een knop uit de bak omhoog. Weghalen: sleep hem naar beneden, of rechtsklik in de balk en kies Verbergen. | To add: drag a button up from the tray. To remove: drag it down, or right-click it in the bar and choose Hide. | Ajouter : faites glisser un bouton du bac vers le haut. Retirer : faites-le glisser vers le bas, ou clic droit dans la barre puis Masquer. | Añadir: arrastra un botón de la bandeja hacia arriba. Quitar: arrástralo hacia abajo, o haz clic derecho en la barra y elige Ocultar.
+Stand | Orientation | Orientation | Orientación
+Liggend | Horizontal | Horizontale | Horizontal
+Staand | Vertical | Verticale | Vertical
+Standaardbalk terugzetten | Restore the default bar | Rétablir la barre par défaut | Restablecer la barra predeterminada
+Werkbalk terug naar zijn plek | Move the toolbar back into place | Replacer la barre d'outils | Devolver la barra a su sitio
+De werkbalk staat weer op zijn plek. | The toolbar is back in place. | La barre d'outils est revenue à sa place. | La barra ha vuelto a su sitio.
+Pen en kleuren | Pen and colours | Stylo et couleurs | Lápiz y colores
+Kleuren | Colours | Couleurs | Colores
+Felle kleuren vallen op, zachte zijn rustiger voor de ogen | Bright colours stand out, soft ones are easier on the eyes | Les couleurs vives ressortent, les douces reposent les yeux | Los colores vivos destacan, los suaves descansan la vista
+Fel | Bright | Vives | Vivos
+Zacht | Soft | Douces | Suaves
+Lijnen van de pen zien eruit als krijt op een bord | Pen lines look like chalk on a board | Les traits du stylo ressemblent à de la craie au tableau | Las líneas del lápiz parecen tiza en una pizarra
+Wat je met pen of markeerstift tekent, verdwijnt vanzelf. Handig om iets snel aan te wijzen | What you draw with the pen or highlighter disappears by itself. Handy for pointing something out quickly | Ce que vous dessinez au stylo ou au surligneur disparaît tout seul. Pratique pour montrer quelque chose rapidement | Lo que dibujas con el lápiz o el resaltador desaparece solo. Útil para señalar algo rápido
+De laserpen verdwijnt altijd vanzelf na anderhalve seconde. De dikte verander je met het muiswiel, door te knijpen op het touchpad of met het schuifje bij de kleuren. | The laser pointer always disappears by itself after one and a half seconds. Change the thickness with the mouse wheel, by pinching on the touchpad or with the slider next to the colours. | Le pointeur laser disparaît toujours tout seul après une seconde et demie. Changez l'épaisseur avec la molette, en pinçant sur le pavé tactile ou avec le curseur près des couleurs. | El puntero láser siempre desaparece solo tras un segundo y medio. Cambia el grosor con la rueda, pellizcando en el touchpad o con el control junto a los colores.
+Tekst | Text | Texte | Texto
+Lettertype | Font | Police | Fuente
+Aanbevolen | Recommended | Recommandée | Recomendada
+Ik ga met de trein. | I am taking the train. | Je prends le train. | Voy en tren.
+Rand om tekst | Text outline | Contour du texte | Borde del texto
+Goed leesbaar op elke achtergrond, ook op foto's en video | Easy to read on any background, also on photos and video | Bien lisible sur tout fond, même sur photos et vidéos | Fácil de leer sobre cualquier fondo, también en fotos y vídeo
+Dikte van de rand | Outline thickness | Épaisseur du contour | Grosor del borde
+Dun | Thin | Fin | Fino
+Middel | Medium | Moyen | Medio
+Dik | Thick | Épais | Grueso
+Randkleur | Outline colour | Couleur du contour | Color del borde
+Zwart | Black | Noir | Negro
+Wit | White | Blanc | Blanco
+Automatisch | Automatic | Automatique | Automático
+Standaardgrootte | Default size | Taille par défaut | Tamaño predeterminado
+Goed zo! | Well done! | Bravo ! | ¡Muy bien!
+Stempels | Stamps | Tampons | Sellos
+Klik op de stempelknop in de balk en daarna waar je hem wilt hebben. | Click the stamp button in the bar, then click where you want it. | Cliquez sur le bouton tampon dans la barre, puis là où vous le voulez. | Haz clic en el botón de sello de la barra y luego donde lo quieras.
+Volgende nummer | Next number | Numéro suivant | Número siguiente
+Het nummer telt vanzelf op | The number counts up by itself | Le numéro augmente tout seul | El número aumenta solo
+Weer bij 1 beginnen | Start at 1 again | Recommencer à 1 | Volver a empezar en 1
+Bord en achtergrond | Board and background | Tableau et fond | Pizarra y fondo
+Een leeg bord over je hele scherm, met lijnen als je wilt en meerdere pagina's. | An empty board over your whole screen, with lines if you like and several pages. | Un tableau vide sur tout l'écran, avec des lignes si vous voulez et plusieurs pages. | Una pizarra vacía sobre toda la pantalla, con líneas si quieres y varias páginas.
+Achtergrond | Background | Fond | Fondo
+Je bord heeft nu {0} pagina's. Met de knop Bord in de werkbalk ga je naar de vorige of volgende pagina, of maak je een nieuwe. | Your board now has {0} pages. Use the Board button in the toolbar to go to the previous or next page, or to make a new one. | Votre tableau a maintenant {0} pages. Avec le bouton Tableau de la barre, allez à la page précédente ou suivante, ou créez-en une nouvelle. | Tu pizarra tiene ahora {0} páginas. Con el botón Pizarra de la barra vas a la página anterior o siguiente, o creas una nueva.
+Whiteboard openen | Open whiteboard | Ouvrir le tableau blanc | Abrir la pizarra blanca
+Krijtbord openen | Open chalkboard | Ouvrir le tableau noir | Abrir la pizarra de tiza
+Voorlezen | Read aloud | Lecture à voix haute | Leer en voz alta
+Komt in versie 1.3: tekst op je scherm laten voorlezen, en tekst van het scherm lezen en overnemen. Ook de timer komt dan. | Coming in version 1.3: have text on your screen read aloud, and read and copy text from the screen. The timer comes then too. | Dans la version 1.3 : faire lire à voix haute le texte de l'écran, et lire et copier du texte à l'écran. Le minuteur arrive aussi. | Llega en la versión 1.3: leer en voz alta el texto de la pantalla, y leer y copiar texto de la pantalla. También llega el temporizador.
+Sneltoetsen | Shortcuts | Raccourcis | Atajos
+Sneltoetsen voor gereedschap | Tool shortcuts | Raccourcis des outils | Atajos de herramientas
+Met Ctrl+Shift kies je nooit per ongeluk een gereedschap als je typt | With Ctrl+Shift you never pick a tool by accident while typing | Avec Ctrl+Maj, vous ne choisissez jamais un outil par erreur en tapant | Con Ctrl+Mayús nunca eliges una herramienta sin querer al escribir
+letter | letter | lettre | letra
+Alleen een letter | Letter only | Lettre seule | Solo una letra
+Uit | Off | Désactivés | Desactivados
+Werken overal, ook als je niet tekent | Work everywhere, even when you are not drawing | Fonctionnent partout, même sans dessiner | Funcionan en todas partes, aunque no estés dibujando
+Tijdens het tekenen | While drawing | Pendant le dessin | Mientras dibujas
+Standaard terugzetten | Restore defaults | Rétablir par défaut | Restablecer
+Klik op Wijzigen en druk je toetsen in. Backspace = geen sneltoets | Click Change and press your keys. Backspace = no shortcut | Cliquez sur Modifier et appuyez sur vos touches. Retour arrière = aucun raccourci | Haz clic en Cambiar y pulsa tus teclas. Retroceso = sin atajo
+Annuleren | Cancel | Annuler | Cancelar
+Wijzigen | Change | Modifier | Cambiar
+Druk nu je toetsen in | Press your keys now | Appuyez sur vos touches | Pulsa tus teclas ahora
+geen | none | aucun | ninguno
+Kies voor deze sneltoets een combinatie met Ctrl, Shift of Alt. | Choose a combination with Ctrl, Shift or Alt for this shortcut. | Choisissez une combinaison avec Ctrl, Maj ou Alt pour ce raccourci. | Elige una combinación con Ctrl, Mayús o Alt para este atajo.
+Deze sneltoets kan niet leeg zijn. | This shortcut cannot be empty. | Ce raccourci ne peut pas être vide. | Este atajo no puede estar vacío.
+Opgeslagen. | Saved. | Enregistré. | Guardado.
+Opslaan | Save | Enregistrer | Guardar
+NexusPen bewaart je tekening automatisch, zodat je niets kwijtraakt als er iets misgaat. Druk je op Opslaan (op de werkbalk of Ctrl+S), dan staat je tekening er de volgende keer dat je NexusPen opent gewoon weer. Leeg beginnen: wis alles en druk nog een keer op Opslaan. | NexusPen saves your drawing automatically, so you lose nothing if something goes wrong. Press Save (in the toolbar or Ctrl+S) and your drawing is simply back the next time you open NexusPen. To start empty: clear everything and press Save once more. | NexusPen enregistre votre dessin automatiquement, pour ne rien perdre en cas de problème. Appuyez sur Enregistrer (dans la barre ou Ctrl+S) et votre dessin sera là la prochaine fois que vous ouvrirez NexusPen. Pour repartir de zéro : effacez tout et appuyez encore sur Enregistrer. | NexusPen guarda tu dibujo automáticamente, para que no pierdas nada si algo falla. Pulsa Guardar (en la barra o Ctrl+S) y tu dibujo estará ahí la próxima vez que abras NexusPen. Para empezar en blanco: borra todo y pulsa Guardar otra vez.
+Nu opslaan | Save now | Enregistrer maintenant | Guardar ahora
+Opgeslagen. Je tekening en instellingen staan er de volgende keer weer. | Saved. Your drawing and settings will be back next time. | Enregistré. Votre dessin et vos paramètres seront là la prochaine fois. | Guardado. Tu dibujo y tus ajustes estarán ahí la próxima vez.
+Klaar. Kijk op je scherm. | Done. Look at your screen. | Terminé. Regardez votre écran. | Listo. Mira tu pantalla.
+Mappen | Folders | Dossiers | Carpetas
+Schermafbeeldingen | Screenshots | Captures d'écran | Capturas de pantalla
+Tekeningen en instellingen | Drawings and settings | Dessins et paramètres | Dibujos y ajustes
+Schermdelen | Screen sharing | Partage d'écran | Compartir pantalla
+Werkbalk verbergen bij schermdelen | Hide the toolbar when sharing your screen | Masquer la barre lors du partage d'écran | Ocultar la barra al compartir pantalla
+Cursisten zien in Zoom of Teams je tekeningen wel, maar de werkbalk niet | Students in Zoom or Teams see your drawings, but not the toolbar | Dans Zoom ou Teams, les apprenants voient vos dessins mais pas la barre | En Zoom o Teams, los alumnos ven tus dibujos pero no la barra
+Dit werkt vanaf Windows 10 versie 2004. Op een oudere Windows ziet de ander de werkbalk gewoon. | This works from Windows 10 version 2004. On older Windows the other person still sees the toolbar. | Cela fonctionne à partir de Windows 10 version 2004. Sur un Windows plus ancien, l'autre personne voit la barre. | Funciona desde Windows 10 versión 2004. En un Windows más antiguo, la otra persona ve la barra.
+Gebruik | Usage | Utilisation | Uso
+Wat NexusPen bijhoudt, zodat we zien wat je echt gebruikt en wat beter kan. Alleen op deze pc. | What NexusPen keeps track of, so we can see what you really use and what could be better. Only on this PC. | Ce que NexusPen note, pour voir ce que vous utilisez vraiment et ce qui peut être amélioré. Uniquement sur ce PC. | Lo que NexusPen registra, para ver qué usas de verdad y qué se puede mejorar. Solo en este PC.
+Gebruik bijhouden | Keep track of usage | Suivre l'utilisation | Registrar el uso
+Er gaat niets naar internet | Nothing is sent to the internet | Rien n'est envoyé sur Internet | No se envía nada a internet
+Nooit: wat je schrijft of tekent, wat er op je scherm staat, namen of bestanden. | Never: what you write or draw, what is on your screen, names or files. | Jamais : ce que vous écrivez ou dessinez, ce qui est à l'écran, des noms ou des fichiers. | Nunca: lo que escribes o dibujas, lo que hay en tu pantalla, nombres o archivos.
+Deze week | This week | Cette semaine | Esta semana
+keer gestart | times started | démarrages | veces iniciado
+minuten getekend | minutes of drawing | minutes de dessin | minutos dibujando
+schermafbeeldingen | screenshots | captures d'écran | capturas
+Meest gebruikt | Most used | Les plus utilisés | Lo más usado
+Nog niets bijgehouden. Gebruik NexusPen gewoon, dan verschijnt het hier. | Nothing tracked yet. Just use NexusPen and it will show up here. | Rien de noté pour l'instant. Utilisez NexusPen et cela apparaîtra ici. | Todavía no hay datos. Usa NexusPen y aparecerán aquí.
+Nog nooit gebruikt | Never used yet | Jamais utilisé | Nunca usado
+Exporteren voor Claude | Export for Claude | Exporter pour Claude | Exportar para Claude
+Klaar: het bestand staat op je bureaublad. | Done: the file is on your desktop. | Terminé : le fichier est sur votre bureau. | Listo: el archivo está en tu escritorio.
+Exporteren is niet gelukt. | Export failed. | L'export a échoué. | No se pudo exportar.
+Wissen | Clear | Effacer | Borrar
+Alle bijgehouden gebruiksgegevens wissen? | Clear all tracked usage data? | Effacer toutes les données d'utilisation ? | ¿Borrar todos los datos de uso?
+Hulp en foutlog | Help and error log | Aide et journal des erreurs | Ayuda y registro de errores
+Loopt er iets vast? Druk op Esc: je bent dan altijd terug bij de muis. Werkt dat niet, rechtsklik dan op het logo bij de klok en kies Noodstop. Is je tekening weg, kies daar Vorige tekening terughalen. | Something stuck? Press Esc: you are always back to the mouse. If that does not work, right-click the logo near the clock and choose Emergency stop. Drawing gone? Choose Restore previous drawing there. | Quelque chose bloque ? Appuyez sur Échap : vous revenez toujours à la souris. Sinon, clic droit sur le logo près de l'horloge et choisissez Arrêt d'urgence. Dessin disparu ? Choisissez Récupérer le dessin précédent. | ¿Algo se ha bloqueado? Pulsa Esc: siempre vuelves al ratón. Si no funciona, haz clic derecho en el logo junto al reloj y elige Parada de emergencia. ¿Tu dibujo ha desaparecido? Elige Recuperar el dibujo anterior.
+Map met licenties | Licences folder | Dossier des licences | Carpeta de licencias
+Icoontjes: Lucide (ISC-licentie). Lettertypes Andika, Atkinson Hyperlegible, Lexend, Nunito en Patrick Hand: SIL Open Font License. | Icons: Lucide (ISC licence). Fonts Andika, Atkinson Hyperlegible, Lexend, Nunito and Patrick Hand: SIL Open Font License. | Icônes : Lucide (licence ISC). Polices Andika, Atkinson Hyperlegible, Lexend, Nunito et Patrick Hand : SIL Open Font License. | Iconos: Lucide (licencia ISC). Fuentes Andika, Atkinson Hyperlegible, Lexend, Nunito y Patrick Hand: SIL Open Font License.
+Instellingen | Settings | Paramètres | Ajustes
+Standaard van Windows | Windows default | Par défaut de Windows | Predeterminada de Windows
+Gemaakt voor beginnende lezers en Alfa | Made for beginning readers and literacy classes | Conçue pour les lecteurs débutants et l'alphabétisation | Pensada para lectores principiantes y alfabetización
+Extra goed leesbaar, ook voor slechtzienden | Extra legible, also for low vision | Très lisible, aussi pour les malvoyants | Muy legible, también para personas con baja visión
+Rustig en ruim, prettig bij lange zinnen | Calm and spacious, pleasant for long sentences | Calme et aérée, agréable pour les phrases longues | Tranquila y amplia, agradable en frases largas
+Rond en vriendelijk, de huisstijl van Nexus | Round and friendly, the Nexus house style | Ronde et sympathique, le style de Nexus | Redonda y amable, el estilo de Nexus
+Handschrift, toch goed te lezen | Handwriting, yet easy to read | Manuscrite, mais facile à lire | Manuscrita, pero fácil de leer
+Klikken op knoppen | Button clicks | Clics sur les boutons | Clics en botones
+Gereedschap en tijd | Tools and time | Outils et durée | Herramientas y tiempo
+Kleuren en dikte | Colours and thickness | Couleurs et épaisseur | Colores y grosor
+Menu's en instellingen | Menus and settings | Menus et paramètres | Menús y ajustes
+Twijfel en fouten | Hesitation and mistakes | Hésitations et erreurs | Dudas y errores
+Lessen | Lessons | Cours | Clases
+Scherm en snelheid | Screen and speed | Écran et vitesse | Pantalla y velocidad
+Deze combinatie gebruikt Windows of NexusPen al. | Windows or NexusPen already uses this combination. | Windows ou NexusPen utilise déjà cette combinaison. | Windows o NexusPen ya usa esta combinación.
+Deze combinatie hoort al bij {0}. | This combination already belongs to {0}. | Cette combinaison est déjà utilisée pour {0}. | Esta combinación ya pertenece a {0}.
+Markeerstift | Highlighter | Surligneur | Resaltador
+Laserpen | Laser pointer | Pointeur laser | Puntero láser
+Gum | Eraser | Gomme | Goma
+Selecteren | Select | Sélectionner | Seleccionar
+Lijn | Line | Ligne | Línea
+Pijl | Arrow | Flèche | Flecha
+Rechthoek | Rectangle | Rectangle | Rectángulo
+Cirkel | Circle | Cercle | Círculo
+Spotlicht | Spotlight | Projecteur | Foco
+Schermafbeelding | Screenshot | Capture d'écran | Captura de pantalla
+Tekeningen verbergen | Hide drawings | Masquer les dessins | Ocultar dibujos
+Ongedaan maken | Undo | Annuler | Deshacer
+Opnieuw | Redo | Rétablir | Rehacer
+Kopie van selectie | Copy of selection | Copie de la sélection | Copia de la selección
+Nexus | Nexus | Nexus | Nexus
+Huisstijl. Donker met NOL-oranje | House style. Dark with NOL orange | Style maison. Sombre avec l'orange NOL | Estilo de la casa. Oscuro con naranja NOL
+Nexus licht | Nexus light | Nexus clair | Nexus claro
+Huisstijl. Wit met NOL-oranje | House style. White with NOL orange | Style maison. Blanc avec l'orange NOL | Estilo de la casa. Blanco con naranja NOL
+Limoen | Lime | Citron vert | Lima
+Grafiet met fris groen | Graphite with fresh green | Graphite et vert vif | Grafito con verde fresco
+Oceaan | Ocean | Océan | Océano
+Donkerblauw met hemelsblauw | Dark blue with sky blue | Bleu foncé et bleu ciel | Azul oscuro con azul cielo
+Zonsondergang | Sunset | Coucher de soleil | Atardecer
+Warm donker met oranje | Warm dark with orange | Sombre chaud et orange | Oscuro cálido con naranja
+Framboos | Raspberry | Framboise | Frambuesa
+Donkerpaars met roze | Dark purple with pink | Violet foncé et rose | Morado oscuro con rosa
+Bordgroen met krijtgeel | Board green with chalk yellow | Vert tableau et jaune craie | Verde pizarra con amarillo tiza
+Licht | Light | Clair | Claro
+Wit met blauw | White with blue | Blanc et bleu | Blanco con azul
+Hoog contrast | High contrast | Contraste élevé | Alto contraste
+Zwart, wit en geel | Black, white and yellow | Noir, blanc et jaune | Negro, blanco y amarillo
+Eigen | Custom | Personnalisé | Personalizado
+Je eigen accentkleur | Your own accent colour | Votre couleur d'accent | Tu propio color de acento
+Rood | Red | Rouge | Rojo
+Oranje | Orange | Orange | Naranja
+Geel | Yellow | Jaune | Amarillo
+Groen | Green | Vert | Verde
+Lichtblauw | Light blue | Bleu clair | Azul claro
+Blauw | Blue | Bleu | Azul
+Paars | Purple | Violet | Morado
+Roze | Pink | Rose | Rosa
+Zacht rood | Soft red | Rouge doux | Rojo suave
+Zacht oranje | Soft orange | Orange doux | Naranja suave
+Zacht geel | Soft yellow | Jaune doux | Amarillo suave
+Zacht groen | Soft green | Vert doux | Verde suave
+Zacht lichtblauw | Soft light blue | Bleu clair doux | Azul claro suave
+Zacht blauw | Soft blue | Bleu doux | Azul suave
+Zacht paars | Soft purple | Violet doux | Morado suave
+Zacht roze | Soft pink | Rose doux | Rosa suave
+Grijs | Grey | Gris | Gris
+Krijtwit | Chalk white | Blanc craie | Blanco tiza
+Muis | Mouse | Souris | Ratón
+Vormen | Shapes | Formes | Formas
+Kleur en dikte | Colour and thickness | Couleur et épaisseur | Color y grosor
+Wegschuiven | Slide away | Ranger sur le côté | Apartar
+Streep | Divider | Séparateur | Separador
+Alles inklappen: balk en tekeningen even weg | Collapse everything: bar and drawings out of the way | Tout réduire : barre et dessins masqués un instant | Contraer todo: barra y dibujos fuera un momento
+Nog {0} knoppen | {0} more buttons | Encore {0} boutons | {0} botones más
+Sleep om de balk in te korten | Drag to shorten the bar | Faites glisser pour raccourcir la barre | Arrastra para acortar la barra
+Muis: gewoon klikken op je scherm | Mouse: just click on your screen | Souris : cliquer normalement sur l'écran | Ratón: hacer clic normal en la pantalla
+Selecteren en verplaatsen | Select and move | Sélectionner et déplacer | Seleccionar y mover
+Laserpen, verdwijnt vanzelf | Laser pointer, disappears by itself | Pointeur laser, disparaît tout seul | Puntero láser, desaparece solo
+Gum, of rechtermuisknop ingedrukt | Eraser, or hold the right mouse button | Gomme, ou bouton droit enfoncé | Goma, o mantén pulsado el botón derecho
+Vormen: lijn, pijl, rechthoek, cirkel | Shapes: line, arrow, rectangle, circle | Formes : ligne, flèche, rectangle, cercle | Formas: línea, flecha, rectángulo, círculo
+Kleur en dikte (muiswiel of knijpen op het touchpad) | Colour and thickness (mouse wheel or pinch on the touchpad) | Couleur et épaisseur (molette ou pincement sur le pavé tactile) | Color y grosor (rueda o pellizco en el touchpad)
+Stempel: vinkje, kruis, ster, vraagteken of nummer | Stamp: tick, cross, star, question mark or number | Tampon : coche, croix, étoile, point d'interrogation ou numéro | Sello: visto, cruz, estrella, interrogación o número
+Spotlicht: alleen rond je muis is het licht. Muiswiel = groter of kleiner | Spotlight: only the area around your mouse is lit. Mouse wheel = bigger or smaller | Projecteur : seule la zone autour de la souris est éclairée. Molette = plus grand ou plus petit | Foco: solo la zona alrededor del ratón está iluminada. Rueda = más grande o más pequeño
+Rechtsklik = opnieuw | Right-click = redo | Clic droit = rétablir | Clic derecho = rehacer
+Bord: whiteboard of krijtbord, met lijnen en pagina's | Board: whiteboard or chalkboard, with lines and pages | Tableau : blanc ou noir, avec lignes et pages | Pizarra: blanca o de tiza, con líneas y páginas
+Schermafbeelding, naar Afbeeldingen\\NexusPen en het klembord | Screenshot, to Pictures\\NexusPen and the clipboard | Capture d'écran, dans Images\\NexusPen et le presse-papiers | Captura, a Imágenes\\NexusPen y al portapapeles
+Opslaan: je tekening staat er de volgende keer weer | Save: your drawing is back next time | Enregistrer : votre dessin revient la prochaine fois | Guardar: tu dibujo vuelve la próxima vez
+Tekeningen verbergen of weer tonen | Hide or show drawings | Masquer ou afficher les dessins | Ocultar o mostrar los dibujos
+Wegschuiven naar de rand. Je tekeningen blijven staan | Slide away to the edge. Your drawings stay | Ranger sur le bord. Vos dessins restent | Apartar al borde. Tus dibujos se quedan
+Verbergen uit de balk | Hide from the bar | Masquer de la barre | Ocultar de la barra
+Werkbalk aanpassen... | Customise toolbar... | Personnaliser la barre... | Personalizar la barra...
+Uitklappen | Expand | Déplier | Expandir
+Inklappen | Collapse | Réduire | Contraer
+NexusPen afsluiten | Quit NexusPen | Quitter NexusPen | Salir de NexusPen
+Er is een nieuwe versie: {0}. Klik hier om hem te downloaden. | A new version is available: {0}. Click here to download it. | Une nouvelle version est disponible : {0}. Cliquez ici pour la télécharger. | Hay una versión nueva: {0}. Haz clic aquí para descargarla.

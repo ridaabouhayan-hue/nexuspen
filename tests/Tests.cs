@@ -103,13 +103,70 @@ static class Tests {
       Color corner = lb.GetPixel(30, 128), stem = lb.GetPixel(176, 100), wood = lb.GetPixel(70, 170), tipC = lb.GetPixel(78, 196);
       Check(corner.B > 240 && corner.R < 70, "Logotegel krijgt de accentkleur van het thema");
       Check(stem.R > 240 && stem.G > 240 && stem.B > 240, "N is wit");
-      Check(wood.R > 230 && wood.G > 180 && wood.B < 220, "Potloodpunt is hout");
+      Check(wood.R > 240 && wood.G > 240 && wood.B > 240, "Potlood is wit (alleen de grafietpunt heeft kleur)");
       Check(tipC.R < 90 && tipC.G < 70, "Grafietpunt is donker");
       lb.Save(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np_logo_test.png"), ImageFormat.Png);
     }
     Check(Logo.LetterColor(Color.FromArgb(255, 0xFF, 0xE6, 0x00), Color.Black).ToArgb() == Color.Black.ToArgb(), "Op geel wordt de N donker");
     Check(Logo.LetterColor(Color.FromArgb(255, 0xFF, 0x80, 0x00), Color.Black).ToArgb() == Color.White.ToArgb(), "Op oranje blijft de N wit");
     using (var sm = Logo.Bitmap(16, Color.FromArgb(255, 0xFF, 0x80, 0x00), Color.White)) Check(sm.GetPixel(8, 1).R > 200, "Klein logo (16 px) tekent");
+
+    // 7. Vertalingen
+    bool rowsOk = true; foreach (string[] r in LangData.Rows) if (r.Length != 4 || string.Join("", r).IndexOf('—') >= 0) rowsOk = false;
+    Check(rowsOk && LangData.Rows.Length > 250, "Elke vertaling heeft NL, EN, FR en ES, zonder lang streepje (" + LangData.Rows.Length + ")");
+    L.Set("en"); string en = L.T("Opslaan"); L.Set("fr"); string fr = L.T("Opslaan"); L.Set("es"); string es = L.T("Opslaan");
+    string unk = L.T("Dit bestaat niet"); L.Set("nl");
+    Check(en == "Save" && fr == "Enregistrer" && es == "Guardar" && L.T("Opslaan") == "Opslaan", "Opslaan in vier talen");
+    Check(unk == "Dit bestaat niet", "Onbekende tekst blijft Nederlands, geen crash");
+    L.Set("en"); Check(L.F("Pagina {0} van {1}", 2, 3) == "Page 2 of 3", "Tekst met getallen vertaalt goed"); L.Set("nl");
+    L.Set("xx"); Check(L.Code == "nl", "Onbekende taal valt terug op Nederlands"); L.Set("nl");
+
+    // 8. Sneltoetsen: standaard Ctrl+Shift, eigen keuze en botsingen
+    var sc = new Settings(); Shortcuts.Cfg = sc;
+    Check(Shortcuts.Combo("pen") == "Ctrl+Shift+P" && Shortcuts.Combo("redo") == "Ctrl+Y" && Shortcuts.Combo("undo") == "Ctrl+Z", "Pen is Ctrl+Shift+P, opnieuw is Ctrl+Y");
+    sc.ShortcutMode = 1; Check(Shortcuts.Combo("pen") == "P", "Stand alleen een letter");
+    sc.ShortcutMode = 2; Check(Shortcuts.Combo("pen") == "" && Shortcuts.Combo("undo") == "Ctrl+Z", "Stand uit laat Ctrl+Z werken");
+    sc.ShortcutMode = 0;
+    Check(Shortcuts.Conflict("pen", "Ctrl+Shift+M") != null, "Botsing met markeerstift wordt gemeld");
+    Check(Shortcuts.Conflict("pen", "Ctrl+Shift+D") != null, "Botsing met tekenen aan of uit wordt gemeld");
+    Shortcuts.SetOverride("pen", "Ctrl+Alt+P"); Check(Shortcuts.Combo("pen") == "Ctrl+Alt+P", "Eigen sneltoets wordt gebruikt");
+    Shortcuts.SetOverride("pen", ""); Check(Shortcuts.Combo("pen") == "", "Sneltoets kan leeg");
+    var ke = new System.Windows.Forms.KeyEventArgs(System.Windows.Forms.Keys.M | System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.Shift);
+    Check(Shortcuts.ActionFor(ke) == "markeer", "Ctrl+Shift+M kiest de markeerstift");
+    var plain = new System.Windows.Forms.KeyEventArgs(System.Windows.Forms.Keys.M);
+    Check(Shortcuts.ActionFor(plain) == null, "Gewoon M typen doet niets in de standaardstand");
+    Check(Shortcuts.FromKeys(System.Windows.Forms.Keys.Y | System.Windows.Forms.Keys.Control) == "Ctrl+Y", "Toetsen worden goed opgeschreven");
+
+    // 9. Werkbalk: volgorde, verbergen en terugzetten
+    var bc = new Settings();
+    var lay = Toolbar.Layout(bc);
+    Check(lay.Count > 15 && lay[0] == "muis" && lay.Contains("|") && lay[lay.Count - 1] == "weg", "Standaardbalk begint met muis en eindigt met wegschuiven");
+    lay.Remove("laser"); lay.Insert(0, "redo"); bc.BarLayout = Toolbar.LayoutString(lay);
+    var lay2 = Toolbar.Layout(bc);
+    Check(lay2[0] == "redo" && !lay2.Contains("laser"), "Eigen volgorde en verborgen knop blijven bewaard");
+    bc.BarLayout = "pen,bestaatniet,,|,|,gum"; var lay3 = Toolbar.Layout(bc);
+    Check(!lay3.Contains("bestaatniet") && lay3.Contains("pen") && lay3.Contains("gum"), "Rare werkbalk-instelling geeft geen crash");
+    Check(Toolbar.NameOf("foto") == "Schermafbeelding" && Toolbar.IconOf("foto") != null, "Elke knop heeft een naam en icoontje");
+    bool allIcons = true; foreach (string k in Toolbar.Catalog) if (k != "|" && k != "kleur" && !Icons.Has(Toolbar.IconOf(k))) allIcons = false;
+    Check(allIcons, "Alle knoppen in de catalogus hebben een Lucide-icoontje");
+
+    // 10. Nieuwe instellingen blijven bewaard
+    var ns = new Settings(); ns.Language = "fr"; ns.KeepDrawing = 2; ns.ShortcutMode = 1; ns.ShortcutOverrides = "pen=Ctrl+Alt+P"; ns.StampKind = 4; ns.StampNext = 7;
+    ns.BoardBg = 2; ns.OutlineWidth = 2; ns.OutlineColor = 1; ns.TextSize = 48; ns.Chalk = true; ns.Fade = true; ns.BarLayout = "pen,gum"; ns.UsageCats = 5; ns.ShowInTaskbar = false;
+    string nsPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np_test2.ini"); ns.Save(nsPath); var nb = Settings.Load(nsPath);
+    Check(nb.Language == "fr" && nb.KeepDrawing == 2 && nb.ShortcutMode == 1 && nb.ShortcutOverrides == "pen=Ctrl+Alt+P" && nb.StampKind == 4 && nb.StampNext == 7 && nb.BoardBg == 2
+      && nb.OutlineWidth == 2 && nb.OutlineColor == 1 && Math.Abs(nb.TextSize - 48) < 0.01 && nb.Chalk && nb.Fade && nb.BarLayout == "pen,gum" && nb.UsageCats == 5 && !nb.ShowInTaskbar, "Taal, sneltoetsen, stempels, bord en tekst blijven bewaard");
+    var dflt = new Settings(); Check(dflt.FontName == "Andika" && dflt.TextOutline && Math.Abs(dflt.TextSize - 36) < 0.01 && dflt.KeepDrawing == 1 && dflt.ShortcutMode == 0, "Standaard: Andika, rand aan, grootte 36, bewaren na Opslaan, Ctrl+Shift");
+
+    // 11. Stempels
+    bool stOk = true;
+    using (var sb = new Bitmap(200, 200, PixelFormat.Format32bppArgb)) using (var sg = Graphics.FromImage(sb)) {
+      foreach (string k in Render.StampKinds) { var s = new Stroke{Tool=Tool.Stamp, FontSize=40, Text = k == "nummer" ? "#12" : k, Color = Render.StampColor(k)}; s.Pts.Add(new PointF(100,100));
+        try { Render.Draw(sg, s, 1); } catch { stOk = false; } }
+    }
+    Check(stOk && Render.StampKinds.Length == 5, "Alle vijf stempels tekenen, ook nummer 12");
+    // 12. Versies vergelijken
+    Check(Updates.IsNewer("1.2.1", "1.2.0") && Updates.IsNewer("v1.3", "1.2.0") && !Updates.IsNewer("1.2.0", "1.2.0") && !Updates.IsNewer("1.1.9", "1.2.0") && !Updates.IsNewer("rommel", "1.2.0"), "Nieuwe versie wordt goed herkend");
     Console.WriteLine(fails == 0 ? "\nALLE TESTS GESLAAGD" : "\n" + fails + " TEST(S) MISLUKT");
     return fails;
   }

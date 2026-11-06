@@ -49,6 +49,14 @@ jobs:
             out/NexusPen.exe
             out/NexusPen-Setup.exe
 
+      - name: Schermafbeeldingen van de zelftest bewaren
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexusPen-schermen
+          path: out/schermen/*.png
+          if-no-files-found: warn
+
       - name: Release maken bij een versietag
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2

@@ -1,0 +1,616 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Globalization;
+using System.Text;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.Drawing.Text;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Windows.Forms;
+using Microsoft.Win32;
+
+namespace NexusPen
+{
+    // ------------------------------------------------------------------ Kleur en dikte (pen-paneel)
+    class ColorPopup : BarForm
+    {
+        RectangleF track;
+        bool sliding;
+        public const float MaxW = 40;
+
+        public ColorPopup(Overlay o) : base(o) { Text = "NexusPen kleur"; }
+
+        protected override void Build()
+        {
+            Overlay o = ov;
+            float pad = 14 * S, sw = 28 * S, gapX = 12 * S, rowGap = 12 * S;
+            float w = pad * 2 + sw * 5 + gapX * 4;
+            float y = pad;
+            titleRow = new RectangleF(pad, y, w - pad * 2, 16 * S);
+            y += 24 * S;
+            // Fel / Zacht
+            float segW = (w - pad * 2 - 6 * S) / 2;
+            for (int i = 0; i < Palette.Names.Length; i++)
+            {
+                int idx = i;
+                Item it = Add(new RectangleF(pad + 3 * S + i * segW, y + 3 * S, segW, 28 * S), i == 0 ? L.T("Felle kleuren") : L.T("Zachte kleuren"), delegate { o.SetPalette(idx); Invalidate(); });
+                it.Paint = delegate(Graphics g, Item item, bool h)
+                {
+                    Theme t = T;
+                    bool on = o.PaletteIndex == idx;
+                    if (on)
+                    {
+                        using (SolidBrush b = new SolidBrush(t.IsLight ? Color.White : ColorTranslator.FromHtml("#3F3F46")))
+                        using (GraphicsPath gp = Svg.RoundRect(item.R, 7 * S)) g.FillPath(b, gp);
+                        using (Pen p = new Pen(t.Accent, 1.5f * S))
+                        using (GraphicsPath gp = Svg.RoundRect(RectangleF.Inflate(item.R, -0.75f * S, -0.75f * S), 7 * S)) g.DrawPath(p, gp);
+                    }
+                    Label(g, L.T(Palette.Names[idx]), item.R, on ? t.Text : t.Muted, 12, true, StringAlignment.Center);
+                };
+            }
+            segBox = new RectangleF(pad, y, w - pad * 2, 34 * S);
+            y += 34 * S + 14 * S;
+            for (int i = 0; i < 10; i++)
+            {
+                int idx = i;
+                RectangleF r = new RectangleF(pad + (i % 5) * (sw + gapX), y + (i / 5) * (sw + rowGap), sw, sw);
+                Item it = Add(RectangleF.Inflate(r, 4 * S, 4 * S), "", delegate { o.SetColor(idx); Invalidate(); });
+                it.Paint = delegate(Graphics g, Item item, bool h)
+                {
+                    RectangleF rr = RectangleF.Inflate(item.R, -4 * S, -4 * S);
+                    Swatch(g, rr, Palette.Sets[o.PaletteIndex][idx], o.ColorIndex == idx, sw * (h ? 1.06f : 1f));
+                };
+                it.Tip = null;
+                tipFor[it] = idx;
+            }
+            y += sw * 2 + rowGap + 16 * S;
+            // dikte
+            labelRow = new RectangleF(pad, y, w - pad * 2, 20 * S);
+            track = new RectangleF(pad + 46 * S, y + 8 * S, w - pad * 2 - 46 * S - 34 * S, 4 * S);
+            y += 20 * S + 14 * S;
+            // krijtstreep en vervagen (voor de pen)
+            float half = (w - pad * 2 - 8 * S) / 2;
+            Item chalk = Add(new RectangleF(pad, y, half, 32 * S), L.T("Lijnen zien eruit als krijt op een bord"), delegate { o.Cfg.Chalk = !o.Cfg.Chalk; o.Cfg.Save(); Invalidate(); });
+            chalk.Paint = delegate(Graphics g, Item item, bool h) { PaintChip(g, item.R, o.Cfg.Chalk, h, L.T("Krijtstreep"), null, Color.Empty); };
+            Item fade = Add(new RectangleF(pad + half + 8 * S, y, half, 32 * S), L.T("Wat je tekent verdwijnt na 5 seconden vanzelf"), delegate { o.Cfg.Fade = !o.Cfg.Fade; o.Cfg.Save(); Invalidate(); });
+            fade.Paint = delegate(Graphics g, Item item, bool h) { PaintChip(g, item.R, o.Cfg.Fade, h, L.T("Vervaagt na 5 s"), null, Color.Empty); };
+            y += 32 * S + pad;
+            ClientSize = new Size((int)Math.Ceiling(w), (int)Math.Ceiling(y));
+        }
+
+        RectangleF segBox, labelRow, titleRow;
+        Dictionary<Item, int> tipFor = new Dictionary<Item, int>();
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            if (sliding) { Slide(e.X); return; }
+            Item before = hover;
+            base.OnMouseMove(e);
+            int idx;
+            if (hover != before && hover != null && tipFor.TryGetValue(hover, out idx))
+                tip.Show(L.T(Palette.Labels[ov.PaletteIndex][idx]) + (Shortcuts.ColorCombo(idx).Length > 0 ? "  (" + Shortcuts.ColorCombo(idx) + ")" : ""), this, new Point((int)hover.R.X, (int)(hover.R.Bottom + 4 * S)), 2500);
+        }
+
+        protected override bool OnPress(MouseEventArgs e)
+        {
+            RectangleF hit = RectangleF.Inflate(track, 10 * S, 10 * S);
+            if (e.Button == MouseButtons.Left && hit.Contains(e.Location)) { sliding = true; Capture = true; Slide(e.X); return true; }
+            return false;
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e) { base.OnMouseUp(e); if (sliding) { sliding = false; Capture = false; } }
+
+        void Slide(int x)
+        {
+            float f = Math.Max(0, Math.Min(1, (x - track.X) / track.Width));
+            ov.SetWidth((float)Math.Round(1 + f * (MaxW - 1)));
+            Invalidate();
+        }
+
+        protected override void PaintExtra(Graphics g)
+        {
+            Theme t = T;
+            using (SolidBrush b = new SolidBrush(t.Chip))
+            using (GraphicsPath gp = Svg.RoundRect(segBox, 9 * S)) g.FillPath(b, gp);
+            Label(g, L.T("Pen").ToUpperInvariant(), titleRow, t.Muted, 11, true, StringAlignment.Near);
+            Label(g, L.T("Dikte"), new RectangleF(labelRow.X, labelRow.Y, 46 * S, labelRow.Height), t.Muted, 12, true, StringAlignment.Near);
+            Label(g, ((int)ov.PenWidth).ToString(), new RectangleF(labelRow.Right - 30 * S, labelRow.Y, 30 * S, labelRow.Height), t.Text, 13, true, StringAlignment.Far);
+            float f = Math.Max(0, Math.Min(1, (ov.PenWidth - 1) / (MaxW - 1)));
+            using (SolidBrush b = new SolidBrush(t.IsLight ? ColorTranslator.FromHtml("#E4E4E7") : ColorTranslator.FromHtml("#3F3F46")))
+            using (GraphicsPath gp = Svg.RoundRect(track, 2 * S)) g.FillPath(b, gp);
+            using (SolidBrush b = new SolidBrush(t.Accent))
+            using (GraphicsPath gp = Svg.RoundRect(new RectangleF(track.X, track.Y, Math.Max(track.Height, track.Width * f), track.Height), 2 * S)) g.FillPath(b, gp);
+            float kx = track.X + track.Width * f, ky = track.Y + track.Height / 2;
+            using (SolidBrush b = new SolidBrush(t.IsLight ? Color.White : Color.White)) g.FillEllipse(b, kx - 8 * S, ky - 8 * S, 16 * S, 16 * S);
+            if (t.IsLight) using (Pen p = new Pen(ColorTranslator.FromHtml("#D4D4D8"), 1)) g.DrawEllipse(p, kx - 8 * S, ky - 8 * S, 16 * S, 16 * S);
+        }
+    }
+
+
+    // ------------------------------------------------------------------ Rij met opties onder een knop (vormen, stempels, bord)
+    class RowPopup : BarForm
+    {
+        protected float x, pad = 6 * 1, h;
+
+        public RowPopup(Overlay o) : base(o) { }
+
+        protected void Start(string title)
+        {
+            pad = 6 * S; h = 32 * S;
+            x = 12 * S;
+            if (title != null) { titleText = title; titleW = TextWidth(title, 12) + 8 * S; x += titleW; }
+            else titleText = null;
+        }
+
+        string titleText; float titleW;
+        List<RectangleF> rowSeps = new List<RectangleF>();
+
+        public override void Rebuild() { rowSeps.Clear(); base.Rebuild(); }
+
+        protected Item Chip(string text, string icon, Color iconColor, string tipText, Func<bool> on, Action click)
+        {
+            float w = (text == null ? 0 : TextWidth(text, 13) + 20 * S) + (icon != null ? (text == null ? 32 * S : 22 * S) : 0);
+            Item it = Add(new RectangleF(x, pad, w, h), tipText, click);
+            it.Paint = delegate(Graphics g, Item item, bool hv) { PaintChip(g, item.R, on != null && on(), hv, text, icon, iconColor); };
+            x += w + 6 * S;
+            return it;
+        }
+
+        protected void Sep() { rowSeps.Add(new RectangleF(x + 2 * S, pad + (h - 22 * S) / 2, 1 * S, 22 * S)); x += 11 * S; }
+
+        protected void Finish() { ClientSize = new Size((int)Math.Ceiling(x + 2 * S), (int)Math.Ceiling(h + pad * 2)); }
+
+        protected override void PaintExtra(Graphics g)
+        {
+            if (titleText != null) Label(g, titleText, new RectangleF(12 * S, 0, titleW, ClientSize.Height), T.Muted, 12, true, StringAlignment.Near);
+            using (SolidBrush b = new SolidBrush(T.Sep)) foreach (RectangleF r in rowSeps) g.FillRectangle(b, r);
+        }
+    }
+
+    // ------------------------------------------------------------------ Vormen: lijn, pijl, rechthoek, cirkel
+    class ShapePopup : RowPopup
+    {
+        public ShapePopup(Overlay o) : base(o) { Text = "NexusPen vormen"; }
+
+        protected override void Build()
+        {
+            Overlay o = ov;
+            Start(null);
+            string[] icons = { "lijn", "pijl", "rechthoek", "cirkel" };
+            string[] tips = { L.T("Lijn. Shift = recht"), L.T("Pijl. Shift = recht"), L.T("Rechthoek. Shift = vierkant"), L.T("Cirkel. Shift = rond") };
+            Tool[] tools = { Tool.Line, Tool.Arrow, Tool.Rect, Tool.Ellipse };
+            string[] ids = { "lijn", "pijl", "rechthoek", "cirkel" };
+            for (int i = 0; i < 4; i++)
+            {
+                Tool t = tools[i];
+                Chip(null, icons[i], Color.Empty, Shortcuts.Tip(tips[i], ids[i]), delegate { return o.DrawMode && o.CurrentTool == t; },
+                    delegate { o.SetTool(t); if (o.Bar != null) o.Bar.ClosePopups(); });
+            }
+            Finish();
+        }
+    }
+
+    // ------------------------------------------------------------------ Stempels
+    class StampPopup : RowPopup
+    {
+        public StampPopup(Overlay o) : base(o) { Text = "NexusPen stempels"; }
+
+        protected override void Build()
+        {
+            Overlay o = ov;
+            Start(L.T("Stempel"));
+            string[] tips = { L.T("Vinkje"), L.T("Kruis"), L.T("Ster"), L.T("Vraagteken") };
+            string[] icons = { "vink", "kruis", "ster", "vraag" };
+            for (int i = 0; i < 4; i++)
+            {
+                int idx = i;
+                Chip(null, icons[i], Render.StampColor(Render.StampKinds[i]), tips[i], delegate { return o.Cfg.StampKind == idx; },
+                    delegate { o.Cfg.StampKind = idx; o.Cfg.Save(); o.SetTool(Tool.Stamp); Invalidate(); });
+            }
+            Item num = Chip(L.T("Nummer"), null, Color.Empty, L.T("Telt vanzelf op: 1, 2, 3. Rechtsklik = weer bij 1 beginnen"),
+                delegate { return o.Cfg.StampKind == 4; }, delegate { o.Cfg.StampKind = 4; o.Cfg.Save(); o.SetTool(Tool.Stamp); Invalidate(); });
+            num.R = new RectangleF(num.R.X, num.R.Y, num.R.Width + 26 * S, num.R.Height);
+            x += 26 * S;
+            num.RightClick = delegate { o.Cfg.StampNext = 1; o.Cfg.Save(); Invalidate(); };
+            num.Paint = delegate(Graphics g, Item item, bool hv)
+            {
+                PaintChip(g, item.R, o.Cfg.StampKind == 4, hv, null, null, Color.Empty);
+                float d = 20 * S, cx = item.R.X + 8 * S;
+                using (SolidBrush b = new SolidBrush(T.IsLight ? Color.Black : Color.White)) g.FillEllipse(b, cx, item.R.Y + (item.R.Height - d) / 2, d, d);
+                Label(g, o.Cfg.StampNext.ToString(), new RectangleF(cx, item.R.Y, d, item.R.Height), T.IsLight ? Color.White : Color.Black, 11, true, StringAlignment.Center);
+                Label(g, L.T("Nummer"), new RectangleF(cx + d + 6 * S, item.R.Y, item.R.Width - d - 18 * S, item.R.Height), T.Text, 13, true, StringAlignment.Near);
+            };
+            Sep();
+            string[] sizes = { "S", "M", "L" };
+            for (int i = 0; i < 3; i++)
+            {
+                int idx = i;
+                Chip(sizes[i], null, Color.Empty, L.T("Grootte van de stempel"), delegate { return o.Cfg.StampSize == idx; }, delegate { o.Cfg.StampSize = idx; o.Cfg.Save(); Invalidate(); });
+            }
+            Finish();
+        }
+    }
+
+    // ------------------------------------------------------------------ Bord: whiteboard, krijtbord, achtergrond en pagina's
+    class BoardPopup : RowPopup
+    {
+        public BoardPopup(Overlay o) : base(o) { Text = "NexusPen bord"; }
+
+        protected override void Build()
+        {
+            Overlay o = ov;
+            Start(L.T("Bord"));
+            Chip(L.T("Scherm"), null, Color.Empty, L.T("Gewoon over je scherm tekenen"), delegate { return o.BoardMode == Board.None; }, delegate { o.SetBoard(Board.None); Invalidate(); });
+            Item wb = Chip(L.T("Whiteboard"), "leeg", Color.Empty, L.T("Wit bord"), delegate { return o.BoardMode == Board.White; }, delegate { o.SetBoard(Board.White); Invalidate(); });
+            Item kb = Chip(L.T("Krijtbord"), "leeg", Color.Empty, L.T("Groen krijtbord"), delegate { return o.BoardMode == Board.Black; }, delegate { o.SetBoard(Board.Black); Invalidate(); });
+            Swatchify(wb, Color.White, () => o.BoardMode == Board.White, L.T("Whiteboard"));
+            Swatchify(kb, Overlay.ChalkGreen, () => o.BoardMode == Board.Black, L.T("Krijtbord"));
+            Sep();
+            string[] bgs = { L.T("Leeg"), L.T("Schrijflijnen"), L.T("Ruitjes"), L.T("Lijntjes") };
+            string[] icons = { null, "schrijflijnen", "ruitjes", "lijnen" };
+            string[] tips = { L.T("Geen lijnen"), L.T("Schrijflijnen, handig voor Alfa"), L.T("Ruitjes"), L.T("Lijntjes, zoals in een schrift") };
+            for (int i = 0; i < 4; i++)
+            {
+                int idx = i;
+                Chip(bgs[i], icons[i], Color.Empty, tips[i], delegate { return o.Cfg.BoardBg == idx; },
+                    delegate { o.Cfg.BoardBg = idx; o.Cfg.Save(); if (o.BoardMode == Board.None) o.SetBoard(Board.White); else o.Rebuild(); Invalidate(); });
+            }
+            Sep();
+            Chip(null, "links", Color.Empty, L.T("Vorige pagina"), null, delegate { o.PrevPage(); Rebuild(); });
+            Item pg = Add(new RectangleF(x, pad, 52 * S, h), L.T("Pagina"), null);
+            pg.Paint = delegate(Graphics g, Item item, bool hv) { Label(g, (o.PageIndex + 1) + " / " + o.PageCount, item.R, T.Text, 13, true, StringAlignment.Center); };
+            x += 52 * S + 6 * S;
+            Chip(null, "rechts", Color.Empty, L.T("Volgende pagina"), null, delegate { o.NextPage(); Rebuild(); });
+            Chip(null, "plus", Color.Empty, L.T("Nieuwe pagina"), null, delegate { o.NewPage(); Rebuild(); });
+            Finish();
+        }
+
+        void Swatchify(Item it, Color c, Func<bool> on, string text)
+        {
+            it.Paint = delegate(Graphics g, Item item, bool hv)
+            {
+                PaintChip(g, item.R, on(), hv, null, null, Color.Empty);
+                RectangleF sq = new RectangleF(item.R.X + 10 * S, item.R.Y + (item.R.Height - 14 * S) / 2, 14 * S, 14 * S);
+                using (SolidBrush b = new SolidBrush(c)) using (GraphicsPath gp = Svg.RoundRect(sq, 3 * S)) g.FillPath(b, gp);
+                using (Pen p = new Pen(Color.FromArgb(90, 128, 128, 128), 1)) using (GraphicsPath gp = Svg.RoundRect(sq, 3 * S)) g.DrawPath(p, gp);
+                Label(g, text, new RectangleF(sq.Right + 6 * S, item.R.Y, item.R.Right - sq.Right - 10 * S, item.R.Height), T.Text, 13, true, StringAlignment.Near);
+            };
+        }
+    }
+
+    // ------------------------------------------------------------------ Menu met het getal: de knoppen achter het sleeprandje
+    class OverflowPopup : BarForm
+    {
+        public List<string> Keys = new List<string>();
+        public OverflowPopup(Overlay o) : base(o) { Text = "NexusPen meer"; }
+
+        protected override void Build()
+        {
+            Overlay o = ov;
+            float pad = 14 * S, cw = 70 * S, ch = 62 * S;
+            int cols = Math.Min(5, Math.Max(3, Keys.Count));
+            float w = pad * 2 + cols * cw;
+            float y = pad + 22 * S;
+            for (int i = 0; i < Keys.Count; i++)
+            {
+                string k = Keys[i];
+                RectangleF r = new RectangleF(pad + (i % cols) * cw, y + (i / cols) * ch, cw, ch);
+                Item it = Add(r, Toolbar.NameOf(k), delegate { if (o.Bar != null) o.Bar.PressFromOverflow(k); });
+                it.Paint = delegate(Graphics g, Item item, bool hv)
+                {
+                    RectangleF b = new RectangleF(item.R.X + (item.R.Width - 40 * S) / 2, item.R.Y, 40 * S, 40 * S);
+                    using (SolidBrush br = new SolidBrush(hv ? (T.IsLight ? ColorTranslator.FromHtml("#E4E4E7") : ColorTranslator.FromHtml("#3F3F46")) : T.Chip))
+                    using (GraphicsPath gp = Svg.RoundRect(b, 9 * S)) g.FillPath(br, gp);
+                    if (k == "kleur")
+                        using (SolidBrush br = new SolidBrush(o.CurrentColor)) g.FillEllipse(br, b.X + 11 * S, b.Y + 11 * S, 18 * S, 18 * S);
+                    else Icons.Draw(g, Toolbar.IconOf(k), b, 20 * S, T.Icon, 2f);
+                    Label(g, Toolbar.NameOf(k), new RectangleF(item.R.X, b.Bottom + 2 * S, item.R.Width, 18 * S), T.Muted, 11, false, StringAlignment.Center);
+                };
+            }
+            y += ((Keys.Count + cols - 1) / cols) * ch + 6 * S;
+            Item all = Add(new RectangleF(pad, y, w - pad * 2, 34 * S), L.T("Het sleeprandje gaat weer naar het einde"), delegate { if (o.Bar != null) o.Bar.ShowAllButtons(); });
+            all.Paint = delegate(Graphics g, Item item, bool hv)
+            {
+                using (SolidBrush br = new SolidBrush(T.Accent)) using (GraphicsPath gp = Svg.RoundRect(item.R, 9 * S)) g.FillPath(br, gp);
+                Label(g, L.T("Alles weer tonen"), item.R, T.OnAccent, 13, true, StringAlignment.Center);
+            };
+            y += 34 * S + pad;
+            ClientSize = new Size((int)Math.Ceiling(w), (int)Math.Ceiling(y));
+        }
+
+        protected override void PaintExtra(Graphics g)
+        {
+            Label(g, L.T("Verborgen knoppen"), new RectangleF(14 * S, 10 * S, ClientSize.Width - 28 * S, 20 * S), T.Text, 13, true, StringAlignment.Near);
+        }
+    }
+
+    // ------------------------------------------------------------------ Balkje bij een geselecteerd item
+    class MiniBar : BarForm
+    {
+        public MiniBar(Overlay o) : base(o) { Text = "NexusPen selectie"; }
+        static readonly int[] Picks = { 0, 2, 3, 5, 8, 9 };
+        List<RectangleF> barSeps = new List<RectangleF>();
+
+        public override void Rebuild() { barSeps.Clear(); base.Rebuild(); }
+
+        protected override void Build()
+        {
+            Overlay o = ov;
+            float pad = 6 * S, sw = 26 * S, d = 18 * S, h = 30 * S;
+            float x = pad + 2 * S;
+            foreach (int pi in Picks)
+            {
+                int idx = pi;
+                Item it = Add(new RectangleF(x, pad, sw, h), L.T(Palette.Labels[o.PaletteIndex][idx]), delegate { o.RecolorSelected(Palette.Sets[o.PaletteIndex][idx]); Invalidate(); });
+                it.Paint = delegate(Graphics g, Item item, bool hv)
+                {
+                    Color c = Palette.Sets[o.PaletteIndex][idx];
+                    Swatch(g, item.R, c, o.SelectedColor.ToArgb() == c.ToArgb(), hv ? d + 2 * S : d);
+                };
+                x += sw;
+            }
+            Item more = Add(new RectangleF(x, pad, sw, h), L.T("Andere kleur"), delegate { PickColor(); });
+            more.Paint = delegate(Graphics g, Item item, bool hv)
+            {
+                RectangleF c = new RectangleF(item.R.X + (item.R.Width - d) / 2, item.R.Y + (item.R.Height - d) / 2, d, d);
+                using (Pen p = new Pen(T.Muted, 1.2f * S) { DashPattern = new float[] { 2, 2 } }) g.DrawEllipse(p, c);
+                Icons.Draw(g, "plus", c, 12 * S, T.Muted, 2.4f);
+            };
+            x += sw;
+            barSeps.Add(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, 1 * S, 20 * S)); x += 9 * S;
+            Button(new RectangleF(x, pad, h, h), "min", L.T("Kleiner"), delegate { o.ScaleSelected(1 / 1.12f); Invalidate(); }, null, null); x += h + 2 * S;
+            Item size = Add(new RectangleF(x, pad, 34 * S, h), L.T("Grootte"), null);
+            size.Paint = delegate(Graphics g, Item item, bool hv) { Label(g, o.SelectedSize.ToString(), item.R, T.Text, 13, true, StringAlignment.Center); };
+            x += 36 * S;
+            Button(new RectangleF(x, pad, h, h), "plus", L.T("Groter"), delegate { o.ScaleSelected(1.12f); Invalidate(); }, null, null); x += h;
+            if (o.SelectionIsText)
+            {
+                barSeps.Add(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, 1 * S, 20 * S)); x += 9 * S;
+                float rw = TextWidth(L.T("Rand"), 13) + 40 * S;
+                Item rand = Add(new RectangleF(x, pad, rw, h), L.T("Rand om de tekst aan of uit"), delegate { o.ToggleOutlineSelected(); Invalidate(); });
+                rand.Paint = delegate(Graphics g, Item item, bool hv) { PaintChip(g, item.R, o.SelectionHasOutline, hv, L.T("Rand"), "tekst", Color.Empty); };
+                x += rw + 2 * S;
+            }
+            barSeps.Add(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, 1 * S, 20 * S)); x += 9 * S;
+            Button(new RectangleF(x, pad, h, h), "dupliceer", L.T("Kopie maken") + "  (Ctrl+D)", delegate { o.DuplicateSelected(); }, null, null); x += h + 2 * S;
+            Button(new RectangleF(x, pad, h, h), "voren", L.T("Naar voren"), delegate { o.BringSelectedToFront(); }, null, null); x += h + 2 * S;
+            barSeps.Add(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, 1 * S, 20 * S)); x += 9 * S;
+            Item del = Add(new RectangleF(x, pad, h, h), L.T("Verwijderen") + "  (Delete)", delegate { o.DeleteSelected(); });
+            del.Paint = delegate(Graphics g, Item item, bool hv)
+            {
+                if (hv) using (SolidBrush b = new SolidBrush(T.Hover)) using (GraphicsPath gp = Svg.RoundRect(item.R, 8 * S)) g.FillPath(b, gp);
+                Icons.Draw(g, "prullenbak", item.R, 18 * S, ColorTranslator.FromHtml("#EF4444"), 2f);
+            };
+            x += h + pad + 2 * S;
+            ClientSize = new Size((int)x, (int)(h + pad * 2));
+        }
+
+        void PickColor()
+        {
+            using (ColorDialog cd = new ColorDialog())
+            {
+                cd.FullOpen = true;
+                cd.Color = ov.SelectedColor;
+                if (cd.ShowDialog() == DialogResult.OK) ov.RecolorSelected(cd.Color);
+            }
+        }
+
+        protected override void PaintExtra(Graphics g)
+        {
+            using (SolidBrush b = new SolidBrush(T.Sep)) foreach (RectangleF r in barSeps) g.FillRectangle(b, r);
+        }
+    }
+
+    // ------------------------------------------------------------------ Klein logo aan de rand als de balk weggeschoven is
+    class Lipje : BarForm
+    {
+        Toolbar bar;
+        bool vert;
+
+        public Lipje(Overlay o, Toolbar b) : base(o) { bar = b; Text = "NexusPen"; }
+
+        public void Place(Rectangle barBounds, bool vertical)
+        {
+            vert = vertical;
+            S = W.DpiScaleAt(barBounds.Location);
+            Rebuild();
+            Screen sc = Screen.FromRectangle(barBounds);
+            Rectangle bnd = sc.Bounds;
+            if (vertical) Location = new Point(bnd.Left, Math.Max(bnd.Top, Math.Min(bnd.Bottom - Height, barBounds.Top + barBounds.Height / 2 - Height / 2)));
+            else Location = new Point(Math.Max(bnd.Left, Math.Min(bnd.Right - Width, barBounds.Left + barBounds.Width / 2 - Width / 2)), bnd.Top);
+        }
+
+        public void Restyle() { Point k = Location; Rebuild(); Location = k; }
+
+        protected override void Build()
+        {
+            ClientSize = vert ? new Size((int)(38 * S), (int)(34 * S)) : new Size((int)(34 * S), (int)(38 * S));
+            Item it = Add(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), L.T("Werkbalk terughalen"), delegate { bar.Undock(); });
+            it.Paint = delegate(Graphics g, Item item, bool h)
+            {
+                Theme t = T;
+                if (h) using (SolidBrush b = new SolidBrush(t.Hover)) g.FillRectangle(b, item.R);
+                RectangleF bar2 = vert ? new RectangleF(4 * S, item.R.Height / 2 - 7 * S, 3 * S, 14 * S) : new RectangleF(item.R.Width / 2 - 7 * S, 4 * S, 14 * S, 3 * S);
+                using (SolidBrush b = new SolidBrush(t.Accent)) using (GraphicsPath gp = Svg.RoundRect(bar2, 1.5f * S)) g.FillPath(b, gp);
+                RectangleF lr = vert ? new RectangleF(14 * S, (item.R.Height - 20 * S) / 2, 20 * S, 20 * S) : new RectangleF((item.R.Width - 20 * S) / 2, 13 * S, 20 * S, 20 * S);
+                Logo.Draw(g, lr, t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
+            };
+        }
+
+        // Alleen de kant van het scherm af is rond
+        public override void Rebuild()
+        {
+            hover = null;
+            items.Clear();
+            Build();
+            float r = 10 * S;
+            using (GraphicsPath gp = new GraphicsPath())
+            {
+                RectangleF b = new RectangleF(0, 0, ClientSize.Width, ClientSize.Height);
+                if (vert)
+                {
+                    gp.AddLine(b.X, b.Y, b.Right - r, b.Y);
+                    gp.AddArc(b.Right - 2 * r, b.Y, 2 * r, 2 * r, 270, 90);
+                    gp.AddArc(b.Right - 2 * r, b.Bottom - 2 * r, 2 * r, 2 * r, 0, 90);
+                    gp.AddLine(b.Right - r, b.Bottom, b.X, b.Bottom);
+                }
+                else
+                {
+                    gp.AddLine(b.X, b.Y, b.Right, b.Y);
+                    gp.AddArc(b.Right - 2 * r, b.Bottom - 2 * r, 2 * r, 2 * r, 0, 90);
+                    gp.AddArc(b.X, b.Bottom - 2 * r, 2 * r, 2 * r, 90, 90);
+                }
+                gp.CloseFigure();
+                Region = new Region(gp);
+            }
+            Invalidate();
+        }
+    }
+
+    // ------------------------------------------------------------------ Het logo als alles ingeklapt is
+    class LogoTile : BarForm
+    {
+        Toolbar bar;
+        Point downAt;
+        bool pressed;
+
+        public LogoTile(Overlay o, Toolbar b) : base(o) { bar = b; Text = "NexusPen"; }
+
+        public void PlaceAt(Point p)
+        {
+            S = W.DpiScaleAt(p);
+            Rebuild();
+            Rectangle wa = Screen.FromPoint(p).WorkingArea;
+            Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, p.X)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, p.Y)));
+        }
+
+        protected override void Build()
+        {
+            ClientSize = new Size((int)(48 * S), (int)(48 * S));
+            Item it = Add(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), L.T("Klik om alles weer te tonen. Slepen = verplaatsen, rechtsklik = menu"), null);
+            it.Paint = delegate(Graphics g, Item item, bool h)
+            {
+                Theme t = T;
+                if (h) using (SolidBrush b = new SolidBrush(t.Hover)) g.FillRectangle(b, item.R);
+                float z = 34 * S;
+                Logo.Draw(g, new RectangleF((item.R.Width - z) / 2, (item.R.Height - z) / 2, z, z), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
+            };
+        }
+
+        protected override bool OnPress(MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right) { bar.ShowLogoMenu(PointToScreen(new Point(0, Height))); return true; }
+            if (e.Button == MouseButtons.Left) { pressed = true; downAt = e.Location; return true; }
+            return false;
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            if (pressed && (Math.Abs(e.X - downAt.X) > 4 || Math.Abs(e.Y - downAt.Y) > 4))
+            {
+                pressed = false;
+                W.ReleaseCapture();
+                W.SendMessage(Handle, W.WM_NCLBUTTONDOWN, new IntPtr(W.HTCAPTION), IntPtr.Zero);
+                ov.Cfg.TileX = Left; ov.Cfg.TileY = Top; ov.Cfg.Save();
+            }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (pressed && e.Button == MouseButtons.Left) { pressed = false; ov.ExpandAll(); }
+        }
+    }
+
+    // ------------------------------------------------------------------ Tipje met de dikte naast de cursor
+    class WidthTip : BarForm
+    {
+        System.Windows.Forms.Timer hideTimer = new System.Windows.Forms.Timer();
+        float value, min, max; string label = "";
+
+        public WidthTip(Overlay o) : base(o) { hideTimer.Interval = 1200; hideTimer.Tick += delegate { hideTimer.Stop(); Hide(); }; }
+
+        protected override CreateParams CreateParams { get { CreateParams cp = base.CreateParams; cp.ExStyle |= W.WS_EX_TRANSPARENT; return cp; } }
+
+        public void Show(Point at, float v, float mn, float mx, string lbl)
+        {
+            value = v; min = mn; max = mx; label = lbl;
+            Rebuild();
+            Location = new Point(at.X + (int)(22 * S), at.Y - Height / 2);
+            if (!Visible) Show();
+            W.KeepOnTop(Handle);
+            Invalidate();
+            hideTimer.Stop(); hideTimer.Start();
+        }
+
+        protected override void Build() { ClientSize = new Size((int)(138 * S), (int)(62 * S)); }
+
+        protected override void PaintExtra(Graphics g)
+        {
+            Theme t = T;
+            Label(g, label + " " + (int)Math.Round(value), new RectangleF(12 * S, 8 * S, ClientSize.Width - 20 * S, 18 * S), t.Text, 13, true, StringAlignment.Near);
+            RectangleF tr = new RectangleF(12 * S, 31 * S, ClientSize.Width - 24 * S, 4 * S);
+            float f = Math.Max(0, Math.Min(1, (value - min) / (max - min)));
+            using (SolidBrush b = new SolidBrush(t.IsLight ? ColorTranslator.FromHtml("#E4E4E7") : ColorTranslator.FromHtml("#3F3F46"))) using (GraphicsPath gp = Svg.RoundRect(tr, 2 * S)) g.FillPath(b, gp);
+            using (SolidBrush b = new SolidBrush(t.Accent)) using (GraphicsPath gp = Svg.RoundRect(new RectangleF(tr.X, tr.Y, Math.Max(tr.Height, tr.Width * f), tr.Height), 2 * S)) g.FillPath(b, gp);
+            Label(g, L.F("{0} tot {1}, scrol of knijp", (int)min, (int)max), new RectangleF(12 * S, 39 * S, ClientSize.Width - 20 * S, 16 * S), t.Muted, 11, false, StringAlignment.Near);
+        }
+    }
+
+    // ------------------------------------------------------------------ Melding onderin (na een schermafbeelding)
+    class Toast : BarForm
+    {
+        System.Windows.Forms.Timer hideTimer = new System.Windows.Forms.Timer();
+        string text = "", bold = "", folder;
+
+        public Toast(Overlay o) : base(o) { hideTimer.Interval = 4500; hideTimer.Tick += delegate { hideTimer.Stop(); Hide(); }; }
+
+        public void ShowMessage(string t, string b, string dir)
+        {
+            text = t; bold = b; folder = dir;
+            Rebuild();
+            Rectangle wa = Screen.FromPoint(Control.MousePosition).WorkingArea;
+            Location = new Point(wa.Left + (wa.Width - Width) / 2, wa.Bottom - Height - (int)(40 * S));
+            if (!Visible) Show();
+            W.KeepOnTop(Handle);
+            hideTimer.Stop(); hideTimer.Start();
+        }
+
+        protected override void Build()
+        {
+            float tw = TextWidth(text + " " + bold, 13) + 60 * S;
+            float bw = folder != null ? TextWidth(L.T("Map openen"), 13) + 46 * S : 0;
+            float w = tw + bw + 16 * S, h = 50 * S;
+            if (folder != null)
+            {
+                Item open = Add(new RectangleF(tw, 9 * S, bw, 32 * S), folder, delegate
+                {
+                    try { System.Diagnostics.Process.Start("explorer.exe", "\"" + folder + "\""); } catch (Exception ex) { Log.Error("Map openen", ex); }
+                    Hide();
+                });
+                open.Paint = delegate(Graphics g, Item item, bool hv) { PaintChip(g, item.R, false, hv, L.T("Map openen"), "map", Color.Empty); };
+            }
+            ClientSize = new Size((int)w, (int)h);
+        }
+
+        protected override void PaintExtra(Graphics g)
+        {
+            Theme t = T;
+            Icons.Draw(g, "foto", new RectangleF(14 * S, 0, 20 * S, ClientSize.Height), 18 * S, t.Accent, 2f);
+            using (Font f = Fonts.Make(UiFont.Name, 13 * S, FontStyle.Regular))
+            using (Font fb = Fonts.Make(UiFont.Name, 13 * S, FontStyle.Bold))
+            using (SolidBrush b = new SolidBrush(t.Text))
+            {
+                float x = 44 * S, y = (ClientSize.Height - f.GetHeight(g)) / 2;
+                g.DrawString(text, f, b, x, y);
+                x += g.MeasureString(text + " ", f).Width - 4 * S;
+                g.DrawString(bold, fb, b, x, y);
+            }
+        }
+    }
+}
