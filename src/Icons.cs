@@ -116,6 +116,16 @@ namespace NexusPen
             }
             PointF[] outPts = new PointF[n];
             for (int i = 0; i < n; i++) outPts[i] = new PointF(pts[i].X + dx[i], pts[i].Y + dy[i]);
+            // een heel klein stukje (zoals de punt van het vraagteken) zou op een pixel samenvallen en verdwijnen:
+            // dan niet verschuiven, alleen een heel klein beetje langer maken zodat Windows er een rond puntje van tekent
+            bool collapsed = true;
+            for (int i = 1; i < n; i++) if (outPts[i] != outPts[0]) { collapsed = false; break; }
+            if (collapsed)
+            {
+                PointF[] keep = (PointF[])pts.Clone();
+                if (n >= 2 && keep[n - 1] == keep[0]) keep[n - 1] = new PointF(keep[0].X + 0.05f, keep[0].Y);
+                return new GraphicsPath(keep, types);
+            }
             return new GraphicsPath(outPts, types);
         }
 

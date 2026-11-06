@@ -66,7 +66,11 @@ namespace NexusPen
         // tekst typen, direct op het scherm (zonder tekstvak)
         Stroke typing, typingOld;
         int typingIndex = -1, typingUndoCount = -1;
-        bool caretOn, typingAll;   // typingAll: Ctrl+A, alles geselecteerd
+        bool caretOn;
+        TextEditor ed;             // pijltjes, selectie, muis en eigen Ongedaan maken in de tekst
+        int textDrag;              // 0 niets, 1 selecteren met de muis, 2 verplaatsen, 3 groter of kleiner
+        PointF textDragFrom, textPtFrom;
+        float textSizeFrom, textDistFrom;
         DateTime caretAt;
         SettingsForm settingsForm;
         bool allHidden;
@@ -681,21 +685,7 @@ namespace NexusPen
                         if (lifted) SafeDraw(g, selected, 1f);
                         DrawSelection(g);
                     }
-                    if (typing != null)
-                    {
-                        if (typingAll)
-                            using (SolidBrush b = new SolidBrush(Color.FromArgb(90, Theme.Accent))) g.FillRectangle(b, Render.Bounds(typing));
-                        SafeDraw(g, typing, 1f);
-                        if (caretOn)
-                            try
-                            {
-                                RectangleF cr = Render.CaretRect(typing);
-                                Color cc = Color.FromArgb(255, typing.Color);
-                                using (SolidBrush b = new SolidBrush(Color.FromArgb(150, Theme.Luma(cc) < 0.5 ? Color.White : Color.Black))) g.FillRectangle(b, RectangleF.Inflate(cr, 1, 1));
-                                using (SolidBrush b = new SolidBrush(cc)) g.FillRectangle(b, cr);
-                            }
-                            catch { }
-                    }
+                    if (typing != null) DrawTyping(g);
                     if (focus) DrawFocus(g, area);
                 }
             }
@@ -1174,6 +1164,13 @@ namespace NexusPen
                 TypingKey(new KeyEventArgs(Keys.Enter));
                 foreach (char ch in "Één, twee: café!") OnKeyPress(new KeyPressEventArgs(ch));
                 if (typing == null || typing.Text != "Ik ga met de trein.\nÉén, twee: café!") { Program.SelfTestErrors++; Console.Error.WriteLine("Typen werkt niet"); }
+                // als in een tekstverwerker: omhoog, naar het begin, een woord verder, iets invoegen, en een woord selecteren
+                TypingKey(new KeyEventArgs(Keys.Up)); TypingKey(new KeyEventArgs(Keys.Home)); TypingKey(new KeyEventArgs(Keys.Control | Keys.Right));
+                foreach (char ch in " echt") OnKeyPress(new KeyPressEventArgs(ch));
+                TypingKey(new KeyEventArgs(Keys.Control | Keys.Right)); TypingKey(new KeyEventArgs(Keys.Control | Keys.Shift | Keys.Right));
+                string want = "Ik echt ga met de trein.\nÉén, twee: café!";
+                Console.WriteLine("Tekstverwerker: '" + (typing != null ? typing.Text.Replace("\n", " / ") : "") + "', geselecteerd '" + (ed != null ? ed.Selected : "") + "'");
+                if (typing == null || typing.Text != want || ed.Selected != " met") { Program.SelfTestErrors++; Console.Error.WriteLine("Pijltjes of selecteren in de tekst werken niet"); }
                 // tekst met rand in alle lettertypes: geen zwarte vakjes in letters als de t
                 float ty = 40;
                 foreach (string fn in new string[] { "Andika", "Nunito", "Lexend", "Atkinson Hyperlegible", "Patrick Hand", "Segoe UI" })
@@ -1453,7 +1450,7 @@ namespace NexusPen
             float step = PenWidth < 6 ? 1 : 2;
             SetWidth(PenWidth + (delta > 0 ? step : -step));
             if ((DateTime.Now - lastWidthLog).TotalSeconds > 3) { lastWidthLog = DateTime.Now; Usage.Log("dikte", ((int)PenWidth).ToString(), "muiswiel"); }
-            if (toolbar != null) toolbar.ShowWidthTip(Control.MousePosition, PenWidth, 1, Settings.MaxWidth, L.T("Dikte"));
+            if (toolbar != null) toolbar.ShowWidthTip(Control.MousePosition, PenWidth, 1, Settings.MaxWidth, CurrentTool == Tool.Eraser ? L.T("Gum") : L.T("Dikte"));
         }
 
         // Vaste standen voor de grootte van tekst en stempels (zoals bij Epic Pen)
@@ -1620,15 +1617,7 @@ namespace NexusPen
                         c = ToolCursor.For("gum|" + d, delegate { return ToolCursor.Circle(d, Color.FromArgb(70, 255, 255, 255)); });
                         break;
                     }
-                    case Tool.Text:
-                    {
-                        Stroke probe = new Stroke(); probe.Tool = Tool.Text; probe.FontSize = typing != null ? typing.FontSize : Cfg.TextSize; probe.FontName = Cfg.FontName;
-                        float lh = probe.FontSize * 1.2f;
-                        try { lh = Render.LineHeight(probe); } catch { }
-                        Color col = CurrentColor;
-                        c = ToolCursor.For("tekst|" + lh + "|" + col.ToArgb(), delegate { return ToolCursor.TextBar(lh * 0.85f, col); });
-                        break;
-                    }
+                    case Tool.Text: c = Cursors.IBeam; break;   // de gewone tekstcursor van Windows
                     case Tool.Stamp:
                     {
                         string kind = Render.StampKinds[Cfg.StampKind];
@@ -1894,7 +1883,7 @@ namespace NexusPen
             return new PointF((float)(a.X + Math.Cos(ang) * len), (float)(a.Y + Math.Sin(ang) * len));
         }
 
-        float EraserRadius { get { return Math.Max(8, PenWidth * 2); } }
+        float EraserRadius { get { return Math.Max(4, PenWidth * 2); } }   // ook een kleine gum voor precies werk
 
         void EraseAt(PointF p)
         {
@@ -1923,12 +1912,8 @@ namespace NexusPen
             if (e.Clicks < 2) skipDoubleClick = false;
             if (toolbar != null) toolbar.ClosePopups();
             PointF p = e.Location;
-            if (typing != null)
-            {
-                // klik in de tekst die je typt: gewoon doortypen; ergens anders: tekst is klaar
-                if (CurrentTool == Tool.Text && e.Button == MouseButtons.Left && TypingArea(typing).Contains(e.Location)) return;
-                CloseTextInput(true);
-            }
+            if (typing != null && e.Button == MouseButtons.Left && TextMouseDown(e)) return;
+            if (typing != null) CloseTextInput(true);   // ergens anders geklikt: de tekst is klaar
             if (CurrentTool == Tool.Focus) return;
             // dubbelklik op iets wat er staat (met pen, markeerstift of een vorm): meteen selecteren
             if (e.Button == MouseButtons.Left && e.Clicks >= 2 && StrokesVisible && (CurrentTool == Tool.Pen || CurrentTool == Tool.Marker || IsShape(CurrentTool)))
@@ -2017,6 +2002,7 @@ namespace NexusPen
         {
             base.OnMouseMove(e);
             if (!DrawMode) return;
+            if (typing != null && TextMouseMove(e)) return;
             if (inputAt < 0) inputAt = Perf.Now;
             PointF p = e.Location;
             if (CurrentTool == Tool.Focus) { focusAt = p; dirty = true; inputAt = -1; return; }   // spotlicht: groot vlak, de timer is snel genoeg
@@ -2090,6 +2076,7 @@ namespace NexusPen
         protected override void OnMouseUp(MouseEventArgs e)
         {
             base.OnMouseUp(e);
+            if (textDrag != 0) { textDrag = 0; Capture = false; RenderSoon(); return; }
             if (erasing) { erasing = false; return; }
             if (resizing)
             {
@@ -2140,7 +2127,7 @@ namespace NexusPen
             if (!DrawMode || CurrentTool != Tool.Select || selected == null || selected.Tool != Tool.Text) return;
             Stroke old = selected;
             Deselect();
-            OpenTextInput(new Point((int)old.Pts[0].X, (int)old.Pts[0].Y), old);
+            OpenTextInput(e.Location, old);   // het streepje komt waar je dubbelklikte
         }
 
         // Muiswiel en knijpen op het touchpad (komt binnen als Ctrl+wiel): dikte, of de grootte van het spotlicht
@@ -2160,59 +2147,177 @@ namespace NexusPen
             e.Handled = true;
             if (e.KeyChar < ' ' || e.KeyChar == (char)127) return;
             if ((Control.ModifierKeys & Keys.Alt) != 0 && (Control.ModifierKeys & Keys.Control) == 0) return;   // Alt+letter is geen letter
-            if (typingAll) { typing.Text = ""; typingAll = false; }   // alles geselecteerd: typen vervangt alles
-            typing.Text = (typing.Text ?? "") + e.KeyChar;
+            ed.Insert(e.KeyChar.ToString());   // vervangt wat geselecteerd is
             TypingChanged();
         }
 
         // Tijdens het typen doen sneltoetsen niets; alleen deze toetsen
         bool TypingKey(KeyEventArgs e)
         {
-            if (typing == null) return false;
-            string t = typing.Text ?? "";
-            if (e.Control && !e.Alt && e.KeyCode == Keys.A) { typingAll = t.Length > 0; TypingChanged(true); e.Handled = true; e.SuppressKeyPress = true; return true; }
-            if (e.Control && !e.Alt && e.KeyCode == Keys.C) { try { if (t.Length > 0) Clipboard.SetText(t.Replace("\n", "\r\n")); } catch { } e.Handled = true; e.SuppressKeyPress = true; return true; }
-            if (typingAll && (e.KeyCode == Keys.Back || e.KeyCode == Keys.Delete)) { typing.Text = ""; typingAll = false; TypingChanged(); e.Handled = true; e.SuppressKeyPress = true; return true; }
-            if (typingAll && e.Control && !e.Alt && e.KeyCode == Keys.V)
-            {
-                bool hasText = false;
-                try { hasText = Clipboard.ContainsText(); } catch { }
-                if (hasText) { typing.Text = ""; t = ""; typingAll = false; }
-            }
-            if (typingAll && (e.KeyCode == Keys.Left || e.KeyCode == Keys.Right || e.KeyCode == Keys.Up || e.KeyCode == Keys.Down || e.KeyCode == Keys.Enter)) { typingAll = false; TypingChanged(); if (e.KeyCode != Keys.Enter) { e.Handled = true; return true; } }
+            if (typing == null || ed == null) return false;
+            bool ctrl = e.Control && !e.Alt, shift = e.Shift;
+            bool handled = true;
             switch (e.KeyCode)
             {
-                case Keys.Escape: lastEsc = true; CloseTextInput(true); break;
+                case Keys.Escape: lastEsc = true; CloseTextInput(true); return true;
                 case Keys.Enter:
-                    if (e.Control) CloseTextInput(true);
-                    else { typing.Text = t + "\n"; TypingChanged(); }
-                    break;
-                case Keys.Back:
-                    if (t.Length > 0)
-                    {
-                        int cut = t.Length - 1;
-                        if (e.Control) { cut = t.TrimEnd().LastIndexOfAny(new char[] { ' ', '\n' }) + 1; if (cut < 0) cut = 0; }
-                        typing.Text = t.Substring(0, cut);
-                        TypingChanged();
-                    }
-                    break;
+                    if (ctrl) { CloseTextInput(true); return true; }
+                    ed.Insert("\n"); break;
+                case Keys.Back: ed.Backspace(ctrl); break;
+                case Keys.Delete: ed.Delete(ctrl); break;
+                case Keys.Left: ed.Left(ctrl, shift); break;
+                case Keys.Right: ed.Right(ctrl, shift); break;
+                case Keys.Up: using (TextLayout lay = new TextLayout(typing)) ed.Vertical(-1, shift, lay); break;
+                case Keys.Down: using (TextLayout lay = new TextLayout(typing)) ed.Vertical(1, shift, lay); break;
+                case Keys.Home: ed.Home(ctrl, shift); break;
+                case Keys.End: ed.End(ctrl, shift); break;
+                case Keys.A: if (ctrl) ed.SelectAll(); else handled = false; break;
+                case Keys.C: if (ctrl) CopyText(false); else handled = false; break;
+                case Keys.X: if (ctrl) CopyText(true); else handled = false; break;
                 case Keys.V:
-                    if (!e.Control || e.Alt) return true;   // AltGr+V is gewoon een letter
+                    if (!ctrl) { handled = false; break; }
                     try
                     {
                         if (Clipboard.ContainsText())
                         {
                             string add = Clipboard.GetText().Replace("\r\n", "\n").Replace('\r', '\n').Replace('\t', ' ');
                             if (add.Length > 2000) add = add.Substring(0, 2000);
-                            typing.Text = t + add; TypingChanged();
+                            ed.Insert(add);
                         }
                     }
                     catch (Exception ex) { Log.Error("Plakken", ex); }
                     break;
-                default: return true;   // gewone letters komen via OnKeyPress
+                case Keys.Z: if (ctrl) { if (shift) ed.Redo(); else ed.Undo(); } else handled = false; break;
+                case Keys.Y: if (ctrl) ed.Redo(); else handled = false; break;
+                case Keys.Oemplus: case Keys.Add: if (ctrl) WheelText(120); else handled = false; break;
+                case Keys.OemMinus: case Keys.Subtract: if (ctrl) WheelText(-120); else handled = false; break;
+                default: handled = false; break;
             }
-            e.Handled = true; e.SuppressKeyPress = true;
-            return true;
+            if (handled) { e.Handled = true; e.SuppressKeyPress = true; TypingChanged(); }
+            return true;   // tijdens het typen doen sneltoetsen niets; letters komen via OnKeyPress
+        }
+
+        void CopyText(bool cut)
+        {
+            string t = ed.HasSelection ? ed.Selected : ed.Text;
+            try { if (t.Length > 0) Clipboard.SetText(t.Replace("\n", "\r\n")); } catch { }
+            if (cut && ed.HasSelection) ed.DeleteSelection();
+        }
+
+        // ---- muis bij de tekst die je typt: klikken zet het streepje, slepen selecteert,
+        // het rondje linksboven (of de rand) verplaatst, het hoekje rechtsonder maakt groter of kleiner
+        RectangleF TextFrame(Stroke s)
+        {
+            RectangleF b;
+            using (TextLayout lay = new TextLayout(s)) b = lay.InkBounds();
+            float o = Render.OutlineWidth(s) + 6;
+            b.Inflate(o, o);
+            return b;
+        }
+
+        float HandleR { get { return 9; } }
+        PointF MoveHandle(RectangleF f) { return new PointF(f.Left - HandleR - 2, f.Top - HandleR - 2); }
+        PointF SizeHandle(RectangleF f) { return new PointF(f.Right + 2, f.Bottom + 2); }
+
+        static float Dist2(PointF a, PointF b) { float dx = a.X - b.X, dy = a.Y - b.Y; return dx * dx + dy * dy; }
+
+        bool TextMouseDown(MouseEventArgs e)
+        {
+            PointF p = e.Location;
+            RectangleF f = TextFrame(typing);
+            float grab = (HandleR + 6) * (HandleR + 6);
+            if (Dist2(p, MoveHandle(f)) <= grab || (RectangleF.Inflate(f, 8, 8).Contains(p) && !RectangleF.Inflate(f, -4, -4).Contains(p) && Dist2(p, SizeHandle(f)) > grab))
+            {
+                textDrag = 2; textDragFrom = p; textPtFrom = typing.Pts[0]; Capture = true;
+                return true;
+            }
+            if (Dist2(p, SizeHandle(f)) <= grab)
+            {
+                textDrag = 3; textDragFrom = p; textSizeFrom = typing.FontSize;
+                textDistFrom = Math.Max(10, (float)Math.Sqrt(Dist2(p, typing.Pts[0]))); Capture = true;
+                return true;
+            }
+            if (RectangleF.Inflate(f, 4, 4).Contains(p))
+            {
+                int idx;
+                using (TextLayout lay = new TextLayout(typing)) idx = lay.Hit(p);
+                if (e.Clicks >= 2) ed.SelectWordAt(idx);
+                else ed.PlaceAt(idx, (Control.ModifierKeys & Keys.Shift) != 0);
+                textDrag = e.Clicks >= 2 ? 0 : 1; Capture = textDrag != 0;
+                TypingChanged();
+                return true;
+            }
+            return false;
+        }
+
+        bool TextMouseMove(MouseEventArgs e)
+        {
+            PointF p = e.Location;
+            if (textDrag == 1)
+            {
+                int idx;
+                using (TextLayout lay = new TextLayout(typing)) idx = lay.Hit(p);
+                ed.PlaceAt(idx, true);
+                TypingChanged();
+                return true;
+            }
+            if (textDrag == 2)
+            {
+                typing.Pts[0] = new PointF(textPtFrom.X + p.X - textDragFrom.X, textPtFrom.Y + p.Y - textDragFrom.Y);
+                TypingChanged();
+                return true;
+            }
+            if (textDrag == 3)
+            {
+                float d = (float)Math.Sqrt(Dist2(p, typing.Pts[0]));
+                typing.FontSize = Math.Max(10, Math.Min(300, textSizeFrom * d / textDistFrom));
+                Cfg.TextSize = typing.FontSize;
+                TypingChanged();
+                return true;
+            }
+            // de muiswijzer laat zien wat er kan
+            RectangleF f = TextFrame(typing);
+            float grab = (HandleR + 6) * (HandleR + 6);
+            Cursor want = Dist2(p, SizeHandle(f)) <= grab ? Cursors.SizeNWSE
+                : Dist2(p, MoveHandle(f)) <= grab || (RectangleF.Inflate(f, 8, 8).Contains(p) && !RectangleF.Inflate(f, -4, -4).Contains(p)) ? Cursors.SizeAll
+                : Cursors.IBeam;
+            if (Cursor != want) Cursor = want;
+            return CurrentTool == Tool.Text;
+        }
+
+        // Tekst die je typt: selectie in Windows-blauw, het gewone zwarte streepje, en een kader met handvatten
+        void DrawTyping(Graphics g)
+        {
+            try
+            {
+                using (TextLayout lay = new TextLayout(typing))
+                {
+                    if (ed.HasSelection)
+                        using (SolidBrush b = new SolidBrush(Color.FromArgb(120, 0, 120, 215)))
+                            foreach (RectangleF r in lay.SelectionRects(ed.SelStart, ed.SelEnd)) g.FillRectangle(b, r);
+                    SafeDraw(g, typing, 1f);
+                    RectangleF f = TextFrame(typing);
+                    using (Pen p = new Pen(Color.FromArgb(140, 0, 0, 0), 3)) g.DrawRectangle(p, f.X, f.Y, f.Width, f.Height);
+                    using (Pen p = new Pen(Color.FromArgb(230, 255, 255, 255), 1.2f)) { p.DashPattern = new float[] { 4, 3 }; g.DrawRectangle(p, f.X, f.Y, f.Width, f.Height); }
+                    // rondje met vier pijltjes: verplaatsen
+                    PointF mh = MoveHandle(f); float r0 = HandleR;
+                    g.FillEllipse(Brushes.White, mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0);
+                    using (Pen p = new Pen(Color.FromArgb(200, 30, 30, 34), 1.2f)) g.DrawEllipse(p, mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0);
+                    Icons.Draw(g, "verplaats", new RectangleF(mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0), 14, Color.FromArgb(255, 30, 30, 34), 2f);
+                    // hoekje: groter of kleiner
+                    PointF sh = SizeHandle(f);
+                    g.FillRectangle(Brushes.White, sh.X - 5, sh.Y - 5, 10, 10);
+                    using (Pen p = new Pen(Color.FromArgb(200, 30, 30, 34), 1.2f)) g.DrawRectangle(p, sh.X - 5, sh.Y - 5, 10, 10);
+                    if (caretOn && !ed.HasSelection)
+                    {
+                        // gewoon streepje zoals in Windows: zwart met een dun wit randje, 2 pixels breed
+                        RectangleF cr = lay.CaretRect(ed.Caret, 2);
+                        g.FillRectangle(Brushes.White, RectangleF.Inflate(cr, 1, 1));
+                        g.FillRectangle(Brushes.Black, cr);
+                    }
+                }
+            }
+            catch (Exception ex) { SafeDrawError(typing, ex); }
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
@@ -2287,6 +2392,9 @@ namespace NexusPen
                 if (typingIndex >= 0) strokes.RemoveAt(typingIndex);
                 typingOld = editing;
                 typing = editing.Clone();
+                int at;
+                using (TextLayout lay = new TextLayout(typing)) at = lay.Hit(clientPt);
+                ed = new TextEditor(typing, at);   // het streepje komt waar je klikte
                 lifted = false;
                 Rebuild();
             }
@@ -2300,6 +2408,7 @@ namespace NexusPen
                 // de klik komt midden in de eerste regel, zoals bij Epic Pen
                 s.Pts.Add(new PointF(clientPt.X - Render.OutlineWidth(s), clientPt.Y - lh / 2 - Render.OutlineWidth(s)));
                 typing = s; typingOld = null; typingIndex = -1;
+                ed = new TextEditor(typing, 0);
             }
             if (!StrokesVisible) { StrokesVisible = true; Rebuild(); }
             caretOn = true; caretAt = DateTime.Now;
@@ -2312,18 +2421,16 @@ namespace NexusPen
             Rectangle r = StrokeBounds(s);
             try
             {
-                RectangleF c = Render.CaretRect(s); c.Inflate(3, 3);
-                r = U(r, Clip(c));
+                RectangleF f = TextFrame(s);
+                f.Inflate(HandleR * 2 + 8, HandleR * 2 + 8);
+                r = U(r, Clip(f));
             }
             catch { }
             return r;
         }
 
-        void TypingChanged() { TypingChanged(false); }
-
-        void TypingChanged(bool keepSelection)
+        void TypingChanged()
         {
-            if (!keepSelection) typingAll = false;
             caretOn = true; caretAt = DateTime.Now;
             inputAt = Perf.Now;
             RenderSoon();
@@ -2335,7 +2442,7 @@ namespace NexusPen
             if (typing == null) return;
             Stroke t = typing;
             typing = null;
-            typingAll = false;
+            ed = null; textDrag = 0;
             bool empty = string.IsNullOrEmpty(t.Text) || t.Text.Trim().Length == 0;
             if (typingOld != null)
             {

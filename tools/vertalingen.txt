@@ -292,7 +292,6 @@ Sleep om de balk in te korten | Drag to shorten the bar | Faites glisser pour ra
 Muis: gewoon klikken op je scherm | Mouse: just click on your screen | Souris : cliquer normalement sur l'écran | Ratón: hacer clic normal en la pantalla
 Selecteren en verplaatsen | Select and move | Sélectionner et déplacer | Seleccionar y mover
 Laserpen, verdwijnt vanzelf | Laser pointer, disappears by itself | Pointeur laser, disparaît tout seul | Puntero láser, desaparece solo
-Gum, of rechtermuisknop ingedrukt | Eraser, or hold the right mouse button | Gomme, ou bouton droit enfoncé | Goma, o mantén pulsado el botón derecho
 Vormen: lijn, pijl, rechthoek, cirkel | Shapes: line, arrow, rectangle, circle | Formes : ligne, flèche, rectangle, cercle | Formas: línea, flecha, rectángulo, círculo
 Kleur en dikte (muiswiel of knijpen op het touchpad) | Colour and thickness (mouse wheel or pinch on the touchpad) | Couleur et épaisseur (molette ou pincement sur le pavé tactile) | Color y grosor (rueda o pellizco en el touchpad)
 Stempel: vinkje, kruis, ster, vraagteken of nummer | Stamp: tick, cross, star, question mark or number | Tampon : coche, croix, étoile, point d'interrogation ou numéro | Sello: visto, cruz, estrella, interrogación o número
@@ -333,3 +332,7 @@ NexusPen afsluiten? | Quit NexusPen? | Quitter NexusPen ? | ¿Salir de NexusPen?
 Wat doet elke knop | What each button does | À quoi sert chaque bouton | Qué hace cada botón
 Uitleg bij de knoppen | Button explanations | Explications des boutons | Explicación de los botones
 Een tekstje tonen als je met de muis over een knop gaat | Show a short text when the mouse is over a button | Afficher un petit texte quand la souris passe sur un bouton | Mostrar un texto corto cuando el ratón pasa por un botón
+Grootte van de gum. Muiswiel = groter of kleiner | Eraser size. Mouse wheel = bigger or smaller | Taille de la gomme. Molette = plus grand ou plus petit | Tamaño del borrador. Rueda = más grande o más pequeño
+Krijt | Chalk | Craie | Tiza
+Krijt: een pen met een korrelige streep, zoals krijt op een bord | Chalk: a pen with a grainy line, like chalk on a board | Craie : un stylo au trait granuleux, comme la craie sur un tableau | Tiza: un bolígrafo con trazo granulado, como tiza en una pizarra
+Gum, of rechtermuisknop ingedrukt. Beweeg erover voor de grootte | Eraser, or hold the right mouse button. Hover for the size | Gomme, ou maintenez le bouton droit. Survolez pour la taille | Borrador, o mantén pulsado el botón derecho. Pasa el ratón para el tamaño

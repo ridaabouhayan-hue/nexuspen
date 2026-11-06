@@ -231,6 +231,35 @@ static class Tests {
     }
     Check(Icons.DeviceStroke(2, 20 / 24f) == 2 && Icons.DeviceStroke(2, 30 / 24f) == 3 && Icons.DeviceStroke(2, 16 / 24f) == 1, "Lijndikte van icoontjes in hele pixels");
 
+    // 15. Teksteditor: pijltjes, selectie, woorden, ongedaan maken
+    {
+      var ts = new Stroke{Tool=Tool.Text, Text="", FontSize=30, FontName="Andika"}; ts.Pts.Add(new PointF(100, 100));
+      var ed = new TextEditor(ts, 0);
+      foreach (char ch in "Ik ga met de trein") ed.Insert(ch.ToString());
+      ed.Left(true, false); ed.Left(true, false);            // voor "de"
+      ed.Insert("niet ");
+      Check(ts.Text == "Ik ga met niet de trein", "Tekst invoegen midden in de zin met Ctrl+pijltje (" + ts.Text + ")");
+      ed.End(false, false); ed.Left(true, true);              // "trein" selecteren
+      Check(ed.Selected == "trein", "Shift+Ctrl+pijltje selecteert een woord");
+      ed.Insert("bus");
+      Check(ts.Text == "Ik ga met niet de bus", "Typen vervangt de selectie");
+      ed.Backspace(true);
+      Check(ts.Text == "Ik ga met niet de ", "Ctrl+Backspace wist een woord");
+      ed.Undo();
+      Check(ts.Text == "Ik ga met niet de bus", "Ongedaan maken binnen de tekst");
+      ed.Home(false, false); ed.Insert("\n"); ed.Home(true, false); ed.Insert("Regel 1");
+      using (var tlay = new TextLayout(ts)) {
+        Check(tlay.Lines.Length == 2, "Twee regels na Enter");
+        ed.End(true, false); ed.Vertical(-1, false, tlay);
+        int tline, tcol; tlay.ToLineCol(ed.Caret, out tline, out tcol);
+        Check(tline == 0, "Pijltje omhoog gaat naar de regel erboven");
+        int tidx = tlay.ToIndex(1, 3); RectangleF tcr = tlay.CaretRect(tidx, 2);
+        Check(tlay.Hit(new PointF(tcr.X + 1, tcr.Y + tcr.Height / 2)) == tidx, "Klikken met de muis zet het streepje op de goede letter");
+      }
+      ed.SelectWordAt(2);
+      Check(ed.Selected == "Regel", "Dubbelklik selecteert het woord");
+    }
+
     Console.WriteLine(fails == 0 ? "\nALLE TESTS GESLAAGD" : "\n" + fails + " TEST(S) MISLUKT");
     return fails;
   }

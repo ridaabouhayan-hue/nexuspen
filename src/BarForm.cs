@@ -364,6 +364,8 @@ namespace NexusPen
         }
 
         protected virtual bool OnPress(MouseEventArgs e) { return false; }
+        // Zelf slepen (de werkbalk): true = geregeld, anders sleept Windows het venster
+        protected virtual bool BeginCustomDrag(MouseEventArgs e) { return false; }
 
         protected override void OnMouseDown(MouseEventArgs e)
         {
@@ -384,7 +386,7 @@ namespace NexusPen
                 Perf.Click.Add(Perf.Now - t0);
                 return;
             }
-            if (draggable)
+            if (draggable && !BeginCustomDrag(e))
             {
                 W.ReleaseCapture();
                 W.SendMessage(Handle, W.WM_NCLBUTTONDOWN, new IntPtr(W.HTCAPTION), IntPtr.Zero);

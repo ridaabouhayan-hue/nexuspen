@@ -343,21 +343,6 @@ namespace NexusPen
             using (SolidBrush br = new SolidBrush(c)) g.FillPolygon(br, tri);
         }
 
-        // Tekst als vorm, zodat er een nette zwarte rand omheen kan
-        static GraphicsPath TextPath(Stroke s)
-        {
-            // Winding: letters die uit stukken bestaan die over elkaar liggen (zoals de t) blijven dicht,
-            // anders kwam de rand als zwarte vakjes in de letter
-            GraphicsPath gp = new GraphicsPath(FillMode.Winding);
-            FontFamily ff = Fonts.Family(s.FontName);
-            using (StringFormat sf = (StringFormat)StringFormat.GenericTypographic.Clone())
-            {
-                sf.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
-                gp.AddString(s.Text, ff, (int)(Fonts.HasBold(ff) ? FontStyle.Bold : FontStyle.Regular), s.FontSize, new PointF(s.Pts[0].X + OutlineWidth(s), s.Pts[0].Y + OutlineWidth(s)), sf);
-            }
-            return gp;
-        }
-
         public static float OutlineWidth(Stroke s)
         {
             if (!s.Outline) return 0;
@@ -406,17 +391,15 @@ namespace NexusPen
                 g.DrawPath(p, gp);
         }
 
+        // Tekst altijd als vorm tekenen (met of zonder rand): dan staan de letters precies waar TextLayout ze verwacht
         static void DrawText(Graphics g, Stroke s)
         {
-            if (!s.Outline)
+            using (TextLayout lay = new TextLayout(s))
+            using (GraphicsPath gp = lay.Path())
             {
-                using (Font f = MakeFont(s.FontSize, s.FontName)) using (SolidBrush br = new SolidBrush(s.Color)) g.DrawString(s.Text, f, br, s.Pts[0]);
-                return;
-            }
-            using (GraphicsPath gp = TextPath(s))
-            {
-                Color edge = OutlineColorOf(s);
-                using (Pen p = new Pen(edge, OutlineWidth(s) * 2)) { p.LineJoin = LineJoin.Round; g.DrawPath(p, gp); }
+                if (gp.PointCount == 0) return;
+                if (s.Outline)
+                    using (Pen p = new Pen(OutlineColorOf(s), OutlineWidth(s) * 2)) { p.LineJoin = LineJoin.Round; g.DrawPath(p, gp); }
                 using (SolidBrush br = new SolidBrush(s.Color)) g.FillPath(br, gp);
             }
         }
@@ -504,36 +487,17 @@ namespace NexusPen
         // Hoogte van een regel tekst
         public static float LineHeight(Stroke s)
         {
-            using (Font f = MakeFont(s.FontSize, s.FontName)) return f.GetHeight(measureG);
-        }
-
-        // Knipperend streepje achter de laatste letter (tijdens het typen)
-        public static RectangleF CaretRect(Stroke s)
-        {
-            string text = s.Text ?? "";
-            string[] lines = text.Split('\n');
-            string last = lines[lines.Length - 1];
-            using (Font f = MakeFont(s.FontSize, s.FontName))
-            using (StringFormat typo = (StringFormat)StringFormat.GenericTypographic.Clone())
-            {
-                typo.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
-                float lh = f.GetHeight(measureG);
-                float adv = last.Length == 0 ? 0 : measureG.MeasureString(last, f, PointF.Empty, typo).Width;
-                float ow = OutlineWidth(s);
-                // DrawString zet links een klein randje; de tekst met rand (TextPath) niet
-                float pad = s.Outline ? 0 : (measureG.MeasureString("I", f).Width - measureG.MeasureString("I", f, PointF.Empty, typo).Width) / 2;
-                float w = Math.Max(2, s.FontSize / 16);
-                return new RectangleF(s.Pts[0].X + ow + pad + adv + 1, s.Pts[0].Y + ow + (lines.Length - 1) * lh + lh * 0.1f, w, lh * 0.85f);
-            }
+            using (TextLayout lay = new TextLayout(s)) return lay.LineH;
         }
 
         public static RectangleF TextBounds(Stroke s)
         {
-            using (Font f = MakeFont(s.FontSize, s.FontName))
+            using (TextLayout lay = new TextLayout(s))
             {
-                SizeF sz = measureG.MeasureString(s.Text ?? "", f);
-                float o = OutlineWidth(s) * 2;
-                return new RectangleF(s.Pts[0], new SizeF(sz.Width + o, sz.Height + o));
+                RectangleF ink = lay.InkBounds();
+                float o = OutlineWidth(s);
+                // vanaf het beginpunt tot voorbij de laatste letter, met de rand en een beetje ruimte
+                return RectangleF.FromLTRB(s.Pts[0].X, s.Pts[0].Y, ink.Right + o + lay.Size * 0.08f, ink.Bottom + o + lay.Size * 0.05f);
             }
         }
 

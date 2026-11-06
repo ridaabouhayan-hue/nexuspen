@@ -12,10 +12,10 @@ namespace NexusPen
     // zodat je ze in Instellingen kunt slepen en met rechtsklik kunt verbergen.
     class Toolbar : BarForm
     {
-        public const string DefaultLayout = "muis,selecteer|pen,markeer,laser|vormen,tekst,gum|kleur,stempel,focus|undo,bord,foto|opslaan,oog,instellingen,afsluiten,weg";
+        public const string DefaultLayout = "muis,selecteer|pen,krijt,markeer,laser|vormen,tekst,gum|kleur,stempel,focus|undo,bord,foto|opslaan,oog,instellingen,afsluiten,weg";
 
         // alle knoppen die in de balk kunnen; de losse vormen en Opnieuw staan standaard in de bak
-        public static readonly string[] Catalog = { "muis", "selecteer", "pen", "markeer", "laser", "vormen", "lijn", "pijl", "rechthoek", "cirkel",
+        public static readonly string[] Catalog = { "muis", "selecteer", "pen", "krijt", "markeer", "laser", "vormen", "lijn", "pijl", "rechthoek", "cirkel",
             "tekst", "gum", "kleur", "stempel", "focus", "undo", "redo", "wis", "bord", "foto", "opslaan", "oog", "instellingen", "afsluiten", "weg" };
 
         public static string NameOf(string key)
@@ -25,6 +25,7 @@ namespace NexusPen
                 case "muis": return L.T("Muis");
                 case "selecteer": return L.T("Selecteren");
                 case "pen": return L.T("Pen");
+                case "krijt": return L.T("Krijt");
                 case "markeer": return L.T("Markeerstift");
                 case "laser": return L.T("Laserpen");
                 case "vormen": return L.T("Vormen");
@@ -90,6 +91,7 @@ namespace NexusPen
         }
 
         ColorPopup colorPopup;
+        EraserPopup eraserPopup;
         ShapePopup shapePopup;
         StampPopup stampPopup;
         BoardPopup boardPopup;
@@ -175,7 +177,7 @@ namespace NexusPen
             Location = keep;
             EnsureOnScreen();
             ApplyCaptureSetting();
-            foreach (BarForm f in new BarForm[] { lipje, tile, miniBar, widthTip, toast, colorPopup, shapePopup, stampPopup, boardPopup, overflowPopup })
+            foreach (BarForm f in new BarForm[] { lipje, tile, miniBar, widthTip, toast, colorPopup, shapePopup, stampPopup, boardPopup, eraserPopup, overflowPopup })
                 if (f != null && !f.IsDisposed) { f.ApplyCaptureSetting(); f.S = S; }
             if (lipje != null && lipje.Visible) lipje.Restyle();
             if (tile != null && tile.Visible) tile.Rebuild();
@@ -184,13 +186,13 @@ namespace NexusPen
         public void Refresh2()
         {
             Invalidate();
-            foreach (Form f in new Form[] { colorPopup, shapePopup, stampPopup, boardPopup, miniBar, overflowPopup })
+            foreach (Form f in new Form[] { colorPopup, shapePopup, stampPopup, boardPopup, eraserPopup, miniBar, overflowPopup })
                 if (f != null && f.Visible) f.Invalidate();
         }
 
         public void KeepAllOnTop()
         {
-            foreach (Form f in new Form[] { this, colorPopup, shapePopup, stampPopup, boardPopup, overflowPopup, miniBar, lipje, tile, toast })
+            foreach (Form f in new Form[] { this, colorPopup, shapePopup, stampPopup, boardPopup, eraserPopup, overflowPopup, miniBar, lipje, tile, toast })
                 if (f != null && f.Visible && f.IsHandleCreated) W.KeepOnTop(f.Handle);
         }
 
@@ -275,7 +277,14 @@ namespace NexusPen
             {
                 case "muis": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Muis: gewoon klikken op je scherm"), "") + "  (Esc)", Tool.Mouse); break;
                 case "selecteer": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Selecteren en verplaatsen"), "selecteer"), Tool.Select); break;
-                case "pen": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Pen"), "pen"), Tool.Pen); break;
+                case "pen":
+                    it = Button(r, "pen", Shortcuts.Tip(L.T("Pen"), "pen"), delegate { Use(key); ClosePopups(); o.Cfg.Chalk = false; o.SetTool(Tool.Pen); },
+                        delegate { return o.DrawMode && o.CurrentTool == Tool.Pen && !o.Cfg.Chalk; }, null);
+                    break;
+                case "krijt":
+                    it = Button(r, "krijt", L.T("Krijt: een pen met een korrelige streep, zoals krijt op een bord"), delegate { Use(key); ClosePopups(); o.Cfg.Chalk = true; o.SetTool(Tool.Pen); },
+                        delegate { return o.DrawMode && o.CurrentTool == Tool.Pen && o.Cfg.Chalk; }, null);
+                    break;
                 case "markeer": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Markeerstift"), "markeer"), Tool.Marker); break;
                 case "laser": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Laserpen, verdwijnt vanzelf"), "laser"), Tool.Laser); break;
                 case "lijn": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Lijn"), "lijn"), Tool.Line); break;
@@ -283,7 +292,10 @@ namespace NexusPen
                 case "rechthoek": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Rechthoek"), "rechthoek"), Tool.Rect); break;
                 case "cirkel": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Cirkel"), "cirkel"), Tool.Ellipse); break;
                 case "tekst": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Tekst"), "tekst"), Tool.Text); break;
-                case "gum": it = ToolBtn(r, key, Shortcuts.Tip(L.T("Gum, of rechtermuisknop ingedrukt"), "gum"), Tool.Eraser); break;
+                case "gum":
+                    it = Button(r, "gum", Shortcuts.Tip(L.T("Gum, of rechtermuisknop ingedrukt. Beweeg erover voor de grootte"), "gum"),
+                        delegate { Use(key); ClosePopups(); o.SetTool(Tool.Eraser); }, delegate { return o.DrawMode && o.CurrentTool == Tool.Eraser; }, null);
+                    break;
                 case "vormen":
                     it = Button(r, "vormen", L.T("Vormen: lijn, pijl, rechthoek, cirkel"), delegate { Use(key); TogglePopup(ref shapePopup, key); },
                         delegate { return o.DrawMode && Overlay.IsShape(o.CurrentTool); }, delegate { return IsOpen(shapePopup); });
@@ -471,8 +483,60 @@ namespace NexusPen
             return false;
         }
 
+        // ---- zelf slepen: tegen de zijkant wordt de balk meteen staand, tegen boven of onder meteen liggend
+        bool dragging;
+        Point grab;
+
+        protected override bool BeginCustomDrag(MouseEventArgs e)
+        {
+            dragging = true; grab = e.Location; Capture = true;
+            ClosePopups(); HideMiniBar();
+            return true;
+        }
+
+        void DragMove()
+        {
+            Point m = Control.MousePosition;
+            Rectangle wa = Screen.FromPoint(m).WorkingArea;
+            int edge = (int)(28 * S);
+            bool nl = m.X - wa.Left < edge, nr = wa.Right - m.X < edge, nt = m.Y - wa.Top < edge, nb = wa.Bottom - m.Y < edge;
+            bool want = vertical;
+            if (!vertical && (nl || nr) && !nt && !nb) want = true;
+            else if (vertical && (nt || nb) && !nl && !nr) want = false;
+            if (want != vertical)
+            {
+                float along = vertical ? (float)grab.Y / Math.Max(1, Height) : (float)grab.X / Math.Max(1, Width);
+                vertical = want; ov.Cfg.Vertical = want;
+                Rebuild();
+                // de muis houdt de balk op ongeveer dezelfde plek vast (bij de greep)
+                grab = gripItem != null ? new Point((int)(gripItem.R.X + gripItem.R.Width / 2), (int)(gripItem.R.Y + gripItem.R.Height / 2)) : new Point(Width / 2, Height / 2);
+                Usage.Log("stand", want ? "staand" : "liggend", "slepen naar de rand");
+            }
+            int x = m.X - grab.X, y = m.Y - grab.Y;
+            int th = (int)(12 * S);
+            if (Math.Abs(x - wa.Left) < th) x = wa.Left; else if (Math.Abs(wa.Right - (x + Width)) < th) x = wa.Right - Width;
+            if (Math.Abs(y - wa.Top) < th) y = wa.Top; else if (Math.Abs(wa.Bottom - (y + Height)) < th) y = wa.Bottom - Height;
+            x = Math.Max(wa.Left, Math.Min(wa.Right - Width, x));
+            y = Math.Max(wa.Top, Math.Min(wa.Bottom - Height, y));
+            Location = new Point(x, y);
+        }
+
+        protected override void OnMouseCaptureChanged(EventArgs e)
+        {
+            base.OnMouseCaptureChanged(e);
+            if (dragging && !Capture) EndDrag();
+        }
+
+        void EndDrag()
+        {
+            dragging = false;
+            ov.Cfg.ToolbarX = Left; ov.Cfg.ToolbarY = Top; ov.Cfg.Save();
+            ov.RefreshSettingsWindow();
+        }
+
         protected override void OnMouseMove(MouseEventArgs e)
         {
+            if (dragging) { DragMove(); Cursor = Cursors.SizeAll; return; }
             if (shortening)
             {
                 float p = vertical ? e.Y : e.X;
@@ -492,6 +556,7 @@ namespace NexusPen
         protected override void OnMouseUp(MouseEventArgs e)
         {
             base.OnMouseUp(e);
+            if (dragging) { Capture = false; if (dragging) EndDrag(); return; }
             if (!shortening) return;
             shortening = false;
             Capture = false;
@@ -617,7 +682,7 @@ namespace NexusPen
 
         void StopHoverOpen() { if (hoverOpen != null) hoverOpen.Stop(); hoverKey = null; }
 
-        static bool HasPopup(string k) { return k == "vormen" || k == "kleur" || k == "stempel" || k == "bord"; }
+        static bool HasPopup(string k) { return k == "vormen" || k == "kleur" || k == "stempel" || k == "bord" || k == "gum"; }
 
         void HoverCheck()
         {
@@ -638,13 +703,14 @@ namespace NexusPen
 
         void OpenByHover(string k)
         {
-            BarForm f = k == "vormen" ? (BarForm)shapePopup : k == "kleur" ? (BarForm)colorPopup : k == "stempel" ? (BarForm)stampPopup : boardPopup;
+            BarForm f = k == "vormen" ? (BarForm)shapePopup : k == "kleur" ? (BarForm)colorPopup : k == "stempel" ? (BarForm)stampPopup : k == "gum" ? (BarForm)eraserPopup : boardPopup;
             if (IsOpen(f)) return;
             switch (k)
             {
                 case "vormen": TogglePopup(ref shapePopup, k); f = shapePopup; break;
                 case "kleur": TogglePopup(ref colorPopup, k); f = colorPopup; break;
                 case "stempel": TogglePopup(ref stampPopup, k); f = stampPopup; break;
+                case "gum": TogglePopup(ref eraserPopup, k); f = eraserPopup; break;
                 default: TogglePopup(ref boardPopup, k); f = boardPopup; break;
             }
             hoverPopup = f; hoverPopupKey = k; leaveTicks = 0;
@@ -713,14 +779,14 @@ namespace NexusPen
 
         public void SnapPopupsForTest(Action<Control, string> snap, string name)
         {
-            foreach (Form f in new Form[] { colorPopup, shapePopup, stampPopup, boardPopup, overflowPopup })
+            foreach (Form f in new Form[] { colorPopup, shapePopup, stampPopup, boardPopup, eraserPopup, overflowPopup })
                 if (IsOpen(f)) snap(f, name);
         }
 
         public void ClosePopups()
         {
             StopHoverOpen();
-            foreach (Form f in new Form[] { colorPopup, shapePopup, stampPopup, boardPopup, overflowPopup })
+            foreach (Form f in new Form[] { colorPopup, shapePopup, stampPopup, boardPopup, eraserPopup, overflowPopup })
                 if (IsOpen(f)) f.Hide();
             Invalidate();
         }

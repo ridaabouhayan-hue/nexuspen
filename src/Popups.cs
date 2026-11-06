@@ -187,6 +187,32 @@ namespace NexusPen
     }
 
     // ------------------------------------------------------------------ Vormen: lijn, pijl, rechthoek, cirkel
+    // ------------------------------------------------------------------ Gum: groottes en alles wissen
+    class EraserPopup : RowPopup
+    {
+        public EraserPopup(Overlay o) : base(o) { Text = "NexusPen gum"; }
+
+        public static readonly float[] Widths = { 3, 8, 18, 40 };   // de gum is twee keer zo breed als dit getal
+
+        protected override void Build()
+        {
+            Overlay o = ov;
+            Start(L.T("Gum"));
+            string[] names = { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") };
+            for (int i = 0; i < Widths.Length; i++)
+            {
+                float w = Widths[i];
+                Chip(names[i], null, Color.Empty, L.T("Grootte van de gum. Muiswiel = groter of kleiner"),
+                    delegate { return o.CurrentTool == Tool.Eraser && Math.Abs(o.PenWidth - w) < 0.5f; },
+                    delegate { o.SetTool(Tool.Eraser); o.SetWidth(w); Invalidate(); });
+            }
+            Sep();
+            Chip(L.T("Alles wissen"), "prullenbak", Color.Empty, L.T("Alles wissen") + "  (Delete). " + L.T("Terug met Ctrl+Z"), null,
+                delegate { o.ClearAll(); if (o.Bar != null) o.Bar.ClosePopups(); });
+            Finish();
+        }
+    }
+
     class ShapePopup : RowPopup
     {
         public ShapePopup(Overlay o) : base(o) { Text = "NexusPen vormen"; }
