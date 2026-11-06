@@ -420,7 +420,7 @@ namespace NexusPen
         public void Place(Rectangle barBounds, bool vertical)
         {
             vert = vertical;
-            S = W.DpiScaleAt(barBounds.Location);
+            S = W.UiScaleAt(barBounds.Location);
             Rebuild();
             Screen sc = Screen.FromRectangle(barBounds);
             Rectangle bnd = sc.Bounds;
@@ -485,7 +485,7 @@ namespace NexusPen
 
         public void PlaceAt(Point p)
         {
-            S = W.DpiScaleAt(p);
+            S = W.UiScaleAt(p);
             Rebuild();
             Rectangle wa = Screen.FromPoint(p).WorkingArea;
             Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, p.X)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, p.Y)));

@@ -127,9 +127,58 @@ namespace NexusPen
             catch { return false; }
         }
 
+        [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+
+        // Staat er nu een ander programma bovenop dat zelf 'altijd bovenop' wil zijn (Knipprogramma, Win+Shift+S,
+        // schermopname)? Dan gaan wij er niet overheen, anders botsen we met het maken van een schermafbeelding.
+        static uint myPid;
+
+        public static bool OtherTopmostInFront()
+        {
+            try
+            {
+                IntPtr fg = GetForegroundWindow();
+                if (fg == IntPtr.Zero) return false;
+                uint pid;
+                GetWindowThreadProcessId(fg, out pid);
+                if (myPid == 0) myPid = (uint)System.Diagnostics.Process.GetCurrentProcess().Id;
+                if (pid == myPid) return false;
+                if ((GetWindowLong(fg, GWL_EXSTYLE) & WS_EX_TOPMOST) == 0) return false;
+                // de taakbalk en het startmenu zijn ook 'bovenop'; daar willen we wel weer overheen zodra je verder gaat
+                System.Text.StringBuilder cls = new System.Text.StringBuilder(64);
+                GetClassName(fg, cls, 64);
+                string c = cls.ToString();
+                if (c == "Shell_TrayWnd" || c == "Shell_SecondaryTrayWnd") return false;
+                return true;
+            }
+            catch { return false; }
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder name, int max);
+
         public static void KeepOnTop(IntPtr hwnd)
         {
             SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        }
+
+        // Op een groot scherm (meer dan 1080 punten hoog na de schaal van Windows) groeit de werkbalk mee, tot 1,5 keer
+        public static float ScreenFactorAt(Point p, float dpiScale)
+        {
+            try
+            {
+                Rectangle b = Screen.FromPoint(p).Bounds;
+                float logical = b.Height / Math.Max(1f, dpiScale);
+                return Math.Max(1f, Math.Min(1.5f, logical / 1080f));
+            }
+            catch { return 1f; }
+        }
+
+        // Schaal voor de werkbalk en de kleine vensters: schaal van Windows maal de grootte van het scherm
+        public static float UiScaleAt(Point p)
+        {
+            float d = DpiScaleAt(p);
+            return d * ScreenFactorAt(p, d);
         }
 
         public static float DpiScaleAt(Point p)

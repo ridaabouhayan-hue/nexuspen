@@ -78,8 +78,9 @@ namespace NexusPen
             {
                 // Naar een scherm met andere schaal gesleept: opnieuw opbouwen op de juiste grootte
                 int dpi = m.WParam.ToInt32() & 0xFFFF;
-                S = Math.Max(1f, dpi / 96f);
                 W.RECT r = (W.RECT)Marshal.PtrToStructure(m.LParam, typeof(W.RECT));
+                float d = Math.Max(1f, dpi / 96f);
+                S = d * W.ScreenFactorAt(new Point((r.Left + r.Right) / 2, (r.Top + r.Bottom) / 2), d);
                 Location = new Point(r.Left, r.Top);
                 Rebuild();
                 m.Result = IntPtr.Zero;
@@ -94,6 +95,9 @@ namespace NexusPen
         byte alpha = 255;
         bool renderQueued;
         protected bool building;
+        // De grootte die Build heeft uitgerekend. Windows kan het venster even anders maken (bij het aanmaken of
+        // bij een ander scherm); dan tekenen we toch op deze grootte en zetten het venster weer goed.
+        Size wantSize = Size.Empty;
         Bitmap maskCache; Size maskSize; float maskRadius; int maskKind;
 
         // Doorzichtigheid van het hele venster (100%, 90% of 80%)
@@ -110,7 +114,13 @@ namespace NexusPen
         protected override void OnVisibleChanged(EventArgs e)
         {
             base.OnVisibleChanged(e);
-            if (Visible) RenderNow();
+            if (!Visible) return;
+            RenderNow();
+            // nog een keer kort daarna: soms zet Windows bij het tonen de grootte of de schaal nog even anders
+            System.Windows.Forms.Timer again = new System.Windows.Forms.Timer();
+            again.Interval = 250;
+            again.Tick += delegate { again.Stop(); again.Dispose(); if (!IsDisposed && Visible) RenderNow(); };
+            again.Start();
         }
 
         protected override void OnSizeChanged(EventArgs e)
@@ -131,8 +141,14 @@ namespace NexusPen
         {
             renderQueued = false;
             if (!IsHandleCreated || IsDisposed || building) return;
-            int w = ClientSize.Width, h = ClientSize.Height;
+            Size want = wantSize.IsEmpty ? ClientSize : wantSize;
+            int w = want.Width, h = want.Height;
             if (w <= 0 || h <= 0) return;
+            if (ClientSize != want)
+            {
+                building = true;
+                try { ClientSize = want; } finally { building = false; }
+            }
             try
             {
                 using (Bitmap b = RenderBitmap())
@@ -165,7 +181,8 @@ namespace NexusPen
         // Het hele venster als plaatje (ook voor de zelftest)
         public Bitmap RenderBitmap()
         {
-            int w = Math.Max(1, ClientSize.Width), h = Math.Max(1, ClientSize.Height);
+            Size want = wantSize.IsEmpty ? ClientSize : wantSize;
+            int w = Math.Max(1, want.Width), h = Math.Max(1, want.Height);
             Bitmap b = new Bitmap(w, h, PixelFormat.Format32bppPArgb);
             using (Graphics g = Graphics.FromImage(b)) PaintAll(g);
             ApplyMask(b);
@@ -242,6 +259,7 @@ namespace NexusPen
             items.Clear();
             building = true;
             try { Build(); } finally { building = false; }
+            wantSize = ClientSize;
             RenderNow();
         }
 
@@ -280,8 +298,9 @@ namespace NexusPen
             g.Clear(t.Bar);
             // rand van een hele pixel breed, precies op de pixels: scherp in plaats van wazig
             float bw = Math.Max(1, Px((t.Thick ? 2 : 1) * S));
+            Size sz = wantSize.IsEmpty ? ClientSize : wantSize;
             using (Pen p = new Pen(t.Border, bw))
-            using (GraphicsPath gp = BorderPath(ClientSize.Width, ClientSize.Height, bw))
+            using (GraphicsPath gp = BorderPath(sz.Width, sz.Height, bw))
                 g.DrawPath(p, gp);
             PaintExtra(g);
             foreach (Item it in items) PaintItem(g, it);
@@ -461,17 +480,10 @@ namespace NexusPen
         public void SetVertical(bool v) { vertical = v; }
     }
 
-    // Lettertype voor de knoppen en instellingen: Nunito (huisstijl) als het er is, anders Segoe UI
+    // Lettertype voor de knoppen en instellingen: Segoe UI, zoals in het ontwerp (Inter / Segoe UI).
+    // Dat lettertype zit in Windows, dus Windows kan het zelf haarscherp tekenen (ClearType).
     static class UiFont
     {
-        static string name;
-        public static string Name
-        {
-            get
-            {
-                if (name == null) name = Render.IsInstalled("Nunito") ? "Nunito" : "Segoe UI";
-                return name;
-            }
-        }
+        public static string Name { get { return "Segoe UI"; } }
     }
 }

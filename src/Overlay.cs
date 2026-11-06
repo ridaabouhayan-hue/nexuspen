@@ -62,7 +62,11 @@ namespace NexusPen
         System.Windows.Forms.Timer timer;
         Toolbar toolbar;
         NotifyIcon tray;
-        TextInput textInput;
+        // tekst typen, direct op het scherm (zonder tekstvak)
+        Stroke typing, typingOld;
+        int typingIndex = -1;
+        bool caretOn;
+        DateTime caretAt;
         SettingsForm settingsForm;
         bool allHidden;
 
@@ -369,14 +373,14 @@ namespace NexusPen
 
             // Esc werkt altijd, ook als de tekenlaag niet het actieve venster is
             bool esc = (W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0;
-            if (esc && !lastEsc && DrawMode && textInput == null)
+            if (esc && !lastEsc && DrawMode && typing == null)
             {
                 if (selected != null) Deselect(); else SetTool(Tool.Mouse);
             }
             lastEsc = esc;
 
             // Bovenop blijven liggen (taakbalk, startmenu en Zoom duwen ons anders weg)
-            if ((DateTime.Now - lastTopAt).TotalMilliseconds > 900 && IsHandleCreated)
+            if ((DateTime.Now - lastTopAt).TotalMilliseconds > 900 && IsHandleCreated && !W.OtherTopmostInFront())
             {
                 lastTopAt = DateTime.Now;
                 if (Visible) W.KeepOnTop(Handle);
@@ -385,6 +389,9 @@ namespace NexusPen
 
             // Automatisch bewaren, 1,5 seconde na de laatste wijziging
             if (needSave && (DateTime.Now - changedAt).TotalMilliseconds > 1500) SaveNow();
+
+            // knipperend streepje tijdens het typen
+            if (typing != null && (DateTime.Now - caretAt).TotalMilliseconds > 530) { caretOn = !caretOn; caretAt = DateTime.Now; dirty = true; }
 
             // Rustig aan als er niets gebeurt: minder vaak wakker worden spaart de batterij
             bool idle = !DrawMode && lasers.Count == 0 && fading.Count == 0 && !dirty && !needSave;
@@ -606,6 +613,7 @@ namespace NexusPen
             }
             bool focus = FocusOn;
             if (focus) transient = U(transient, Clip(FocusRect()));
+            if (typing != null) transient = U(transient, TypingArea(typing));
 
             bool wasFull = fullDirty;
             Rectangle area = wasFull ? full : U(U(U(lastTransient, transient), pendingDirty), wetArea);
@@ -646,6 +654,19 @@ namespace NexusPen
                     {
                         if (lifted) SafeDraw(g, selected, 1f);
                         DrawSelection(g);
+                    }
+                    if (typing != null)
+                    {
+                        SafeDraw(g, typing, 1f);
+                        if (caretOn)
+                            try
+                            {
+                                RectangleF cr = Render.CaretRect(typing);
+                                Color cc = Color.FromArgb(255, typing.Color);
+                                using (SolidBrush b = new SolidBrush(Color.FromArgb(150, Theme.Luma(cc) < 0.5 ? Color.White : Color.Black))) g.FillRectangle(b, RectangleF.Inflate(cr, 1, 1));
+                                using (SolidBrush b = new SolidBrush(cc)) g.FillRectangle(b, cr);
+                            }
+                            catch { }
                     }
                     if (focus) DrawFocus(g, area);
                 }
@@ -858,6 +879,7 @@ namespace NexusPen
                     switch (step++)
                     {
                         case 0:
+                            screen("00-start");   // zo staat de balk er echt bij het opstarten
                             snap(toolbar, "01-werkbalk"); SetTool(Tool.Pen);
                             try
                             {
@@ -894,7 +916,10 @@ namespace NexusPen
                         case 12: screen("13-natte-inkt"); PerfTestRelease(); break;
                         case 13: screen("14-droge-inkt"); PerfTestErase(); break;
                         case 14: PerfTestReport(shots); break;
-                        case 15: ShowSettings(null); break;
+                        case 15: TypeTest(); break;
+                        case 16: screen("16-tekst-typen"); TypingKey(new KeyEventArgs(Keys.Escape)); break;
+                        case 17: screen("17-tekst-klaar"); strokes.Clear(); undo.Clear(); Rebuild(); SetTool(Tool.Mouse); break;
+                        case 18: ShowSettings(null); break;
                         default:
                             if (settingsForm != null && pageStep < pagesToShow.Length)
                             {
@@ -1066,6 +1091,23 @@ namespace NexusPen
             SetTool(Tool.Mouse);
         }
 
+        // Zelftest: met T klikken en meteen typen, in zwart (met rand)
+        void TypeTest()
+        {
+            try
+            {
+                SetColor(8);
+                SetTool(Tool.Text);
+                PointF c = TestPoint(0, 1);
+                OnMouseDown(Mouse(MouseButtons.Left, new PointF(c.X - 200, c.Y)));
+                foreach (char ch in "Ik ga met de trein.") OnKeyPress(new KeyPressEventArgs(ch));
+                TypingKey(new KeyEventArgs(Keys.Enter));
+                foreach (char ch in "Één, twee: café!") OnKeyPress(new KeyPressEventArgs(ch));
+                if (typing == null || typing.Text != "Ik ga met de trein.\nÉén, twee: café!") { Program.SelfTestErrors++; Console.Error.WriteLine("Typen werkt niet"); }
+            }
+            catch (Exception ex) { Program.SelfTestErrors++; Log.Error("Zelftest typen", ex); Console.Error.WriteLine(ex); }
+        }
+
         void SetupTray()
         {
             tray = new NotifyIcon();
@@ -1221,6 +1263,7 @@ namespace NexusPen
 
         public void SetTool(Tool t)
         {
+            if (typing != null) CloseTextInput(true);
             if (t == Tool.Mouse) { if (DrawMode) SetDrawMode(false); RefreshUi(); return; }
             if (t != Tool.Select) Deselect();
             bool wasFocus = CurrentTool == Tool.Focus;
@@ -1609,6 +1652,12 @@ namespace NexusPen
             if (!DrawMode) return;
             if (toolbar != null) toolbar.ClosePopups();
             PointF p = e.Location;
+            if (typing != null)
+            {
+                // klik in de tekst die je typt: gewoon doortypen; ergens anders: tekst is klaar
+                if (CurrentTool == Tool.Text && e.Button == MouseButtons.Left && TypingArea(typing).Contains(e.Location)) return;
+                CloseTextInput(true);
+            }
             if (CurrentTool == Tool.Focus) return;
             if (e.Button == MouseButtons.Right || (e.Button == MouseButtons.Left && CurrentTool == Tool.Eraser))
             {
@@ -1809,9 +1858,61 @@ namespace NexusPen
         }
 
         // ---------- toetsenbord (alleen als de tekenlaag actief is, nooit in een tekstvak)
+        // Letters die je typt (met accenten en hoofdletters, zoals Windows ze geeft)
+        protected override void OnKeyPress(KeyPressEventArgs e)
+        {
+            base.OnKeyPress(e);
+            if (typing == null) return;
+            e.Handled = true;
+            if (e.KeyChar < ' ' || e.KeyChar == (char)127) return;
+            typing.Text = (typing.Text ?? "") + e.KeyChar;
+            TypingChanged();
+        }
+
+        // Tijdens het typen doen sneltoetsen niets; alleen deze toetsen
+        bool TypingKey(KeyEventArgs e)
+        {
+            if (typing == null) return false;
+            string t = typing.Text ?? "";
+            switch (e.KeyCode)
+            {
+                case Keys.Escape: lastEsc = true; CloseTextInput(true); break;
+                case Keys.Enter:
+                    if (e.Control) CloseTextInput(true);
+                    else { typing.Text = t + "\n"; TypingChanged(); }
+                    break;
+                case Keys.Back:
+                    if (t.Length > 0)
+                    {
+                        int cut = t.Length - 1;
+                        if (e.Control) { cut = t.TrimEnd().LastIndexOfAny(new char[] { ' ', '\n' }) + 1; if (cut < 0) cut = 0; }
+                        typing.Text = t.Substring(0, cut);
+                        TypingChanged();
+                    }
+                    break;
+                case Keys.V:
+                    if (!e.Control) return true;
+                    try
+                    {
+                        if (Clipboard.ContainsText())
+                        {
+                            string add = Clipboard.GetText().Replace("\r\n", "\n").Replace('\r', '\n').Replace('\t', ' ');
+                            if (add.Length > 2000) add = add.Substring(0, 2000);
+                            typing.Text = t + add; TypingChanged();
+                        }
+                    }
+                    catch (Exception ex) { Log.Error("Plakken", ex); }
+                    break;
+                default: return true;   // gewone letters komen via OnKeyPress
+            }
+            e.Handled = true; e.SuppressKeyPress = true;
+            return true;
+        }
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
+            if (TypingKey(e)) return;
             if (selected != null && !dragging && !e.Control && !e.Alt)
             {
                 float step = e.Shift ? 10 : 1;
@@ -1863,56 +1964,86 @@ namespace NexusPen
             if (e.KeyCode == Keys.OemMinus || e.KeyCode == Keys.Subtract) SetWidth(PenWidth - (PenWidth <= 6 ? 1 : 2));
         }
 
-        // ---------- tekst
+        // ---------- tekst: klik en typ meteen, op de plek waar je klikte (zonder tekstvak)
         void OpenTextInput(Point clientPt) { OpenTextInput(clientPt, null); }
 
         // Nieuwe tekst, of een bestaande tekst wijzigen (editing != null)
         void OpenTextInput(Point clientPt, Stroke editing)
         {
             CloseTextInput(true);
-            float px = editing != null ? editing.FontSize : Cfg.TextSize;
-            Point screenPt = new Point(clientPt.X + vs.X, clientPt.Y + vs.Y);
-            PointF strokePt = clientPt;
-            Color c = editing != null ? editing.Color : CurrentColor;
-            string font = editing != null ? editing.FontName : Cfg.FontName;
-            bool outline = editing != null ? editing.Outline : Cfg.TextOutline;
-            int ow = editing != null ? editing.OutlineWidth : Cfg.OutlineWidth, oc = editing != null ? editing.OutlineColor : Cfg.OutlineColor;
-            if (editing != null) { lifted = false; }
-            textInput = new TextInput(screenPt, Render.MakeFont(px, font), c, delegate(string text)
+            if (editing != null)
             {
-                textInput = null;
-                bool empty = string.IsNullOrEmpty(text) || text.Trim().Length == 0;
-                if (editing != null)
-                {
-                    if (text == null || text == editing.Text) return;   // geannuleerd of niets veranderd
-                    Checkpoint();
-                    int i = strokes.IndexOf(editing);
-                    if (empty) { if (i >= 0) strokes.RemoveAt(i); }
-                    else if (i >= 0) { Stroke n = editing.Clone(); n.Text = text; strokes[i] = n; }
-                    Rebuild();
-                    return;
-                }
-                if (empty) return;
-                Stroke s = new Stroke();
-                s.Tool = Tool.Text; s.Color = c; s.Width = PenWidth; s.FontSize = px; s.Text = text;
-                s.FontName = font; s.Outline = outline; s.OutlineWidth = ow; s.OutlineColor = oc;
-                s.Pts.Add(strokePt);
-                if (!StrokesVisible) { StrokesVisible = true; Rebuild(); }
+                // de oude tekst even uit de tekening halen; Ongedaan maken zet hem terug
                 Checkpoint();
-                strokes.Add(s);
-                CommitToLayer(s);
-                lastStrokeAt = DateTime.Now;
-                dirty = true;
-            });
-            if (editing != null) textInput.SetText(editing.Text);
-            textInput.Owner = this;
-            textInput.Show();
-            textInput.Activate();
+                typingIndex = strokes.IndexOf(editing);
+                if (typingIndex >= 0) strokes.RemoveAt(typingIndex);
+                typingOld = editing;
+                typing = editing.Clone();
+                lifted = false;
+                Rebuild();
+            }
+            else
+            {
+                Stroke s = new Stroke();
+                s.Tool = Tool.Text; s.Color = CurrentColor; s.Width = PenWidth; s.FontSize = Cfg.TextSize; s.Text = "";
+                s.FontName = Cfg.FontName; s.Outline = Cfg.TextOutline; s.OutlineWidth = Cfg.OutlineWidth; s.OutlineColor = Cfg.OutlineColor;
+                float lh = 0;
+                try { lh = Render.LineHeight(s); } catch { lh = s.FontSize * 1.2f; }
+                // de klik komt midden in de eerste regel, zoals bij Epic Pen
+                s.Pts.Add(new PointF(clientPt.X - Render.OutlineWidth(s), clientPt.Y - lh / 2 - Render.OutlineWidth(s)));
+                typing = s; typingOld = null; typingIndex = -1;
+            }
+            if (!StrokesVisible) { StrokesVisible = true; Rebuild(); }
+            caretOn = true; caretAt = DateTime.Now;
+            try { Activate(); Focus(); } catch { }
+            RenderSoon();
         }
 
+        Rectangle TypingArea(Stroke s)
+        {
+            Rectangle r = StrokeBounds(s);
+            try
+            {
+                RectangleF c = Render.CaretRect(s); c.Inflate(3, 3);
+                r = U(r, Clip(c));
+            }
+            catch { }
+            return r;
+        }
+
+        void TypingChanged()
+        {
+            caretOn = true; caretAt = DateTime.Now;
+            inputAt = Perf.Now;
+            RenderSoon();
+        }
+
+        // Klaar met typen: de tekst komt in de tekening (of terug zoals hij was)
         void CloseTextInput(bool commit)
         {
-            if (textInput != null) { TextInput t = textInput; textInput = null; t.Finish(commit); }
+            if (typing == null) return;
+            Stroke t = typing;
+            typing = null;
+            bool empty = string.IsNullOrEmpty(t.Text) || t.Text.Trim().Length == 0;
+            if (typingOld != null)
+            {
+                int i = Math.Max(0, Math.Min(strokes.Count, typingIndex < 0 ? strokes.Count : typingIndex));
+                if (!commit || t.Text == typingOld.Text)
+                {
+                    strokes.Insert(i, typingOld);
+                    if (undo.Count > 0) undo.RemoveAt(undo.Count - 1);   // er is niets veranderd
+                }
+                else if (!empty) strokes.Insert(i, t);
+                typingOld = null; typingIndex = -1;
+                Rebuild();
+                return;
+            }
+            if (!commit || empty) { dirty = true; return; }
+            Checkpoint();
+            strokes.Add(t);
+            CommitToLayer(t);
+            lastStrokeAt = DateTime.Now;
+            dirty = true;
         }
 
         // ---------- schermafbeelding

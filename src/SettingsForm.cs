@@ -111,19 +111,27 @@ namespace NexusPen
         // ---- tekenhulpjes
         Font F(float px, bool bold) { return Fonts.Make(UiFont.Name, px * S, bold ? FontStyle.Bold : FontStyle.Regular); }
 
+        // Tekst via Windows zelf (ClearType): scherp en met de normale letterafstand
         void Txt(Graphics g, string text, RectangleF r, Color c, float px, bool bold, StringAlignment align, bool wrap)
         {
-            using (Font f = F(px, bold)) using (SolidBrush b = new SolidBrush(c)) using (StringFormat sf = new StringFormat())
+            if (string.IsNullOrEmpty(text)) return;
+            if (c.A < 255)
             {
-                sf.Alignment = align; sf.LineAlignment = wrap ? StringAlignment.Near : StringAlignment.Center;
-                if (!wrap) { sf.FormatFlags = StringFormatFlags.NoWrap; sf.Trimming = StringTrimming.EllipsisCharacter; }
-                g.DrawString(text, f, b, r, sf);
+                // Windows tekent tekst altijd dekkend: doorzichtige kleur zelf mengen met de achtergrond
+                Color bg = T.Bar; float a = c.A / 255f;
+                c = Color.FromArgb((int)(c.R * a + bg.R * (1 - a)), (int)(c.G * a + bg.G * (1 - a)), (int)(c.B * a + bg.B * (1 - a)));
             }
+            TextFormatFlags fl = TextFormatFlags.NoPrefix;
+            fl |= align == StringAlignment.Center ? TextFormatFlags.HorizontalCenter : align == StringAlignment.Far ? TextFormatFlags.Right : TextFormatFlags.Left;
+            if (wrap) fl |= TextFormatFlags.WordBreak | TextFormatFlags.Top;
+            else fl |= TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis;
+            Rectangle ri = Rectangle.FromLTRB((int)Math.Round(r.Left), (int)Math.Round(r.Top), (int)Math.Round(r.Right), (int)Math.Round(r.Bottom));
+            using (Font f = F(px, bold)) TextRenderer.DrawText(g, text, f, ri, c, fl);
         }
 
         float Measure(string text, float px, bool bold)
         {
-            using (Font f = F(px, bold)) using (Graphics g = CreateGraphics()) return g.MeasureString(text, f).Width;
+            using (Font f = F(px, bold)) return TextRenderer.MeasureText(text ?? "", f, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPrefix | TextFormatFlags.SingleLine).Width;
         }
 
         Item Add(RectangleF r, string tipText, Action click, Action<Graphics, Item, bool> paint)

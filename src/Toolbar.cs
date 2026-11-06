@@ -117,7 +117,7 @@ namespace NexusPen
             Point start = (ov.Cfg.ToolbarX != -1 || ov.Cfg.ToolbarY != -1)
                 ? new Point(ov.Cfg.ToolbarX + 20, ov.Cfg.ToolbarY + 20)
                 : new Point(Screen.PrimaryScreen.WorkingArea.Left + 40, Screen.PrimaryScreen.WorkingArea.Top + 40);
-            S = W.DpiScaleAt(start);
+            S = W.UiScaleAt(start);
             vertical = ov.Cfg.Vertical;
             BarAlpha = OpacityValue;
             flash = new System.Windows.Forms.Timer();
@@ -643,7 +643,7 @@ namespace NexusPen
         {
             if (collapsed || hiddenShot) return;
             if (miniBar == null || miniBar.IsDisposed) { miniBar = new MiniBar(ov); miniBar.Owner = this; }
-            miniBar.S = W.DpiScaleAt(sel.Location);
+            miniBar.S = W.UiScaleAt(sel.Location);
             miniBar.Rebuild();
             Rectangle wa = Screen.FromRectangle(sel).WorkingArea;
             int x = sel.Right - miniBar.Width, y = sel.Top - miniBar.Height - (int)(8 * miniBar.S);
@@ -661,7 +661,7 @@ namespace NexusPen
         {
             if (collapsed) return;
             if (widthTip == null || widthTip.IsDisposed) widthTip = new WidthTip(ov);
-            widthTip.S = W.DpiScaleAt(screenPt);
+            widthTip.S = W.UiScaleAt(screenPt);
             widthTip.Show(screenPt, width, min, max, label);
         }
 
@@ -669,7 +669,7 @@ namespace NexusPen
         {
             if (collapsed) return;
             if (toast == null || toast.IsDisposed) toast = new Toast(ov);
-            toast.S = W.DpiScaleAt(Location);
+            toast.S = W.UiScaleAt(Location);
             toast.ShowMessage(text, bold, folder);
         }
 
@@ -756,7 +756,7 @@ namespace NexusPen
         {
             ContextMenuStrip m = new ContextMenuStrip();
             m.ShowImageMargin = false;
-            m.Font = Fonts.Make(UiFont.Name, 13 * Math.Max(1f, W.DpiScaleAt(Control.MousePosition)), FontStyle.Bold);
+            m.Font = Fonts.Make(UiFont.Name, 13 * Math.Max(1f, W.UiScaleAt(Control.MousePosition)), FontStyle.Bold);
             m.Renderer = new MenuRenderer(t);
             m.BackColor = t.Bar;
             m.ForeColor = t.Text;

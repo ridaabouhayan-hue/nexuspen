@@ -322,15 +322,19 @@ namespace NexusPen
         public static float OutlineWidth(Stroke s)
         {
             if (!s.Outline) return 0;
-            float div = s.OutlineWidth == 0 ? 14f : s.OutlineWidth == 2 ? 6f : 9f;
-            return Math.Max(1.5f, s.FontSize / div);
+            // dunner dan in 1.2.0: met een dikke rand liepen de letters in elkaar over
+            float div = s.OutlineWidth == 0 ? 22f : s.OutlineWidth == 2 ? 10f : 15f;
+            return Math.Max(1.2f, s.FontSize / div);
         }
 
         public static Color OutlineColorOf(Stroke s)
         {
-            if (s.OutlineColor == 1) return Color.White;
-            if (s.OutlineColor == 2) return Theme.Luma(s.Color) < 0.35 ? Color.White : Color.Black;
-            return Color.Black;
+            bool dark = Theme.Luma(s.Color) < 0.35;
+            if (s.OutlineColor == 2) return dark ? Color.White : Color.Black;
+            Color edge = s.OutlineColor == 1 ? Color.White : Color.Black;
+            // zwarte tekst met een zwarte rand (of wit op wit) is niet te lezen: dan de andere kleur
+            if (Math.Abs(Theme.Luma(edge) - Theme.Luma(s.Color)) < 0.4) edge = dark ? Color.White : Color.Black;
+            return edge;
         }
 
         // Krijtstreep: dezelfde lijn, maar met een korrelige structuur zoals krijt op een bord
@@ -457,6 +461,32 @@ namespace NexusPen
                     if (string.IsNullOrEmpty(s.Text)) break;
                     DrawText(g, s);
                     break;
+            }
+        }
+
+        // Hoogte van een regel tekst
+        public static float LineHeight(Stroke s)
+        {
+            using (Font f = MakeFont(s.FontSize, s.FontName)) return f.GetHeight(measureG);
+        }
+
+        // Knipperend streepje achter de laatste letter (tijdens het typen)
+        public static RectangleF CaretRect(Stroke s)
+        {
+            string text = s.Text ?? "";
+            string[] lines = text.Split('\n');
+            string last = lines[lines.Length - 1];
+            using (Font f = MakeFont(s.FontSize, s.FontName))
+            using (StringFormat typo = (StringFormat)StringFormat.GenericTypographic.Clone())
+            {
+                typo.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
+                float lh = f.GetHeight(measureG);
+                float adv = last.Length == 0 ? 0 : measureG.MeasureString(last, f, PointF.Empty, typo).Width;
+                float ow = OutlineWidth(s);
+                // DrawString zet links een klein randje; de tekst met rand (TextPath) niet
+                float pad = s.Outline ? 0 : (measureG.MeasureString("I", f).Width - measureG.MeasureString("I", f, PointF.Empty, typo).Width) / 2;
+                float w = Math.Max(2, s.FontSize / 16);
+                return new RectangleF(s.Pts[0].X + ow + pad + adv + 1, s.Pts[0].Y + ow + (lines.Length - 1) * lh + lh * 0.1f, w, lh * 0.85f);
             }
         }
 
