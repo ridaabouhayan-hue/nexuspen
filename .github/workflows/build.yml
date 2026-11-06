@@ -40,11 +40,15 @@ jobs:
       - name: Versie bepalen
         id: versie
         shell: pwsh
+        env:
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           # het versienummer staat in src/Program.cs (Version = "1.2.3"); bij een versietag telt de tag
-          if ("${{ github.ref }}" -like "refs/tags/v*") { $v = "${{ github.ref_name }}".TrimStart("v") }
+          if ($env:REF -like "refs/tags/v*") { $v = $env:REF_NAME.TrimStart("v") }
           else { $v = (Select-String -Path src\Program.cs -Pattern 'Version = "([0-9.]+)"').Matches[0].Groups[1].Value }
           if (-not $v) { throw "Versienummer niet gevonden in src\Program.cs" }
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { throw "Vreemd versienummer: $v" }
           "nummer=$v" >> $env:GITHUB_OUTPUT
 
       - name: Installer maken (Inno Setup)

@@ -175,6 +175,7 @@ namespace NexusPen
             if (float.IsNaN(BoardZoom) || float.IsInfinity(BoardZoom)) BoardZoom = 1;
             if (BoardScale != 1 && Math.Abs(BoardZoom - 1) < 0.01f) { BoardZoom = BoardScales[BoardScale]; BoardScale = 1; }   // oude keuze overnemen
             BoardZoom = Math.Max(MinZoom, Math.Min(MaxZoom, BoardZoom));
+            if (float.IsNaN(FocusRadius)) FocusRadius = 200;
             FocusRadius = Math.Max(60, Math.Min(700, FocusRadius));
             OutlineWidth = Math.Max(0, Math.Min(2, OutlineWidth));
             OutlineColor = Math.Max(0, Math.Min(2, OutlineColor));

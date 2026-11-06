@@ -109,10 +109,13 @@ namespace NexusPen
             File.Move(tmp, path);
         }
 
+        static bool Ok(float v) { return !float.IsNaN(v) && !float.IsInfinity(v) && Math.Abs(v) < 100000; }
+
         public static List<Stroke> Load(string path)
         {
             List<Stroke> list = new List<Stroke>();
             if (!File.Exists(path)) return list;
+            if (new FileInfo(path).Length > 64L * 1024 * 1024) { Log.Info("Tekening te groot, niet geladen: " + Path.GetFileName(path)); return list; }
             string[] lines = File.ReadAllLines(path, Encoding.UTF8);
             for (int n = 1; n < lines.Length; n++)
             {
@@ -122,6 +125,7 @@ namespace NexusPen
                     if (f.Length < 6) continue;
                     Stroke st = new Stroke();
                     st.Tool = (Tool)Enum.Parse(typeof(Tool), f[0]);
+                    if (!Enum.IsDefined(typeof(Tool), st.Tool)) continue;
                     st.Color = Color.FromArgb(int.Parse(f[1], C));
                     st.Width = float.Parse(f[2], C);
                     st.FontSize = float.Parse(f[3], C);
@@ -129,8 +133,16 @@ namespace NexusPen
                     foreach (string pt in f[5].Split(' '))
                     {
                         int k = pt.IndexOf(',');
-                        if (k > 0) st.Pts.Add(new PointF(float.Parse(pt.Substring(0, k), C), float.Parse(pt.Substring(k + 1), C)));
+                        if (k <= 0) continue;
+                        float px = float.Parse(pt.Substring(0, k), C), py = float.Parse(pt.Substring(k + 1), C);
+                        if (Ok(px) && Ok(py) && st.Pts.Count < 200000) st.Pts.Add(new PointF(px, py));
                     }
+                    // kapotte getallen (bijv. na stroomuitval) mogen het tekenen niet laten vastlopen
+                    if (!(st.Width > 0) || float.IsInfinity(st.Width)) st.Width = 4;
+                    st.Width = Math.Min(400, st.Width);
+                    if (!(st.FontSize > 0) || float.IsInfinity(st.FontSize)) st.FontSize = 36;
+                    st.FontSize = Math.Min(300, st.FontSize);
+                    if (st.Text != null && st.Text.Length > 20000) st.Text = st.Text.Substring(0, 20000);
                     if (f.Length > 6) st.Outline = f[6] == "1";
                     if (f.Length > 7) st.FontName = UnB64(f[7]);
                     if (f.Length > 10) { st.OutlineWidth = int.Parse(f[8], C); st.OutlineColor = int.Parse(f[9], C); st.Style = int.Parse(f[10], C); }

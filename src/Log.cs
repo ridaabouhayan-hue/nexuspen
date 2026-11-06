@@ -25,7 +25,19 @@ namespace NexusPen
         }
 
         public static void Info(string msg) { Write("INFO ", msg); }
-        public static void Error(string msg, Exception ex) { Write("FOUT ", msg + (ex != null ? Environment.NewLine + ex.ToString() : "")); }
+        public static void Error(string msg, Exception ex) { Write("FOUT ", msg + (ex != null ? Environment.NewLine + Anon(ex.ToString()) : "")); }
+
+        // het foutlog wordt soms gedeeld: je Windows-naam uit de paden halen
+        static string Anon(string t)
+        {
+            try
+            {
+                string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                if (!string.IsNullOrEmpty(home)) t = t.Replace(home, "~");
+            }
+            catch { }
+            return t;
+        }
 
         static void Write(string level, string msg)
         {
