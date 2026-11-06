@@ -36,15 +36,34 @@ namespace NexusPen
                 foreach (string res in asm.GetManifestResourceNames())
                 {
                     if (!res.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase)) continue;
-                    using (Stream st = asm.GetManifestResourceStream(res))
-                    using (MemoryStream ms = new MemoryStream())
+                    byte[] data = null;
+                    int before = own.Families.Length;
+                    try
                     {
-                        st.CopyTo(ms);
-                        byte[] data = ms.ToArray();
-                        IntPtr mem = Marshal.AllocCoTaskMem(data.Length);
-                        Marshal.Copy(data, 0, mem, data.Length);
-                        own.AddMemoryFont(mem, data.Length);
-                        try { uint n = 0; AddFontMemResourceEx(mem, (uint)data.Length, IntPtr.Zero, ref n); } catch { }
+                        using (Stream st = asm.GetManifestResourceStream(res))
+                        using (MemoryStream ms = new MemoryStream())
+                        {
+                            st.CopyTo(ms);
+                            data = ms.ToArray();
+                            IntPtr mem = Marshal.AllocCoTaskMem(data.Length);
+                            Marshal.Copy(data, 0, mem, data.Length);
+                            own.AddMemoryFont(mem, data.Length);
+                            try { uint n = 0; AddFontMemResourceEx(mem, (uint)data.Length, IntPtr.Zero, ref n); } catch { }
+                        }
+                    }
+                    catch (Exception ex) { Log.Error("Lettertype " + res + " uit het geheugen laden", ex); }
+                    // Lukt het niet uit het geheugen, dan via een tijdelijk bestand (Windows is daar soms soepeler)
+                    if (data != null && own.Families.Length == before && !res.Contains("-Bold"))
+                    {
+                        try
+                        {
+                            string dir = Path.Combine(Path.GetTempPath(), "NexusPen-lettertypes");
+                            Directory.CreateDirectory(dir);
+                            string file = Path.Combine(dir, Path.GetFileName(res));
+                            if (!File.Exists(file) || new FileInfo(file).Length != data.Length) File.WriteAllBytes(file, data);
+                            own.AddFontFile(file);
+                        }
+                        catch (Exception ex) { Log.Error("Lettertype " + res + " uit een bestand laden", ex); }
                     }
                 }
                 foreach (FontFamily f in own.Families) cache[f.Name] = f;

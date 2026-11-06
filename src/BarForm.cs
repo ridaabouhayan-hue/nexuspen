@@ -128,7 +128,7 @@ namespace NexusPen
             Theme t = T;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            g.TextRenderingHint = TextRenderingHint.AntiAlias;
             g.Clear(t.Bar);
             float bw = (t.Thick ? 2 : 1) * S;
             using (Pen p = new Pen(t.Border, bw))

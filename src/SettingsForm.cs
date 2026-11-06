@@ -562,11 +562,14 @@ namespace NexusPen
             float y = Heading(contentTop, L.T("Tekst"), null);
             y = Section(y, L.T("Lettertype"));
             float cw = (contentW - 20 * S) / 3, ch = 84 * S;
+            int shown = 0;
             for (int i = 0; i < FontChoices.Length; i++)
             {
                 int idx = i;
                 string fn = FontChoices[i];
-                RectangleF r = new RectangleF(contentX + (i % 3) * (cw + 10 * S), y + (i / 3) * (ch + 10 * S), cw, ch);
+                if (fn != "Segoe UI" && !Fonts.Has(fn)) continue;   // lettertype kon niet geladen worden: niet aanbieden
+                int pos = shown++;
+                RectangleF r = new RectangleF(contentX + (pos % 3) * (cw + 10 * S), y + (pos / 3) * (ch + 10 * S), cw, ch);
                 Add(r, null, delegate { c.FontName = fn; Changed(); }, delegate(Graphics g, Item it, bool h)
                 {
                     Theme t = T;
@@ -849,7 +852,7 @@ namespace NexusPen
                 if (sm.TopClicks.Count == 0) Txt(g, L.T("Nog niets bijgehouden. Gebruik NexusPen gewoon, dan verschijnt het hier."), new RectangleF(rx + 16 * S, yy, rw - 32 * S, 40 * S), t.Muted, 12, false, StringAlignment.Near, true);
                 List<string> never = sm.NeverUsed.ConvertAll(delegate(string k) { return Toolbar.NameOf(k); });
                 if (never.Count > 0 && sm.TopClicks.Count > 0)
-                    Txt(g, L.T("Nog nooit gebruikt") + ": " + string.Join(", ", never.ToArray()), new RectangleF(rx + 16 * S, ry + 290 * S, rw - 32 * S, 34 * S), t.Muted, 11, false, StringAlignment.Near, true);
+                    Txt(g, L.T("Nog nooit gebruikt") + ": " + string.Join(", ", never.ToArray()), new RectangleF(rx + 16 * S, ry + 284 * S, rw - 32 * S, 70 * S), t.Muted, 11, false, StringAlignment.Near, true);
             });
             float by = ry + 376 * S, bx = rx;
             bx += Button(bx, by, L.T("Exporteren voor Claude"), "map", delegate
@@ -887,7 +890,7 @@ namespace NexusPen
             Theme t = T;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            g.TextRenderingHint = TextRenderingHint.AntiAlias;
             g.Clear(t.Bar);
             float W0 = ClientSize.Width, H0 = ClientSize.Height, navW = 236 * S;
             using (SolidBrush b = new SolidBrush(Side)) g.FillRectangle(b, 0, 0, navW, H0);
