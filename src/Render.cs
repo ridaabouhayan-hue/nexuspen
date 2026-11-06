@@ -55,6 +55,21 @@ namespace NexusPen
         // Ingebouwde lettertypes zonder vette versie. Windows maakt die anders zelf na en dan klopt de letter niet meer.
         static readonly string[] RegularOnly = { "Patrick Hand" };
 
+        // Voor de zelftest: welke lettertypes zijn er echt geladen?
+        public static List<string> Report()
+        {
+            Load();
+            List<string> r = new List<string>();
+            foreach (string res in typeof(Fonts).Assembly.GetManifestResourceNames()) if (res.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase)) r.Add("bron: " + res);
+            foreach (FontFamily f in own.Families) r.Add("geladen: " + f.Name + "  vet=" + f.IsStyleAvailable(FontStyle.Bold) + " gewoon=" + f.IsStyleAvailable(FontStyle.Regular));
+            foreach (string n in new string[] { "Andika", "Atkinson Hyperlegible", "Lexend", "Nunito", "Patrick Hand" })
+            {
+                FontFamily f = Family(n);
+                r.Add("zoek " + n + " -> " + f.Name);
+            }
+            return r;
+        }
+
         public static bool HasBold(FontFamily f)
         {
             if (Array.IndexOf(RegularOnly, f.Name) >= 0) return false;

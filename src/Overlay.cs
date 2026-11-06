@@ -721,7 +721,29 @@ namespace NexusPen
                 {
                     switch (step++)
                     {
-                        case 0: snap(toolbar, "01-werkbalk"); SetTool(Tool.Pen); break;
+                        case 0:
+                            snap(toolbar, "01-werkbalk"); SetTool(Tool.Pen);
+                            try
+                            {
+                                List<string> rep = Fonts.Report();
+                                using (Bitmap b = new Bitmap(900, 40 + rep.Count * 22 + 5 * 50))
+                                using (Graphics g = Graphics.FromImage(b))
+                                using (Font f = new Font("Segoe UI", 12, GraphicsUnit.Pixel))
+                                {
+                                    g.Clear(Color.White);
+                                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                                    float yy = 10;
+                                    foreach (string line in rep) { g.DrawString(line, f, Brushes.Black, 10, yy); yy += 22; }
+                                    foreach (string n in new string[] { "Andika", "Atkinson Hyperlegible", "Lexend", "Nunito", "Patrick Hand" })
+                                    {
+                                        using (Font ff = Fonts.Make(n, 30, FontStyle.Bold)) g.DrawString(n + ": Ik ga met de trein. (" + ff.Name + ", " + ff.Style + ")", ff, Brushes.Black, 10, yy);
+                                        yy += 50;
+                                    }
+                                    b.Save(Path.Combine(shots, "00-lettertypes.png"), ImageFormat.Png);
+                                }
+                            }
+                            catch (Exception ex) { Log.Error("Zelftest lettertypes", ex); }
+                            break;
                         case 1: toolbar.OpenForTest("kleur"); break;
                         case 2: toolbar.SnapPopupsForTest(snap, "02-kleur"); toolbar.OpenForTest("stempel"); break;
                         case 3: toolbar.SnapPopupsForTest(snap, "03-stempel"); toolbar.OpenForTest("bord"); break;
