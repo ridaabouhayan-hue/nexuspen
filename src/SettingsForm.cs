@@ -898,7 +898,7 @@ namespace NexusPen
             Theme t = T;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;   // scherpste tekst op een gewoon venster
+            g.TextRenderingHint = TextRenderingHint.AntiAlias;   // ClearType en GridFit geven hier rare letterafstand
             g.Clear(t.Bar);
             float W0 = ClientSize.Width, H0 = ClientSize.Height, navW = 236 * S;
             using (SolidBrush b = new SolidBrush(Side)) g.FillRectangle(b, 0, 0, navW, H0);
