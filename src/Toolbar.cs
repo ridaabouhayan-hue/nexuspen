@@ -225,7 +225,7 @@ namespace NexusPen
             List<string> layout = Layout(ov.Cfg);
             int total = 0;
             foreach (string k in layout) if (k != "|") total++;
-            int limit = shortening || ov.Cfg.ShortenAt <= 0 || ov.Cfg.ShortenAt >= total ? total : ov.Cfg.ShortenAt;
+            int limit = shortening ? Math.Max(1, Math.Min(total, shortenPreview)) : ov.Cfg.ShortenAt <= 0 || ov.Cfg.ShortenAt >= total ? total : ov.Cfg.ShortenAt;
             overflow.Clear();
             int placed = 0;
             bool needSep = true;
@@ -380,9 +380,7 @@ namespace NexusPen
         protected override void PaintOverlay(Graphics g)
         {
             // tijdens het inkorten: wat achter het randje valt, wordt doorzichtig
-            if (shortening)
-                using (SolidBrush b = new SolidBrush(Color.FromArgb(170, T.Bar)))
-                    for (int i = shortenPreview; i < buttonOrder.Count; i++) g.FillRectangle(b, buttonOrder[i].R);
+            // (tijdens het inkorten groeit of krimpt de balk zelf, er hoeft niets doorzichtig)
         }
 
         void PaintGrip(Graphics g, Item it, bool h)
@@ -464,6 +462,7 @@ namespace NexusPen
 
         // ---- inkorten met het sleeprandje
         bool hoverHandle;
+        List<float> fullMids = new List<float>();
 
         bool logoDown;
         Point logoDownAt;
@@ -478,13 +477,16 @@ namespace NexusPen
             }
             if (e.Button == MouseButtons.Left && handleItem != null && RectangleF.Inflate(handleItem.R, 4 * S, 4 * S).Contains(e.Location))
             {
-                shortening = true;
+                // eerst de hele balk opmeten (waar zou elke knop staan), dan laten we hem live groeien of krimpen
                 Capture = true;
                 ClosePopups();
-                Rebuild();               // volledige balk laten zien, wat wegvalt wordt doorzichtig
-                shortenPreview = buttonOrder.Count;
-                if (ov.Cfg.ShortenAt > 0) shortenPreview = Math.Min(ov.Cfg.ShortenAt, buttonOrder.Count);
-                Invalidate();
+                shortening = true;
+                shortenPreview = int.MaxValue;
+                Rebuild();
+                fullMids.Clear();
+                foreach (Item it in buttonOrder) fullMids.Add(vertical ? it.R.Y + it.R.Height / 2 : it.R.X + it.R.Width / 2);
+                shortenPreview = ov.Cfg.ShortenAt > 0 ? Math.Min(ov.Cfg.ShortenAt, fullMids.Count) : fullMids.Count;
+                Rebuild();
                 return true;
             }
             return false;
@@ -566,11 +568,12 @@ namespace NexusPen
             }
             if (shortening)
             {
+                // een knop erbij of eraf zodra je de muis voorbij het midden van die knop sleept
                 float p = vertical ? e.Y : e.X;
                 int n = 0;
-                foreach (Item it in buttonOrder) { float mid = vertical ? it.R.Y + it.R.Height / 2 : it.R.X + it.R.Width / 2; if (mid < p) n++; }
-                shortenPreview = Math.Max(1, n);
-                Invalidate();
+                foreach (float mid in fullMids) if (mid < p) n++;
+                n = Math.Max(1, n);
+                if (n != shortenPreview) { shortenPreview = n; Rebuild(); }
                 return;
             }
             bool hh = handleItem != null && RectangleF.Inflate(handleItem.R, 4 * S, 4 * S).Contains(e.Location);
@@ -588,7 +591,7 @@ namespace NexusPen
             if (!shortening) return;
             shortening = false;
             Capture = false;
-            ov.Cfg.ShortenAt = shortenPreview >= buttonOrder.Count ? 0 : shortenPreview;
+            ov.Cfg.ShortenAt = shortenPreview >= fullMids.Count ? 0 : shortenPreview;
             ov.Cfg.Save();
             Usage.Log("inkorten", ov.Cfg.ShortenAt.ToString(), "balk");
             Point k = Location;

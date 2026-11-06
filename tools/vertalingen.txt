@@ -342,3 +342,4 @@ Klik = alles inklappen, slepen = de balk verplaatsen | Click = collapse everythi
 Lijnen en ruitjes kleiner (meer regels) | Lines and squares smaller (more lines) | Lignes et carreaux plus petits (plus de lignes) | Líneas y cuadros más pequeños (más líneas)
 Lijnen en ruitjes groter (minder regels) | Lines and squares bigger (fewer lines) | Lignes et carreaux plus grands (moins de lignes) | Líneas y cuadros más grandes (menos líneas)
 Fijner: met min en plus in het Bord-venster zoom je zelf in of uit | Finer: use minus and plus in the Board window to zoom in or out yourself | Plus précis : avec moins et plus dans la fenêtre Tableau, vous zoomez vous-même | Más fino: con menos y más en la ventana Pizarra amplías o reduces tú mismo
+Deze sneltoets uitzetten | Turn this shortcut off | Désactiver ce raccourci | Desactivar este atajo

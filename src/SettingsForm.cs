@@ -424,12 +424,19 @@ namespace NexusPen
                 bool on = Cfg.ThemeIndex == idx;
                 RoundFill(g, it.R, h && !on ? Raised : Card, 10);
                 if (on) RoundLine(g, RectangleF.Inflate(it.R, -1 * S, -1 * S), t.Accent, 2, 10);
-                RectangleF bar = new RectangleF(it.R.X + 10 * S, it.R.Y + (it.R.Height - 28 * S) / 2, 66 * S, 28 * S);
+                // een klein stukje werkbalk: logo, gekozen knop in de accentkleur, en een paar echte icoontjes
+                string[] ics = { "pen", "tekst", "gum", "bord" };
+                float cell = 22 * S;
+                RectangleF bar = new RectangleF(it.R.X + 10 * S, it.R.Y + (it.R.Height - 30 * S) / 2, 8 * S + cell * (2 + ics.Length) + 4 * S, 30 * S);
                 RoundFill(g, bar, t.Bar, 8);
                 using (Pen p = new Pen(t.Border, t.Thick ? 2 : 1)) using (GraphicsPath gp = Svg.RoundRect(bar, 8 * S)) g.DrawPath(p, gp);
-                Logo.Draw(g, new RectangleF(bar.X + 5 * S, bar.Y + 5 * S, 18 * S, 18 * S), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
-                RoundFill(g, new RectangleF(bar.X + 27 * S, bar.Y + 5 * S, 18 * S, 18 * S), t.Accent, 5);
-                using (SolidBrush b = new SolidBrush(t.Icon)) g.FillEllipse(b, bar.X + 51 * S, bar.Y + 11 * S, 6 * S, 6 * S);
+                float bx = bar.X + 5 * S, by = bar.Y + (bar.Height - cell) / 2;
+                Logo.Draw(g, new RectangleF(bx + 1 * S, by + 1 * S, cell - 2 * S, cell - 2 * S), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
+                bx += cell + 2 * S;
+                RoundFill(g, new RectangleF(bx, by, cell, cell), t.Accent, 5);
+                Icons.Draw(g, "muis", new RectangleF(bx, by, cell, cell), 14 * S, t.OnAccent, 2f);
+                bx += cell;
+                foreach (string ic in ics) { Icons.Draw(g, ic, new RectangleF(bx, by, cell, cell), 14 * S, t.Icon, 2f); bx += cell; }
                 float tx = bar.Right + 12 * S;
                 Txt(g, L.T(t.Name), new RectangleF(tx, it.R.Y + 8 * S, it.R.Right - tx - 8 * S, 20 * S), cur.Text, 14, true, StringAlignment.Near, false);
                 Txt(g, L.T(t.Desc), new RectangleF(tx, it.R.Y + 28 * S, it.R.Right - tx - 8 * S, 18 * S), cur.Muted, 12, false, StringAlignment.Near, false);
@@ -720,12 +727,27 @@ namespace NexusPen
                 string id = sc.Id;
                 KeyRow(x, yy, cw, id, sc.Icon, L.T(sc.Label), delegate { return Shortcuts.Combo(id); });
             }
+            foreach (Action a in laterItems) a();
+            laterItems.Clear();
             y += half * (rh + 4 * S) + 8 * S;
             Button(contentX, y, L.T("Standaard terugzetten"), "undo", delegate { c.ShortcutOverrides = ""; c.HotkeyDraw = "Ctrl+Shift+D"; c.HotkeyHide = "Ctrl+Shift+H"; ov.RegisterGlobalHotkeys(); Changed(); BuildItems(); }, false);
         }
 
+        List<Action> laterItems = new List<Action>();
+
         void KeyRow(float x, float y, float w, string id, string icon, string label, Func<string> combo)
         {
+            if (!id.StartsWith("global:"))
+            {
+                // klikvak voor "Uit", over het woordje heen (later toegevoegd = gaat voor de hele regel)
+                float aw0 = Measure(L.T("Wijzigen"), 12, true), ow0 = Measure(L.T("Uit"), 12, true);
+                RectangleF offR = new RectangleF(x + w - 10 * S - aw0 - 12 * S - ow0 - 6 * S, y, ow0 + 12 * S, 38 * S);
+                string rid = id;
+                laterItems.Add(delegate
+                {
+                    Add(offR, L.T("Deze sneltoets uitzetten"), delegate { recording = null; Shortcuts.SetOverride(rid, ""); Changed(); Invalidate(); }, delegate(Graphics g, Item it, bool h) { });
+                });
+            }
             Add(new RectangleF(x, y, w, 38 * S), L.T("Klik op Wijzigen en druk je toetsen in. Backspace = geen sneltoets"), delegate { recording = recording == id ? null : id; Invalidate(); }, delegate(Graphics g, Item it, bool h)
             {
                 Theme t = T;
@@ -738,6 +760,14 @@ namespace NexusPen
                 float aw = Measure(act, 12, true);
                 Txt(g, act, new RectangleF(right - aw, it.R.Y, aw + 2 * S, it.R.Height), t.Muted, 12, true, StringAlignment.Far, false);
                 right -= aw + 12 * S;
+                if (!id.StartsWith("global:") && !rec)
+                {
+                    // "Uit": deze ene sneltoets uitzetten (het knopje zelf staat hieronder als apart vakje)
+                    string off = L.T("Uit");
+                    float ow = Measure(off, 12, true);
+                    Txt(g, off, new RectangleF(right - ow, it.R.Y, ow + 2 * S, it.R.Height), string.IsNullOrEmpty(combo()) ? Color.FromArgb(90, t.Muted) : t.Muted, 12, true, StringAlignment.Far, false);
+                    right -= ow + 14 * S;
+                }
                 if (rec)
                 {
                     string msg = L.T("Druk nu je toetsen in");
@@ -768,6 +798,13 @@ namespace NexusPen
                 }
                 Txt(g, label, new RectangleF(labelX, it.R.Y, Math.Max(10, right - labelX - 4 * S), it.R.Height), t.Text, 13, true, StringAlignment.Near, false);
             });
+        }
+
+        // Esc sluit de instellingen, ook als het toetsenbord net ergens anders in het venster zat
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == Keys.Escape && recording == null) { Close(); return true; }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
 
         void OnKey(object sender, KeyEventArgs e)

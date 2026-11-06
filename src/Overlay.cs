@@ -993,7 +993,10 @@ namespace NexusPen
                                 settingsForm.Refresh();
                                 snap(settingsForm, "10-instellingen-" + (pageStep + 1).ToString("00") + "-" + pagesToShow[pageStep]);
                                 pageStep++;
-                                if (pageStep == pagesToShow.Length) { L.Set("en"); settingsForm.ShowPage("Algemeen"); settingsForm.Refresh(); snap(settingsForm, "11-english"); snap(toolbar, "12-werkbalk-english"); L.Set("nl"); }
+                                if (pageStep == pagesToShow.Length) { L.Set("en"); settingsForm.ShowPage("Algemeen"); settingsForm.Refresh(); snap(settingsForm, "11-english"); snap(toolbar, "12-werkbalk-english"); L.Set("nl");
+                                    // licht thema: zijn de letters rechts ook scherp?
+                                    int keepTheme = Cfg.ThemeIndex; Cfg.ThemeIndex = 1; ApplySettings(); settingsForm.Rebuild(); settingsForm.ShowPage("Uiterlijk"); settingsForm.Refresh(); snap(settingsForm, "11-licht-uiterlijk");
+                                    Cfg.ThemeIndex = keepTheme; ApplySettings(); }
                                 break;
                             }
                             t.Stop(); Close(); break;
@@ -2402,7 +2405,7 @@ namespace NexusPen
                 if (e.KeyCode == Keys.Delete || e.KeyCode == Keys.Back) { DeleteSelected(); e.Handled = true; return; }
             }
             string act = Shortcuts.ActionFor(e);
-            if (act == null && e.KeyCode == Keys.Z && e.Control && e.Shift && !e.Alt) act = "redo";   // Ctrl+Shift+Z werkt ook als Opnieuw
+            if (act == null && e.KeyCode == Keys.Z && e.Control && e.Shift && !e.Alt && Shortcuts.Combo("redo").Length > 0) act = "redo";   // Ctrl+Shift+Z werkt ook als Opnieuw
             if (act != null)
             {
                 e.Handled = true; e.SuppressKeyPress = true;
