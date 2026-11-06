@@ -27,8 +27,11 @@ namespace NexusPen
         protected override void Build()
         {
             Overlay o = ov;
+            tipFor.Clear();
             float pad = 14 * S, sw = 28 * S, gapX = 12 * S, rowGap = 12 * S;
             float w = pad * 2 + sw * 5 + gapX * 4;
+            float chipW = Math.Max(TextWidth(L.T("Krijtstreep"), 13), TextWidth(L.T("Vervaagt na 5 s"), 13)) + 30 * S;
+            w = Math.Max(w, pad * 2 + 8 * S + chipW * 2);
             float y = pad;
             titleRow = new RectangleF(pad, y, w - pad * 2, 16 * S);
             y += 24 * S;
@@ -57,7 +60,8 @@ namespace NexusPen
             for (int i = 0; i < 10; i++)
             {
                 int idx = i;
-                RectangleF r = new RectangleF(pad + (i % 5) * (sw + gapX), y + (i / 5) * (sw + rowGap), sw, sw);
+                float gx = (w - pad * 2 - sw * 5) / 4;  // kleuren gelijk verdeeld over de breedte
+                RectangleF r = new RectangleF(pad + (i % 5) * (sw + gx), y + (i / 5) * (sw + rowGap), sw, sw);
                 Item it = Add(RectangleF.Inflate(r, 4 * S, 4 * S), "", delegate { o.SetColor(idx); Invalidate(); });
                 it.Paint = delegate(Graphics g, Item item, bool h)
                 {
@@ -65,7 +69,7 @@ namespace NexusPen
                     Swatch(g, rr, Palette.Sets[o.PaletteIndex][idx], o.ColorIndex == idx, sw * (h ? 1.06f : 1f));
                 };
                 it.Tip = null;
-                tipFor[it] = idx;
+                tipFor[it] = idx;   // tipFor wordt aan het begin van Build leeggemaakt
             }
             y += sw * 2 + rowGap + 16 * S;
             // dikte
@@ -590,7 +594,7 @@ namespace NexusPen
             {
                 Item open = Add(new RectangleF(tw, 9 * S, bw, 32 * S), folder, delegate
                 {
-                    try { System.Diagnostics.Process.Start("explorer.exe", "\"" + folder + "\""); } catch (Exception ex) { Log.Error("Map openen", ex); }
+                    try { System.Diagnostics.Process.Start(SettingsForm.Explorer, "\"" + folder + "\""); } catch (Exception ex) { Log.Error("Map openen", ex); }
                     Hide();
                 });
                 open.Paint = delegate(Graphics g, Item item, bool hv) { PaintChip(g, item.R, false, hv, L.T("Map openen"), "map", Color.Empty); };

@@ -31,7 +31,7 @@ namespace NexusPen
         {
             switch (kind)
             {
-                case "klik": case "sneltoets": case "verberg": case "inkorten": return Clicks;
+                case "klik": case "bord": case "stempel": case "sneltoets": case "verberg": case "inkorten": return Clicks;
                 case "gereedschap": return Tools;
                 case "kleur": case "dikte": case "palet": return Colors;
                 case "instelling": case "menu": return Menus;
@@ -70,6 +70,7 @@ namespace NexusPen
         {
             List<string> lines;
             lock (gate) { if (buffer.Count == 0) return; lines = new List<string>(buffer); buffer.Clear(); }
+            if (cfg != null && !cfg.Usage) return;   // bijhouden is net uitgezet: niets meer wegschrijven
             lastFlush = DateTime.Now;
             try
             {

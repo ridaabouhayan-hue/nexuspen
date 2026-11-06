@@ -167,6 +167,18 @@ static class Tests {
     Check(stOk && Render.StampKinds.Length == 5, "Alle vijf stempels tekenen, ook nummer 12");
     // 12. Versies vergelijken
     Check(Updates.IsNewer("1.2.1", "1.2.0") && Updates.IsNewer("v1.3", "1.2.0") && !Updates.IsNewer("1.2.0", "1.2.0") && !Updates.IsNewer("1.1.9", "1.2.0") && !Updates.IsNewer("rommel", "1.2.0"), "Nieuwe versie wordt goed herkend");
+    // 13. Punten uit de code-review
+    Check(Settings.ParseHotkey("Ctrl+Shift+5", out mods, out vk) && vk == 0x35, "Ctrl+Shift+5 is echt de toets 5");
+    var hs = new Settings(); hs.HotkeyDraw = "Ctrl+Shift+P"; Shortcuts.Cfg = hs;
+    Check(Shortcuts.Conflict("lijn", "ctrl + shift + p") != null, "Botsing met je eigen wereldwijde sneltoets wordt gemeld");
+    Check(Shortcuts.ConflictGlobal("Ctrl+Shift+M") != null && Shortcuts.ConflictGlobal("Ctrl+Alt+F9") == null, "Wereldwijde sneltoets botst met markeerstift");
+    var longPen = new Stroke{Tool=Tool.Pen, Width=4}; for (int i = 0; i < 2000; i++) longPen.Pts.Add(new PointF(i, (i % 50)));
+    var sw = System.Diagnostics.Stopwatch.StartNew(); int hits = 0; for (int i = 0; i < 2000; i++) if (Render.Hit(longPen, new PointF(5000, 5000 + i), 8)) hits++;
+    Check(hits == 0 && sw.ElapsedMilliseconds < 200, "Gum is snel bij lange lijnen ver weg (" + sw.ElapsedMilliseconds + " ms)");
+    Check(Render.Hit(longPen, new PointF(1000, 0), 8) && !Render.Hit(longPen, new PointF(1000, 80), 8), "Gum raakt lange penlijn nog wel goed");
+    var bad = new Settings(); bad.Width = float.NaN; bad.TextSize = float.PositiveInfinity; bad.Tool = (Tool)99; bad.Clamp();
+    Check(!float.IsNaN(bad.Width) && Math.Abs(bad.TextSize - 36) < 0.01 && bad.Tool == Tool.Pen, "Kapotte getallen in instellingen worden hersteld");
+    Shortcuts.Cfg = new Settings();
     Console.WriteLine(fails == 0 ? "\nALLE TESTS GESLAAGD" : "\n" + fails + " TEST(S) MISLUKT");
     return fails;
   }

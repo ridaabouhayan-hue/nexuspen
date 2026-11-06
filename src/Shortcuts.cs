@@ -140,13 +140,32 @@ namespace NexusPen
         }
 
         // Combinaties die Windows zelf gebruikt of die we al hebben
-        static readonly string[] Reserved = { "Ctrl+Shift+Escape", "Ctrl+Alt+Delete", "Alt+F4", "Alt+Tab", "Ctrl+Escape", "Ctrl+Shift+D", "Ctrl+Shift+H" };
+        static readonly string[] Reserved = { "Ctrl+Shift+Escape", "Ctrl+Alt+Delete", "Alt+F4", "Alt+Tab", "Ctrl+Escape", "Escape", "Delete" };
+
+        // "ctrl + shift+d" en "Ctrl+Shift+D" zijn hetzelfde
+        static bool Same(string a, string b)
+        {
+            if (string.IsNullOrEmpty(a) || string.IsNullOrEmpty(b)) return false;
+            int ma, va, mb, vb;
+            if (Settings.ParseHotkey(a, out ma, out va) && Settings.ParseHotkey(b, out mb, out vb)) return ma == mb && va == vb;
+            return a.Replace(" ", "").Equals(b.Replace(" ", ""), StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Botst een wereldwijde sneltoets met een sneltoets tijdens het tekenen?
+        public static string ConflictGlobal(string combo)
+        {
+            foreach (Shortcut s in All)
+                if (Same(Combo(s.Id), combo)) return L.F("Deze combinatie hoort al bij {0}.", L.T(s.Label));
+            return null;
+        }
 
         public static string Conflict(string id, string combo)
         {
             if (string.IsNullOrEmpty(combo)) return null;
             foreach (string r in Reserved)
                 if (r.Equals(combo, StringComparison.OrdinalIgnoreCase)) return L.T("Deze combinatie gebruikt Windows of NexusPen al.");
+            string draw = Cfg != null ? Cfg.HotkeyDraw : "Ctrl+Shift+D", hide = Cfg != null ? Cfg.HotkeyHide : "Ctrl+Shift+H";
+            if (Same(draw, combo) || Same(hide, combo)) return L.T("Deze combinatie gebruikt Windows of NexusPen al.");
             foreach (Shortcut s in All)
                 if (s.Id != id && Combo(s.Id).Equals(combo, StringComparison.OrdinalIgnoreCase))
                     return L.F("Deze combinatie hoort al bij {0}.", L.T(s.Label));

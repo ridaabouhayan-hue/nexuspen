@@ -71,6 +71,8 @@ namespace NexusPen
             W.HideFromCapture(Handle, ov.Cfg.HideFromCapture);
         }
 
+        public void Rebuild() { BuildItems(); Invalidate(); }
+
         public void ShowPage(string id)
         {
             int i = Array.IndexOf(PageIds, id);
@@ -188,11 +190,14 @@ namespace NexusPen
             float x = contentX, w = contentW, h = 52 * S;
             float optW = 0;
             foreach (string o in options) optW = Math.Max(optW, Measure(o, 12, true) + 24 * S);
-            float boxW = optW * options.Length + 6 * S, boxX = x + w - boxW - 10 * S, boxY = y + (h - 34 * S) / 2;
+            float boxW = optW * options.Length + 6 * S, boxX = x + w - boxW - 10 * S;
+            bool twoLines = sub != null && Measure(sub, 12, false) > boxX - x - 24 * S;
+            if (twoLines) h = 70 * S;
+            float boxY = y + (h - 34 * S) / 2;
             Later(delegate(Graphics g)
             {
                 Txt(g, title, new RectangleF(x + 10 * S, y + (sub != null ? 7 : 16) * S, boxX - x - 20 * S, 20 * S), T.Text, 14, true, StringAlignment.Near, false);
-                if (sub != null) Txt(g, sub, new RectangleF(x + 10 * S, y + 27 * S, boxX - x - 20 * S, 18 * S), T.Muted, 12, false, StringAlignment.Near, false);
+                if (sub != null) Txt(g, sub, new RectangleF(x + 10 * S, y + 27 * S, boxX - x - 20 * S, (twoLines ? 36 : 18) * S), T.Muted, 12, false, StringAlignment.Near, twoLines);
                 RoundFill(g, new RectangleF(boxX, boxY, boxW, 34 * S), Field, 9);
                 using (SolidBrush b = new SolidBrush(T.Sep)) g.FillRectangle(b, x, y + h, w, 1 * S);
             });
@@ -312,7 +317,10 @@ namespace NexusPen
             {
                 if (MessageBox.Show(this, L.T("Alle instellingen terugzetten naar standaard? Je tekeningen blijven staan."), "NexusPen", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
                 Settings fresh = new Settings();
-                foreach (System.Reflection.FieldInfo f in typeof(Settings).GetFields()) f.SetValue(c, f.GetValue(fresh));
+                bool keepUsage = c.Usage; int keepCats = c.UsageCats; string keepLang = c.Language;
+                foreach (System.Reflection.FieldInfo f in typeof(Settings).GetFields()) if (!f.IsStatic && !f.IsInitOnly) f.SetValue(c, f.GetValue(fresh));
+                c.Usage = keepUsage; c.UsageCats = keepCats; c.Language = keepLang;   // jouw keuze over gebruik en taal blijft
+                ov.RegisterGlobalHotkeys();
                 Changed(); BuildItems(); Notice(L.T("Alles staat weer op standaard."));
             }, false);
         }
@@ -427,7 +435,7 @@ namespace NexusPen
                 float w = k == "|" ? sepW : cell;
                 if (bx + w > maxX) { bx = contentX + 12 * S; by += rowH; rows++; }
                 slots.Add(new RectangleF(bx, by, w, cell));
-                bx += w + 4 * S;
+                bx += w + (k == "|" ? 6 : 20) * S;
             }
             barArea = new RectangleF(contentX, y, contentW, rows * rowH + 14 * S);
             barSlots = slots;
@@ -435,7 +443,7 @@ namespace NexusPen
             {
                 int idx = i; string k = layout[i];
                 Item it = Add(slots[i], Toolbar.NameOf(k), null, delegate(Graphics g, Item item, bool hv) { PaintKey(g, item.R, k, hv, dragActive && dragFrom == idx); });
-                it.Key = "bar:" + idx;
+                it.Key = "bar:" + idx + ":" + k;
             }
             y += barArea.Height + 18 * S;
             y = Section(y, L.T("Niet in je balk"));
@@ -483,7 +491,7 @@ namespace NexusPen
             RoundFill(g, r, hv ? Raised : Field, 10);
             if (k == "kleur") using (SolidBrush b = new SolidBrush(ov.CurrentColor)) g.FillEllipse(b, r.X + r.Width / 2 - 9 * S, r.Y + r.Height / 2 - 9 * S, 18 * S, 18 * S);
             else Icons.Draw(g, Toolbar.IconOf(k), r, 21 * S, t.Icon, 2f);
-            Txt(g, Toolbar.NameOf(k), new RectangleF(r.X - 14 * S, r.Bottom + 2 * S, r.Width + 28 * S, 16 * S), t.Muted, 10, false, StringAlignment.Center, false);
+            Txt(g, Toolbar.NameOf(k), new RectangleF(r.X - 9 * S, r.Bottom + 2 * S, r.Width + 18 * S, 16 * S), t.Muted, 10, false, StringAlignment.Center, false);
         }
 
         int InsertIndex(Point p)
@@ -688,8 +696,8 @@ namespace NexusPen
                 bool rec = recording == id;
                 RoundFill(g, it.R, rec ? Raised : Card, 8);
                 Icons.Draw(g, icon, new RectangleF(it.R.X + 8 * S, it.R.Y, 22 * S, it.R.Height), 17 * S, t.Icon, 2f);
-                Txt(g, label, new RectangleF(it.R.X + 38 * S, it.R.Y, it.R.Width * 0.45f, it.R.Height), t.Text, 13, true, StringAlignment.Near, false);
                 float right = it.R.Right - 10 * S;
+                float labelX = it.R.X + 38 * S;
                 string act = rec ? L.T("Annuleren") : L.T("Wijzigen");
                 float aw = Measure(act, 12, true);
                 Txt(g, act, new RectangleF(right - aw, it.R.Y, aw + 2 * S, it.R.Height), t.Muted, 12, true, StringAlignment.Far, false);
@@ -702,10 +710,16 @@ namespace NexusPen
                     RoundFill(g, b, t.Bar, 7); RoundLine(g, b, t.Accent, 1.5f, 7);
                     using (SolidBrush br = new SolidBrush(t.Accent)) g.FillEllipse(br, b.X + 9 * S, b.Y + 10 * S, 7 * S, 7 * S);
                     Txt(g, msg, new RectangleF(b.X + 20 * S, b.Y, b.Width - 22 * S, b.Height), t.Accent, 12, true, StringAlignment.Near, false);
+                    Txt(g, label, new RectangleF(labelX, it.R.Y, Math.Max(10, b.X - labelX - 8 * S), it.R.Height), t.Text, 13, true, StringAlignment.Near, false);
                     return;
                 }
                 string cmb = combo();
-                if (string.IsNullOrEmpty(cmb)) { Txt(g, L.T("geen"), new RectangleF(right - 80 * S, it.R.Y, 80 * S, it.R.Height), t.Muted, 12, false, StringAlignment.Far, false); return; }
+                if (string.IsNullOrEmpty(cmb))
+                {
+                    Txt(g, L.T("geen"), new RectangleF(right - 80 * S, it.R.Y, 80 * S, it.R.Height), t.Muted, 12, false, StringAlignment.Far, false);
+                    Txt(g, label, new RectangleF(labelX, it.R.Y, Math.Max(10, right - 80 * S - labelX), it.R.Height), t.Text, 13, true, StringAlignment.Near, false);
+                    return;
+                }
                 string[] keys = cmb.Split('+');
                 for (int i = keys.Length - 1; i >= 0; i--)
                 {
@@ -716,6 +730,7 @@ namespace NexusPen
                     Txt(g, keys[i], kr, t.Text, 12, true, StringAlignment.Center, false);
                     right -= kw + 4 * S;
                 }
+                Txt(g, label, new RectangleF(labelX, it.R.Y, Math.Max(10, right - labelX - 4 * S), it.R.Height), t.Text, 13, true, StringAlignment.Near, false);
             });
         }
 
@@ -724,12 +739,16 @@ namespace NexusPen
             if (recording == null) { if (e.KeyCode == Keys.Escape) Close(); return; }
             e.Handled = true; e.SuppressKeyPress = true;
             if (e.KeyCode == Keys.Escape) { recording = null; Invalidate(); return; }
-            string combo = e.KeyCode == Keys.Back ? "" : Shortcuts.FromKeys(e.KeyData);
+            Keys code = e.KeyCode;
+            if (code == Keys.ControlKey || code == Keys.ShiftKey || code == Keys.Menu || code == Keys.LWin || code == Keys.RWin) return;  // wacht op de echte toets
+            string combo = code == Keys.Back ? "" : Shortcuts.FromKeys(e.KeyData);
             if (combo == null || (combo.Length > 0 && combo.EndsWith("+"))) return;
             if (combo.Length > 0 && !combo.Contains("+") && recording.StartsWith("global:")) { Notice(L.T("Kies voor deze sneltoets een combinatie met Ctrl, Shift of Alt.")); return; }
             if (recording.StartsWith("global:"))
             {
                 if (combo.Length == 0) { Notice(L.T("Deze sneltoets kan niet leeg zijn.")); return; }
+                string clash = Shortcuts.ConflictGlobal(combo);
+                if (clash != null) { Notice(clash); return; }
                 string oldDraw = Cfg.HotkeyDraw, oldHide = Cfg.HotkeyHide;
                 if (recording == "global:draw") Cfg.HotkeyDraw = combo; else Cfg.HotkeyHide = combo;
                 string err = ov.RegisterGlobalHotkeys();
@@ -751,7 +770,7 @@ namespace NexusPen
         void BuildSave()
         {
             float y = Heading(contentTop, L.T("Opslaan"), null);
-            y = Para(y, L.T("NexusPen bewaart je tekening automatisch, zodat je niets kwijtraakt als er iets misgaat. Druk je op Opslaan (op de werkbalk of Ctrl+S), dan staat je tekening er de volgende keer dat je NexusPen opent gewoon weer. Leeg beginnen: wis alles en druk nog een keer op Opslaan."), 84 * S);
+            y = Para(y, L.T("NexusPen bewaart je tekening automatisch, zodat je niets kwijtraakt als er iets misgaat. Druk je op Opslaan (op de werkbalk of Ctrl+S), dan staat je tekening er de volgende keer dat je NexusPen opent gewoon weer. Leeg beginnen: druk op Delete (alles wissen) en daarna nog een keer op Opslaan."), 84 * S);
             float bx = contentX;
             bx += Button(bx, y + 6 * S, L.T("Nu opslaan"), "opslaan", delegate { if (ov.SaveExplicit()) Notice(L.T("Opgeslagen. Je tekening en instellingen staan er de volgende keer weer.")); }, true) + 10 * S;
             Button(bx, y + 6 * S, L.T("Vorige tekening terughalen"), "undo", delegate { ov.RestorePrevious(); Notice(L.T("Klaar. Kijk op je scherm.")); }, false);
@@ -764,8 +783,10 @@ namespace NexusPen
 
         static void OpenFolder(string dir)
         {
-            try { Directory.CreateDirectory(dir); Process.Start("explorer.exe", "\"" + dir + "\""); } catch (Exception ex) { Log.Error("Map openen", ex); }
+            try { Directory.CreateDirectory(dir); Process.Start(Explorer, "\"" + dir + "\""); } catch (Exception ex) { Log.Error("Map openen", ex); }
         }
+
+        public static string Explorer { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe"); } }
 
         void BuildShare()
         {
@@ -810,7 +831,7 @@ namespace NexusPen
                     RectangleF b = new RectangleF(rx + 16 * S + i * (bw + 8 * S), ry + 44 * S, bw, 58 * S);
                     RoundFill(g, b, Field, 8);
                     Txt(g, vals[i], new RectangleF(b.X + 10 * S, b.Y + 6 * S, b.Width, 26 * S), t.Text, 20, true, StringAlignment.Near, false);
-                    Txt(g, labs[i], new RectangleF(b.X + 10 * S, b.Y + 34 * S, b.Width - 12 * S, 18 * S), t.Muted, 11, false, StringAlignment.Near, false);
+                    Txt(g, labs[i], new RectangleF(b.X + 10 * S, b.Y + 32 * S, b.Width - 12 * S, 26 * S), t.Muted, 10, false, StringAlignment.Near, true);
                 }
                 Txt(g, L.T("Meest gebruikt"), new RectangleF(rx + 16 * S, ry + 118 * S, rw, 18 * S), t.Text, 12, true, StringAlignment.Near, false);
                 int max = sm.TopClicks.Count > 0 ? sm.TopClicks[0].Value : 1;
@@ -833,7 +854,7 @@ namespace NexusPen
             float by = ry + 376 * S, bx = rx;
             bx += Button(bx, by, L.T("Exporteren voor Claude"), "map", delegate
             {
-                try { string f = Usage.Export(); Notice(L.T("Klaar: het bestand staat op je bureaublad.")); Process.Start("explorer.exe", "/select,\"" + f + "\""); }
+                try { string f = Usage.Export(); Notice(L.T("Klaar: het bestand staat op je bureaublad.")); try { Process.Start(Explorer, "/select,\"" + f + "\""); } catch { } }
                 catch (Exception ex) { Log.Error("Gebruik exporteren", ex); Notice(L.T("Exporteren is niet gelukt.")); }
             }, true) + 8 * S;
             Button(bx, by, L.T("Wissen"), "prullenbak", delegate
@@ -849,8 +870,9 @@ namespace NexusPen
             float bx = contentX;
             bx += Button(bx, y + 6 * S, L.T("Foutlog openen"), "info", delegate
             {
-                if (File.Exists(Log.FilePath)) Process.Start("notepad.exe", "\"" + Log.FilePath + "\"");
-                else Notice(L.T("Er zijn nog geen fouten gelogd."));
+                if (!File.Exists(Log.FilePath)) { Notice(L.T("Er zijn nog geen fouten gelogd.")); return; }
+                try { Process.Start(Log.FilePath); }
+                catch { try { Process.Start(Explorer, "/select,\"" + Log.FilePath + "\""); } catch (Exception ex) { Log.Error("Foutlog openen", ex); } }
             }, false) + 10 * S;
             Button(bx, y + 6 * S, L.T("Map met licenties"), "map", delegate { OpenFolder(Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "licenties")); }, false);
             y += 64 * S;
@@ -917,9 +939,15 @@ namespace NexusPen
             if (it != null && it.Key != null)
             {
                 // knop in Werkbalk: slepen begint pas als je beweegt
-                pressed = it; pressAt = e.Location;
+                pressed = it; pressAt = e.Location; dragActive = false;
                 List<string> layout = Toolbar.Layout(Cfg);
-                if (it.Key.StartsWith("bar:")) { dragFrom = int.Parse(it.Key.Substring(4)); dragKey = layout[dragFrom]; }
+                if (it.Key.StartsWith("bar:"))
+                {
+                    string[] parts = it.Key.Split(new char[] { ':' }, 3);
+                    int idx;
+                    if (parts.Length < 3 || !int.TryParse(parts[1], out idx) || idx >= layout.Count || layout[idx] != parts[2]) { pressed = null; BuildItems(); Invalidate(); return; }  // balk is intussen veranderd
+                    dragFrom = idx; dragKey = parts[2];
+                }
                 else { dragFrom = -1; dragKey = it.Key.Substring(5); }
                 Capture = true;
                 return;

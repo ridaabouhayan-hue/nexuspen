@@ -13,6 +13,7 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -23,7 +24,8 @@ jobs:
       - name: Opstarttest (programma start en stopt netjes)
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath "out\NexusPen.exe" -ArgumentList "--zelftest" -PassThru -Wait
+          $p = Start-Process -FilePath "out\NexusPen.exe" -ArgumentList "--zelftest" -PassThru
+          if (-not $p.WaitForExit(180000)) { $p.Kill(); throw "Zelftest hangt (langer dan 3 minuten)" }
           if ($p.ExitCode -ne 0) { throw "Zelftest mislukt met code $($p.ExitCode)" }
 
       - name: Versie bepalen

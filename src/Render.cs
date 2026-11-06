@@ -52,6 +52,15 @@ namespace NexusPen
             catch (Exception ex) { Log.Error("Ingebouwde lettertypes laden", ex); }
         }
 
+        // Ingebouwde lettertypes zonder vette versie. Windows maakt die anders zelf na en dan klopt de letter niet meer.
+        static readonly string[] RegularOnly = { "Patrick Hand" };
+
+        public static bool HasBold(FontFamily f)
+        {
+            if (Array.IndexOf(RegularOnly, f.Name) >= 0) return false;
+            try { return f.IsStyleAvailable(FontStyle.Bold); } catch { return false; }
+        }
+
         public static bool Has(string name)
         {
             if (string.IsNullOrEmpty(name)) return false;
@@ -90,7 +99,8 @@ namespace NexusPen
             FontFamily f = Family(name);
             try
             {
-                if (!f.IsStyleAvailable(style)) style = f.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold : FontStyle.Regular;
+                if ((style & FontStyle.Bold) != 0 && !HasBold(f)) style &= ~FontStyle.Bold;
+                if (!f.IsStyleAvailable(style)) style = HasBold(f) ? FontStyle.Bold : FontStyle.Regular;
                 return new Font(f, px, style, GraphicsUnit.Pixel);
             }
             catch { return new Font(FontFamily.GenericSansSerif, px, style, GraphicsUnit.Pixel); }
@@ -168,7 +178,7 @@ namespace NexusPen
             using (StringFormat sf = (StringFormat)StringFormat.GenericTypographic.Clone())
             {
                 sf.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
-                gp.AddString(s.Text, ff, (int)(ff.IsStyleAvailable(FontStyle.Bold) ? FontStyle.Bold : FontStyle.Regular), s.FontSize, new PointF(s.Pts[0].X + OutlineWidth(s), s.Pts[0].Y + OutlineWidth(s)), sf);
+                gp.AddString(s.Text, ff, (int)(Fonts.HasBold(ff) ? FontStyle.Bold : FontStyle.Regular), s.FontSize, new PointF(s.Pts[0].X + OutlineWidth(s), s.Pts[0].Y + OutlineWidth(s)), sf);
             }
             return gp;
         }
@@ -204,7 +214,7 @@ namespace NexusPen
                     b.SetPixel(x, y, Color.FromArgb(a * c.A / 255, c));
                 }
             tb = new TextureBrush(b, WrapMode.Tile);
-            if (chalkCache.Count > 40) chalkCache.Clear();
+            if (chalkCache.Count > 40) { foreach (TextureBrush old in chalkCache.Values) { try { old.Image.Dispose(); } catch { } old.Dispose(); } chalkCache.Clear(); }
             chalkCache[c.ToArgb()] = tb;
             return tb;
         }
@@ -350,6 +360,27 @@ namespace NexusPen
             {
                 float dx = p.X - s.Pts[0].X, dy = p.Y - s.Pts[0].Y;
                 return Math.Sqrt(dx * dx + dy * dy) <= w / 2;
+            }
+            // snel vooraf: ligt het punt wel in de buurt van deze lijn?
+            float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
+            foreach (PointF q in s.Pts) { if (q.X < minX) minX = q.X; if (q.X > maxX) maxX = q.X; if (q.Y < minY) minY = q.Y; if (q.Y > maxY) maxY = q.Y; }
+            float m = w + (s.Tool == Tool.Arrow ? s.Width * 4 + 12 : 0);
+            if (p.X < minX - m || p.X > maxX + m || p.Y < minY - m || p.Y > maxY + m) return false;
+            if (s.Tool != Tool.Rect && s.Tool != Tool.Ellipse)
+            {
+                // pen, markeerstift, lijn en pijl: afstand tot elk stukje lijn, zonder iets aan te maken
+                int last = s.Tool == Tool.Line || s.Tool == Tool.Arrow ? 1 : s.Pts.Count - 1;
+                PointF first = s.Pts[0], end = s.Pts[s.Pts.Count - 1];
+                float half = w / 2, h2 = half * half;
+                for (int i = 0; i < last; i++)
+                {
+                    PointF a0 = last == 1 ? first : s.Pts[i], b0 = last == 1 ? end : s.Pts[i + 1];
+                    float vx = b0.X - a0.X, vy = b0.Y - a0.Y, len = vx * vx + vy * vy;
+                    float tt = len > 0 ? Math.Max(0, Math.Min(1, ((p.X - a0.X) * vx + (p.Y - a0.Y) * vy) / len)) : 0;
+                    float ex = a0.X + tt * vx - p.X, ey = a0.Y + tt * vy - p.Y;
+                    if (ex * ex + ey * ey <= h2) return true;
+                }
+                return false;
             }
             using (GraphicsPath gp = new GraphicsPath())
             {

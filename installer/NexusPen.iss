@@ -46,6 +46,7 @@ Name: "{userdesktop}\NexusPen"; Filename: "{app}\NexusPen.exe"; Tasks: desktop
 
 [Registry]
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "NexusPen"; ValueData: """{app}\NexusPen.exe"" --opstarten"; Tasks: autostart; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "NexusPen"; Flags: uninsdeletevalue dontcreatekey
 
 [Run]
 Filename: "{app}\NexusPen.exe"; Description: "NexusPen openen"; Flags: nowait postinstall skipifsilent

@@ -38,6 +38,7 @@ namespace NexusPen
             tb.WordWrap = false;
             tb.BorderStyle = BorderStyle.None;
             tb.Font = font;
+            FormClosed += delegate { try { font.Dispose(); } catch { } };
             tb.ForeColor = color;
             tb.BackColor = BackColor;
             tb.Dock = DockStyle.Fill;

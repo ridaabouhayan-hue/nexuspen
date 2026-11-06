@@ -65,7 +65,8 @@ namespace NexusPen
                 else if (part == "win") mods |= 8;
                 else if (part.Length > 0)
                 {
-                    try { vk = (int)(Keys)Enum.Parse(typeof(Keys), part, true); } catch { return false; }
+                    if (part.Length == 1 && char.IsDigit(part[0])) vk = (int)Keys.D0 + (part[0] - '0');   // "5" is de toets 5, niet Keys-nummer 5
+                    else { try { vk = (int)(Keys)Enum.Parse(typeof(Keys), part, true); } catch { return false; } }
                 }
             }
             return vk != 0;
@@ -149,6 +150,9 @@ namespace NexusPen
             OpacityIndex = Math.Max(0, Math.Min(2, OpacityIndex));
             PaletteIndex = Math.Max(0, Math.Min(Palette.Sets.Length - 1, PaletteIndex));
             ColorIndex = Math.Max(0, Math.Min(9, ColorIndex));
+            if (float.IsNaN(Width) || float.IsInfinity(Width)) Width = 4;
+            if (float.IsNaN(TextSize) || float.IsInfinity(TextSize)) TextSize = 36;
+            if (!Enum.IsDefined(typeof(Tool), Tool)) Tool = Tool.Pen;
             Width = Math.Max(1, Math.Min(60, Width));
             FocusRadius = Math.Max(60, Math.Min(700, FocusRadius));
             OutlineWidth = Math.Max(0, Math.Min(2, OutlineWidth));
@@ -177,8 +181,7 @@ namespace NexusPen
                 foreach (System.Reflection.FieldInfo f in Fields) lines.Add(f.Name + "=" + Write(f.GetValue(this)));
                 string tmp = path + ".tmp";
                 File.WriteAllLines(tmp, lines.ToArray(), Encoding.UTF8);
-                if (File.Exists(path)) File.Delete(path);
-                File.Move(tmp, path);
+                if (File.Exists(path)) File.Replace(tmp, path, null); else File.Move(tmp, path);
             }
             catch (Exception ex) { Log.Error("Instellingen bewaren mislukt", ex); }
         }
@@ -190,7 +193,7 @@ namespace NexusPen
             {
                 int i = part.IndexOf('=');
                 float f;
-                if (i > 0 && part.Substring(0, i) == t.ToString() && float.TryParse(part.Substring(i + 1), NumberStyles.Float, IC, out f)) return f;
+                if (i > 0 && part.Substring(0, i) == t.ToString() && float.TryParse(part.Substring(i + 1), NumberStyles.Float, IC, out f) && !float.IsNaN(f)) return Math.Max(1, Math.Min(60, f));
             }
             if (t == Tool.Marker) return Math.Max(fallback, 6);
             return fallback;

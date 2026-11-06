@@ -62,6 +62,7 @@ namespace NexusPen
                             using (Pen p = new Pen(Color.FromArgb(102, Glans), 0.35f)) { p.StartCap = LineCap.Round; p.EndCap = LineCap.Round; g.DrawLine(p, 18.2f, 47.0f, 18.6f, 48.81f); }
                         }
                         g.Clip = old;
+                        old.Dispose();
                     }
                     using (GraphicsPath gp = Svg.Path("M15.5 38.1 V38.5 A2.0 2.0 0 0 0 19.5 38.5 A2.0 2.0 0 0 0 23.5 38.5 V38.1 Z")) g.FillPath(wit, gp);
                 }

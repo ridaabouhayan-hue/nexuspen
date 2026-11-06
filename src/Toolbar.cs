@@ -15,7 +15,7 @@ namespace NexusPen
 
         // alle knoppen die in de balk kunnen; de losse vormen en Opnieuw staan standaard in de bak
         public static readonly string[] Catalog = { "muis", "selecteer", "pen", "markeer", "laser", "vormen", "lijn", "pijl", "rechthoek", "cirkel",
-            "tekst", "gum", "kleur", "stempel", "focus", "undo", "redo", "bord", "foto", "opslaan", "oog", "instellingen", "weg" };
+            "tekst", "gum", "kleur", "stempel", "focus", "undo", "redo", "wis", "bord", "foto", "opslaan", "oog", "instellingen", "weg" };
 
         public static string NameOf(string key)
         {
@@ -38,6 +38,7 @@ namespace NexusPen
                 case "focus": return L.T("Spotlicht");
                 case "undo": return L.T("Ongedaan maken");
                 case "redo": return L.T("Opnieuw");
+                case "wis": return L.T("Alles wissen");
                 case "bord": return L.T("Bord");
                 case "foto": return L.T("Schermafbeelding");
                 case "opslaan": return L.T("Opslaan");
@@ -55,6 +56,7 @@ namespace NexusPen
             {
                 case "weg": return "op";
                 case "kleur": return "kleuren";
+                case "wis": return "prullenbak";
                 default: return key;
             }
         }
@@ -300,6 +302,9 @@ namespace NexusPen
                 case "undo":
                     it = Button(r, "undo", L.T("Ongedaan maken") + "  (Ctrl+Z). " + L.T("Rechtsklik = opnieuw") + " (Ctrl+Y)", delegate { Use(key); o.Undo(); }, null, null);
                     break;
+                case "wis":
+                    it = Button(r, "prullenbak", L.T("Alles wissen") + "  (Delete). " + L.T("Terug met Ctrl+Z"), delegate { Use(key); o.ClearAll(); }, null, null);
+                    break;
                 case "redo":
                     it = Button(r, "redo", L.T("Opnieuw") + "  (Ctrl+Y)", delegate { Use(key); o.Redo(); }, null, null);
                     break;
@@ -530,6 +535,7 @@ namespace NexusPen
             ov.Cfg.Save();
             Usage.Log("verberg", key, "rechtsklik");
             Point k = Location; Rebuild(); Location = k;
+            ov.RefreshSettingsWindow();
         }
 
         // ---- kleine vensters naast de balk
@@ -590,6 +596,7 @@ namespace NexusPen
             ov.Cfg.ShortenAt = 0; ov.Cfg.Save();
             ClosePopups();
             Point k = Location; Rebuild(); Location = k;
+            ov.RefreshSettingsWindow();
         }
 
         // Voor de zelftest op GitHub
@@ -734,6 +741,7 @@ namespace NexusPen
             m.BackColor = t.Bar;
             m.ForeColor = t.Text;
             m.Padding = new Padding(4);
+            m.Closed += delegate { try { m.BeginInvoke((MethodInvoker)delegate { Font f = m.Font; m.Dispose(); f.Dispose(); }); } catch { } };
             return m;
         }
 

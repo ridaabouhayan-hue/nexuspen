@@ -334,15 +334,23 @@ namespace NexusPen
             lastEsc = esc;
 
             // Bovenop blijven liggen (taakbalk, startmenu en Zoom duwen ons anders weg)
-            if (tickCount % 60 == 0 && IsHandleCreated)
+            if ((DateTime.Now - lastTopAt).TotalMilliseconds > 900 && IsHandleCreated)
             {
+                lastTopAt = DateTime.Now;
                 if (Visible) W.KeepOnTop(Handle);
                 if (toolbar != null) toolbar.KeepAllOnTop();
             }
 
             // Automatisch bewaren, 1,5 seconde na de laatste wijziging
             if (needSave && (DateTime.Now - changedAt).TotalMilliseconds > 1500) SaveNow();
+
+            // Rustig aan als er niets gebeurt: minder vaak wakker worden spaart de batterij
+            bool idle = !DrawMode && lasers.Count == 0 && fading.Count == 0 && !dirty && !needSave;
+            int want = idle ? 100 : 15;
+            if (timer.Interval != want) timer.Interval = want;
         }
+
+        DateTime lastTopAt = DateTime.MinValue;
 
         Rectangle full2() { return committed == null ? Rectangle.Empty : new Rectangle(0, 0, committed.Width, committed.Height); }
 
@@ -638,9 +646,9 @@ namespace NexusPen
             Usage.Log("start", Program.Version, Screen.AllScreens.Length + " scherm(en)");
             if (StartCollapsed) CollapseAll();
             if (restoredAfterCrash)
-                tray.ShowBalloonTip(4000, "NexusPen", L.T("Je tekening van de vorige keer is teruggezet, want NexusPen was onverwacht gestopt. Wissen kan met de prullenbak."), ToolTipIcon.Info);
+                tray.ShowBalloonTip(4000, "NexusPen", L.T("Je tekening van de vorige keer is teruggezet, want NexusPen was onverwacht gestopt. Alles wissen kan met de Delete-toets."), ToolTipIcon.Info);
             else if (restoredSaved)
-                tray.ShowBalloonTip(4000, "NexusPen", L.T("Je opgeslagen tekening staat er weer. Liever leeg beginnen? Wis alles en druk op Opslaan."), ToolTipIcon.Info);
+                tray.ShowBalloonTip(4000, "NexusPen", L.T("Je opgeslagen tekening staat er weer. Liever leeg beginnen? Druk op Delete en daarna op Opslaan."), ToolTipIcon.Info);
 
             if (Cfg.UpdateCheck && !Program.SelfTest)
                 Updates.CheckLater(20000, delegate(string version, string url)
@@ -649,7 +657,7 @@ namespace NexusPen
                     {
                         BeginInvoke((Action)delegate
                         {
-                            updateUrl = url;
+                            updateUrl = url; updateShownAt = DateTime.Now;
                             tray.ShowBalloonTip(8000, "NexusPen", L.F("Er is een nieuwe versie: {0}. Klik hier om hem te downloaden.", version), ToolTipIcon.Info);
                         });
                     }
@@ -658,10 +666,14 @@ namespace NexusPen
         }
 
         string updateUrl;
+        DateTime updateShownAt;
+
+        // Instellingen opnieuw opbouwen als de balk ergens anders is veranderd
+        public void RefreshSettingsWindow() { if (settingsForm != null && !settingsForm.IsDisposed) settingsForm.Rebuild(); }
 
         void OnBalloonClicked(object sender, EventArgs e)
         {
-            if (updateUrl == null) return;
+            if (updateUrl == null || (DateTime.Now - updateShownAt).TotalSeconds > 12) return;   // alleen de melding over de nieuwe versie
             string u = updateUrl; updateUrl = null;
             if (!u.StartsWith("https://github.com/")) return;
             try { System.Diagnostics.Process.Start(u); } catch (Exception ex) { Log.Error("Downloadpagina openen", ex); }
@@ -752,7 +764,8 @@ namespace NexusPen
         void SetupTrayMenu()
         {
             if (tray == null) return;
-            tray.Text = "NexusPen  (" + Cfg.HotkeyDraw + " = " + L.T("tekenen aan of uit") + ")";
+            string tt = "NexusPen  (" + Cfg.HotkeyDraw + " = " + L.T("tekenen aan of uit") + ")";
+            tray.Text = tt.Length > 63 ? tt.Substring(0, 63) : tt;   // Windows staat niet meer dan 63 tekens toe
             ContextMenu m = new ContextMenu();
             m.MenuItems.Add(L.T("Tekenen aan of uit") + "\t" + Cfg.HotkeyDraw, delegate { ToggleDraw(); });
             m.MenuItems.Add(L.T("Alles in- of uitklappen") + "\t" + Cfg.HotkeyHide, delegate { ToggleAllHidden(); });
@@ -765,8 +778,9 @@ namespace NexusPen
             m.MenuItems.Add(L.T("Noodstop: terug naar de muis"), delegate { EmergencyMouseMode(); });
             m.MenuItems.Add(L.T("Foutlog openen"), delegate
             {
-                if (File.Exists(Log.FilePath)) Process.Start("notepad.exe", "\"" + Log.FilePath + "\"");
-                else MessageBox.Show(L.T("Er zijn nog geen fouten gelogd."), "NexusPen");
+                if (!File.Exists(Log.FilePath)) { MessageBox.Show(L.T("Er zijn nog geen fouten gelogd."), "NexusPen"); return; }
+                try { Process.Start(Log.FilePath); }
+                catch { try { Process.Start(SettingsForm.Explorer, "/select,\"" + Log.FilePath + "\""); } catch (Exception ex) { Log.Error("Foutlog openen", ex); } }
             });
             m.MenuItems.Add(L.T("Afsluiten"), delegate { Close(); });
             ContextMenu old = tray.ContextMenu;
@@ -878,6 +892,9 @@ namespace NexusPen
             if (on) ex &= ~W.WS_EX_TRANSPARENT; else ex |= W.WS_EX_TRANSPARENT;
             W.SetWindowLong(Handle, W.GWL_EXSTYLE, ex);
             if (!on) { current = null; erasing = false; CloseTextInput(true); Deselect(); Usage.ToolChanged("Mouse"); }
+            // Met de muis werk je op je gewone scherm: het bord gaat even weg en komt terug zodra je weer tekent
+            if (!on && BoardMode != Board.None) { boardBeforeMouse = BoardMode; SetBoard(Board.None, false); }
+            else if (on && boardBeforeMouse != Board.None) { Board b = boardBeforeMouse; boardBeforeMouse = Board.None; SetBoard(b, false); }
             Rebuild();
             RenderFrame();
             if (on) Activate();
@@ -954,15 +971,24 @@ namespace NexusPen
         }
 
         // ---------- bord en pagina's
-        public void SetBoard(Board b)
+        Board boardBeforeMouse = Board.None;
+        List<List<Stroke>> screenUndo = new List<List<Stroke>>(), screenRedo = new List<List<Stroke>>();
+
+        public void SetBoard(Board b) { boardBeforeMouse = Board.None; SetBoard(b, true); }
+
+        void SetBoard(Board b, bool byUser)
         {
+            CloseTextInput(true);
             StoreActive();
             Deselect();
+            bool wasScreen = BoardMode == Board.None;
+            if (wasScreen && b != Board.None) { screenUndo = new List<List<Stroke>>(undo); screenRedo = new List<List<Stroke>>(redo); undo.Clear(); redo.Clear(); }
+            else if (!wasScreen && b == Board.None) { undo.Clear(); redo.Clear(); undo.AddRange(screenUndo); redo.AddRange(screenRedo); }
+            else if (!wasScreen && b != Board.None && b != BoardMode) { /* zelfde pagina, andere kleur: geschiedenis blijft */ }
             BoardMode = b;
             strokes = b == Board.None ? screenStrokes : pages[pageIndex];
-            undo.Clear(); redo.Clear();
-            Usage.Log("klik", "bord-" + b, "");
-            if (b != Board.None && !DrawMode) SetTool(LastDrawTool);
+            if (byUser) Usage.Log("bord", b.ToString(), "");
+            if (byUser && b != Board.None && !DrawMode) SetTool(LastDrawTool);
             Rebuild();
             RefreshUi();
         }
@@ -971,6 +997,7 @@ namespace NexusPen
 
         void GoToPage(int i)
         {
+            CloseTextInput(true);
             if (BoardMode == Board.None) { SetBoard(Board.White); }
             StoreActive();
             pageIndex = Math.Max(0, Math.Min(pages.Count - 1, i));
@@ -1035,6 +1062,7 @@ namespace NexusPen
 
         public void Undo()
         {
+            CloseTextInput(true);
             if (undo.Count == 0) return;
             Deselect();
             redo.Add(strokes);
@@ -1048,6 +1076,7 @@ namespace NexusPen
 
         public void Redo()
         {
+            CloseTextInput(true);
             if (redo.Count == 0) return;
             Deselect();
             undo.Add(strokes);
@@ -1058,8 +1087,11 @@ namespace NexusPen
             Rebuild();
         }
 
+        DateTime lastNudge = DateTime.MinValue;
+
         public void ClearAll()
         {
+            CloseTextInput(false);
             lasers.Clear();
             Deselect();
             if (strokes.Count == 0) { dirty = true; return; }
@@ -1300,7 +1332,7 @@ namespace NexusPen
                 st.FontSize = Render.StampSizes[Cfg.StampSize];
                 st.Text = kind == "nummer" ? "#" + (Cfg.StampNext++) : kind;
                 st.Pts.Add(p);
-                Usage.Log("klik", "stempel-" + kind, "");
+                Usage.Log("stempel", kind, "");
                 Checkpoint();
                 strokes.Add(st);
                 CommitToLayer(st);
@@ -1443,7 +1475,8 @@ namespace NexusPen
                 float dy = e.KeyCode == Keys.Up ? -step : e.KeyCode == Keys.Down ? step : 0;
                 if (dx != 0 || dy != 0)
                 {
-                    EditSelected(); Render.Move(selected, dx, dy); Rebuild();
+                    if ((DateTime.Now - lastNudge).TotalMilliseconds > 600) EditSelected(); else MarkChanged();
+                    lastNudge = DateTime.Now; Render.Move(selected, dx, dy); Rebuild();
                     if (toolbar != null) toolbar.ShowMiniBar(SelectionScreenRect());
                     e.Handled = true; return;
                 }
@@ -1511,7 +1544,7 @@ namespace NexusPen
                     Checkpoint();
                     int i = strokes.IndexOf(editing);
                     if (empty) { if (i >= 0) strokes.RemoveAt(i); }
-                    else { Stroke n = editing.Clone(); n.Text = text; if (i >= 0) strokes[i] = n; else strokes.Add(n); }
+                    else if (i >= 0) { Stroke n = editing.Clone(); n.Text = text; strokes[i] = n; }
                     Rebuild();
                     return;
                 }
