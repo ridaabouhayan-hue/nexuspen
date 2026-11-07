@@ -15,7 +15,7 @@ namespace NexusPen
     {
         public static readonly string[] PageIds = { "Algemeen", "Taal", "Uiterlijk", "Werkbalk", "Pen", "Tekst", "Stempels", "Bord", "Voorlezen", "Sneltoetsen", "Opslaan", "Schermdelen", "Gebruik", "Knoppen", "Bijwerken", "Hulp" };
         static readonly string[] PageNames = { "Algemeen", "Taal", "Uiterlijk", "Werkbalk", "Pen en kleuren", "Tekst", "Stempels", "Bord en achtergrond", "Voorlezen", "Sneltoetsen", "Opslaan", "Schermdelen", "Gebruik", "Wat doet elke knop", "Bijwerken", "Hulp en foutlog" }; // vertaal
-        static readonly string[] PageIcons = { "huis", "taal", "kleuren", "rechthoek", "pen", "tekst", "stempel", "bord", "voorlezen", "toetsen", "opslaan", "schermdelen", "grafiek", "muis", "terugzetten", "info" };
+        static readonly string[] PageIcons = { "huis", "taal", "kleuren", "rechthoek", "pen", "tekst", "stempel", "bord", "voorlezen", "toetsen", "opslaan", "schermdelen", "grafiek", "muis", "download", "info" };
         // na deze pagina's een dun streepje in de zijbalk: basis, tekenen, bewaren en delen, hulp
         static readonly string[] GroupEnds = { "Werkbalk", "Voorlezen", "Schermdelen" };
         static readonly string[] FontChoices = { "Segoe UI", "Andika", "Atkinson Hyperlegible", "Lexend", "Nunito", "Patrick Hand" };
@@ -250,7 +250,7 @@ namespace NexusPen
             {
                 Theme t = T;
                 if (hv) RoundFill(g, item.R, t.Hover, 8);
-                Txt(g, title, new RectangleF(item.R.X + 10 * S, item.R.Y + 7 * S, item.R.Width - 90 * S, 20 * S), t.Text, 14, true, StringAlignment.Near, false);
+                Txt(g, title, new RectangleF(item.R.X + 10 * S, item.R.Y + (sub != null ? 7 : 16) * S, item.R.Width - 90 * S, 20 * S), t.Text, 14, true, StringAlignment.Near, false);
                 if (sub != null) Txt(g, sub, new RectangleF(item.R.X + 10 * S, item.R.Y + 27 * S, item.R.Width - 90 * S, 18 * S), t.Muted, 12, false, StringAlignment.Near, false);
                 DrawSwitch(g, new RectangleF(item.R.Right - 54 * S, item.R.Y + (h - 24 * S) / 2, 44 * S, 24 * S), get());
             });
@@ -405,13 +405,13 @@ namespace NexusPen
             Settings c = Cfg;
             float y = Heading(contentTop, L.T("Algemeen"), null);
             y = Section(y, L.T("Starten"));
-            y = Toggle(y, L.T("Starten met Windows"), L.T("NexusPen staat klaar zodra je inlogt, ingeklapt"), delegate { return Autostart; }, delegate(bool v) { Autostart = v; });
-            y = Toggle(y, L.T("Tonen in de taakbalk"), L.T("Klik op het icoon in de taakbalk om alles in of uit te klappen"), delegate { return c.InTaakbalk; }, delegate(bool v) { c.InTaakbalk = v; });
+            y = Toggle(y, L.T("Starten met Windows"), null, delegate { return Autostart; }, delegate(bool v) { Autostart = v; });
+            y = Toggle(y, L.T("Tonen in de taakbalk"), null, delegate { return c.InTaakbalk; }, delegate(bool v) { c.InTaakbalk = v; });
             y = Section(y + 8 * S, L.T("Tekenen"));
-            y = Toggle(y, L.T("Muiswiel en touchpad veranderen de dikte"), L.T("Knijpen op het touchpad werkt ook"), delegate { return c.WheelWidth; }, delegate(bool v) { c.WheelWidth = v; });
-            y = Toggle(y, L.T("Elk gereedschap onthoudt zijn eigen dikte"), L.T("Pen dun, markeerstift dik, zonder steeds te wisselen"), delegate { return c.PerToolWidth; }, delegate(bool v) { c.PerToolWidth = v; });
-            y = Segments(y, L.T("Spotlicht"), L.T("Een rechthoek is handig om een zin of een woord te lezen"), new string[] { L.T("Rond"), L.T("Rechthoek") }, delegate { return c.FocusShape; }, delegate(int i) { c.FocusShape = i; });
-            y = Segments(y, L.T("Tekening bewaren na afsluiten"), L.T("Na Opslaan staat je tekening er de volgende keer weer"), new string[] { L.T("Nooit"), L.T("Na Opslaan"), L.T("Altijd") },
+            y = Toggle(y, L.T("Muiswiel en touchpad veranderen de dikte"), null, delegate { return c.WheelWidth; }, delegate(bool v) { c.WheelWidth = v; });
+            y = Toggle(y, L.T("Elk gereedschap onthoudt zijn eigen dikte"), null, delegate { return c.PerToolWidth; }, delegate(bool v) { c.PerToolWidth = v; });
+            y = Segments(y, L.T("Spotlicht"), null, new string[] { L.T("Rond"), L.T("Rechthoek") }, delegate { return c.FocusShape; }, delegate(int i) { c.FocusShape = i; });
+            y = Segments(y, L.T("Tekening bewaren na afsluiten"), null, new string[] { L.T("Nooit"), L.T("Na Opslaan"), L.T("Altijd") },
                 delegate { return c.KeepDrawing; }, delegate(int i) { c.KeepDrawing = i; });
         }
 
@@ -419,7 +419,7 @@ namespace NexusPen
         void BuildLanguage()
         {
             Settings c = Cfg;
-            float y = Heading(contentTop, L.T("Taal"), L.T("De taal van alle knoppen, tips, menu's en instellingen. Je tekeningen en teksten veranderen niet."));
+            float y = Heading(contentTop, L.T("Taal"), null);
             string[] examples = { "Pen, Markeerstift, Opslaan", "Pen, Highlighter, Save", "Stylo, Surligneur, Enregistrer", "Lápiz, Resaltador, Guardar" };
             float cw = (contentW - 12 * S) / 2, ch = 76 * S;
             for (int i = 0; i < L.Codes.Length; i++)
@@ -453,7 +453,7 @@ namespace NexusPen
         void BuildLook()
         {
             Settings c = Cfg;
-            float y = Heading(contentTop, L.T("Uiterlijk"), L.T("Kleuren van de werkbalk. Het logo kleurt mee met de accentkleur."));
+            float y = Heading(contentTop, L.T("Uiterlijk"), null);
             float tw = (contentW - 10 * S) / 2, th = 48 * S;
             for (int i = 0; i < Theme.Order.Length; i++)
             {
@@ -685,7 +685,7 @@ namespace NexusPen
         {
             Settings c = Cfg;
             float y = Heading(contentTop, L.T("Pen en kleuren"), null);
-            y = Segments(y, L.T("Kleuren"), L.T("Felle kleuren vallen op, zachte zijn rustiger voor de ogen"), new string[] { L.T("Fel"), L.T("Zacht") }, delegate { return ov.PaletteIndex; }, delegate(int i) { ov.SetPalette(i); });
+            y = Segments(y, L.T("Kleuren"), null, new string[] { L.T("Fel"), L.T("Zacht") }, delegate { return ov.PaletteIndex; }, delegate(int i) { ov.SetPalette(i); });
             // je eigen kleurenlijst: klik = kiezen, dan met de knoppen eronder verplaatsen of weghalen
             float sx = contentX + 10 * S, cell = 40 * S;
             int perRow = Math.Max(8, (int)((contentW - 20 * S) / cell));
@@ -733,10 +733,10 @@ namespace NexusPen
                 Icons.Draw(g, "terugzetten", c0, 14 * S, T.Muted, 2f);
             });
             y += ((total + perRow - 1) / perRow) * cell + 14 * S;
-            y = Toggle(y, L.T("Krijtstreep"), L.T("Lijnen van de pen zien eruit als krijt op een bord"), delegate { return c.Chalk; }, delegate(bool v) { c.Chalk = v; });
-            y = Toggle(y, L.T("Vervagen"), L.T("Wat je met pen of markeerstift tekent, verdwijnt vanzelf. Handig om iets snel aan te wijzen"), delegate { return c.Fade; }, delegate(bool v) { c.Fade = v; });
+            y = Toggle(y, L.T("Krijtstreep"), null, delegate { return c.Chalk; }, delegate(bool v) { c.Chalk = v; });
+            y = Toggle(y, L.T("Vervagen"), null, delegate { return c.Fade; }, delegate(bool v) { c.Fade = v; });
             y = Segments(y, L.T("Hoe lang blijft het staan?"), null, new string[] { "3 s", "5 s", "7 s", "12 s" }, delegate { return Array.IndexOf(Settings.FadeChoices, c.FadeSeconds); }, delegate(int i) { c.FadeSeconds = Settings.FadeChoices[i]; });
-            y = Segments(y, L.T("Laserpen"), L.T("Hoe lang blijft de laser zichtbaar?"), new string[] { L.T("Snel weg"), L.T("Langzaam"), L.T("Blijft staan") }, delegate { return c.LaserMode; }, delegate(int i) { c.LaserMode = i; });
+            y = Segments(y, L.T("Laserpen"), null, new string[] { L.T("Snel weg"), L.T("Langzaam"), L.T("Blijft staan") }, delegate { return c.LaserMode; }, delegate(int i) { c.LaserMode = i; });
         }
 
         // ---- je eigen kleurenlijst aanpassen (voor de set die nu aan staat: fel of zacht)
@@ -839,7 +839,7 @@ namespace NexusPen
                 });
             }
             y += 2 * (ch + 10 * S) + 10 * S;
-            y = Toggle(y, L.T("Rand om tekst"), L.T("Goed leesbaar op elke achtergrond, ook op foto's en video"), delegate { return c.TextOutline; }, delegate(bool v) { c.TextOutline = v; });
+            y = Toggle(y, L.T("Rand om tekst"), null, delegate { return c.TextOutline; }, delegate(bool v) { c.TextOutline = v; });
             y = Segments(y, L.T("Dikte van de rand"), null, new string[] { L.T("Dun"), L.T("Middel"), L.T("Dik") }, delegate { return c.OutlineWidth; }, delegate(int i) { c.OutlineWidth = i; });
             y = Segments(y, L.T("Randkleur"), null, new string[] { L.T("Zwart"), L.T("Wit"), L.T("Automatisch") }, delegate { return c.OutlineColor; }, delegate(int i) { c.OutlineColor = i; });
             y = Segments(y, L.T("Standaardgrootte"), null, new string[] { "24", "36", "48", "64" }, delegate { int[] v = { 24, 36, 48, 64 }; int b = 1; for (int i = 0; i < 4; i++) if (Math.Abs(v[i] - c.TextSize) < 1) b = i; return b; },
@@ -876,7 +876,7 @@ namespace NexusPen
         void BuildStamps()
         {
             Settings c = Cfg;
-            float y = Heading(contentTop, L.T("Stempels"), L.T("Klik op de stempelknop in de balk en daarna waar je hem wilt hebben."));
+            float y = Heading(contentTop, L.T("Stempels"), null);
             int nk = Render.StampOrder.Length;
             float cw = (contentW - 10 * S * (nk - 1)) / nk, ch = 96 * S;
             for (int i = 0; i < nk; i++)
@@ -921,7 +921,7 @@ namespace NexusPen
         void BuildBoard()
         {
             Settings c = Cfg;
-            float y = Heading(contentTop, L.T("Bord en achtergrond"), L.T("Zoomen op het bord: Ctrl+plus, Ctrl+min, Ctrl+0 of Ctrl+muiswiel."));
+            float y = Heading(contentTop, L.T("Bord en achtergrond"), L.T("Zoomen: Ctrl+plus en Ctrl+min."));
             y = Segments(y, L.T("Achtergrond"), null, new string[] { L.T("Leeg"), L.T("Schrijflijnen"), L.T("Ruitjes"), L.T("Lijntjes") }, delegate { return c.BoardBg; }, delegate(int i) { c.BoardBg = i; });
             float[] zs = { 0.6f, 1f, 2f, 4f };
             y = Segments(y, L.T("Grootte van lijnen en ruitjes"), null, new string[] { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") },
@@ -931,7 +931,7 @@ namespace NexusPen
         void BuildSoon()
         {
             float y = Heading(contentTop, L.T("Voorlezen"), null);
-            Para(y, L.T("Komt in versie 1.3: tekst op je scherm laten voorlezen, en tekst van het scherm lezen en overnemen. Ook de timer komt dan."), 60 * S);
+            Para(y, L.T("Komt later."), 30 * S);
         }
 
         // ---- Sneltoetsen
@@ -1087,7 +1087,7 @@ namespace NexusPen
         void BuildSave()
         {
             Settings c = Cfg;
-            float y = Heading(contentTop, L.T("Opslaan"), L.T("Alles wordt vanzelf bewaard. Met Opslaan staat je tekening er de volgende keer weer."));
+            float y = Heading(contentTop, L.T("Opslaan"), L.T("Alles wordt vanzelf bewaard."));
             float bx = contentX;
             bx += Button(bx, y + 6 * S, L.T("Nu opslaan"), "opslaan", delegate { if (ov.SaveExplicit()) Notice(L.T("Opgeslagen. Je tekening en instellingen staan er de volgende keer weer.")); }, true) + 10 * S;
             Button(bx, y + 6 * S, L.T("Vorige tekening terughalen"), "undo", delegate { ov.RestorePrevious(); Notice(L.T("Klaar. Kijk op je scherm.")); }, false);
@@ -1195,7 +1195,6 @@ namespace NexusPen
             Settings c = Cfg;
             float y = Heading(contentTop, L.T("Schermdelen"), null);
             y = Toggle(y, L.T("Werkbalk verbergen bij schermdelen"), L.T("Cursisten zien in Zoom of Teams je tekeningen wel, maar de werkbalk niet"), delegate { return c.HideFromCapture; }, delegate(bool v) { c.HideFromCapture = v; });
-            Para(y + 12 * S, L.T("Dit werkt vanaf Windows 10 versie 2004. Op een oudere Windows ziet de ander de werkbalk gewoon."), 40 * S);
         }
 
         // ---- Gebruik
@@ -1206,7 +1205,7 @@ namespace NexusPen
             Settings c = Cfg;
             summary = Usage.Make(7);
             float colW = contentW * 0.52f;
-            float y = Heading(contentTop, L.T("Gebruik"), L.T("Wat NexusPen bijhoudt, zodat we zien wat je echt gebruikt en wat beter kan. Alleen op deze pc."));
+            float y = Heading(contentTop, L.T("Gebruik"), L.T("Alleen op deze pc."));
             float keepW = contentW; contentW = colW;
             y = Toggle(y, L.T("Gebruik bijhouden"), L.T("Er gaat niets naar internet"), delegate { return c.Usage; }, delegate(bool v) { c.Usage = v; });
             string[] names = { "Klikken op knoppen", "Gereedschap en tijd", "Kleuren en dikte", "Menu's en instellingen", "Twijfel en fouten", "Lessen", "Scherm en snelheid" }; // vertaal
@@ -1321,7 +1320,7 @@ namespace NexusPen
             float cardH = 96 * S;
             RectangleF card = new RectangleF(contentX, y, contentW, cardH);
             string title, sub, icon; bool good = false, warn = false;
-            if (pu != null) { title = L.F("Versie {0} staat klaar", pu.Version); sub = L.T("Je tekening en instellingen blijven staan. NexusPen start daarna vanzelf weer."); icon = "aftekenen"; }
+            if (pu != null) { title = L.F("Versie {0} staat klaar", pu.Version); sub = L.T("Je tekening en instellingen blijven staan. NexusPen start daarna vanzelf weer."); icon = "download"; }
             else if (updState == 1) { title = L.T("Even kijken..."); sub = L.T("NexusPen vraagt GitHub of er een nieuwe versie is."); icon = "terugzetten"; }
             else if (updState == 2) { title = L.T("Je hebt de nieuwste versie"); sub = L.F("NexusPen {0}, gekeken om {1}", Program.Version, updCheckedAt.ToString("HH:mm")); icon = "vink"; good = true; }
             else if (updState == 3) { title = L.T("Kijken lukte niet"); sub = L.T("Geen internet? Probeer het straks nog eens."); icon = "info"; warn = true; }
@@ -1356,17 +1355,49 @@ namespace NexusPen
                 bool primary = ov.PendingUpdate != null;
                 RoundFill(g, it.R, primary ? t.Accent : h ? Raised : Field, 9);
                 if (primary && h) RoundFill(g, it.R, Color.FromArgb(30, 255, 255, 255), 9);
-                Icons.Draw(g, primary ? "aftekenen" : "terugzetten", new RectangleF(it.R.X + 12 * S, it.R.Y, 18 * S, it.R.Height), 16 * S, primary ? t.OnAccent : t.Icon, 2f);
+                Icons.Draw(g, primary ? "download" : "terugzetten", new RectangleF(it.R.X + 12 * S, it.R.Y, 18 * S, it.R.Height), 16 * S, primary ? t.OnAccent : t.Icon, 2f);
                 Txt(g, bl, new RectangleF(it.R.X + 36 * S, it.R.Y, it.R.Width - 44 * S, it.R.Height), primary ? t.OnAccent : t.Text, 13, true, StringAlignment.Near, false);
             });
             y += cardH + 16 * S;
-            y = Toggle(y, L.T("Melding als er een nieuwe versie is"), L.T("NexusPen kijkt bij het starten even bij GitHub. Er gaat niets van jou mee."), delegate { return c.UpdateCheck; }, delegate(bool v) { c.UpdateCheck = v; });
-            Button(contentX, y + 12 * S, L.T("Wat is er nieuw?"), "info", delegate
+            y = Toggle(y, L.T("Melding als er een nieuwe versie is"), L.T("Er gaat niets van jou mee."), delegate { return c.UpdateCheck; }, delegate(bool v) { c.UpdateCheck = v; });
+            // wat is er nieuw: per versie een paar regels met een icoontje (zit in NexusPen zelf)
+            y = Section(y + 14 * S, L.T("Wat is er nieuw"));
+            foreach (Changelog.Version v0 in Changelog.All)
             {
-                Updates.Info cur = ov.PendingUpdate;
-                string u = cur != null && cur.PageUrl != null && cur.PageUrl.StartsWith("https://github.com/") ? cur.PageUrl : Updates.Page;
-                try { Process.Start(u); } catch (Exception ex) { Log.Error("Downloadpagina openen", ex); }
-            }, false);
+                Changelog.Version v = v0;
+                bool current = v.Number == Program.Version;
+                float vy = y, blockH = 34 * S + v.Lines.Length * 26 * S + 10 * S;
+                Later(delegate(Graphics g)
+                {
+                    Theme t = T;
+                    RectangleF box = new RectangleF(contentX, vy, contentW, blockH);
+                    RoundFill(g, box, Card, 10);
+                    float hx = box.X + 16 * S;
+                    float vw = Measure(v.Number, 14, true);
+                    Txt(g, v.Number, new RectangleF(hx, vy + 8 * S, vw + 4 * S, 22 * S), t.Text, 14, true, StringAlignment.Near, false);
+                    hx += vw + 10 * S;
+                    if (current)
+                    {
+                        // jouw versie: een klein label
+                        string lab = L.T("jouw versie");
+                        float lw = Measure(lab, 11, true) + 16 * S;
+                        RectangleF lr = new RectangleF(hx, vy + 9 * S, lw, 20 * S);
+                        RoundFill(g, lr, t.Accent, 10);
+                        Txt(g, lab, lr, t.OnAccent, 11, true, StringAlignment.Center, false);
+                        hx += lw + 10 * S;
+                    }
+                    Txt(g, v.Date, new RectangleF(hx, vy + 8 * S, box.Right - hx - 16 * S, 22 * S), t.Muted, 12, false, StringAlignment.Near, false);
+                    float ly = vy + 36 * S;
+                    foreach (string[] line in v.Lines)
+                    {
+                        Icons.Draw(g, line[0], new RectangleF(box.X + 16 * S, ly, 18 * S, 22 * S), 15 * S, t.Accent, 2f);
+                        Txt(g, line[1], new RectangleF(box.X + 44 * S, ly, box.Width - 60 * S, 22 * S), t.Text, 13, false, StringAlignment.Near, false);
+                        ly += 26 * S;
+                    }
+                });
+                y += blockH + 10 * S;
+                Mark(y);
+            }
         }
 
         // Terugzetten: twee duidelijk verschillende regels, allebei met een vraag vooraf
@@ -1391,8 +1422,8 @@ namespace NexusPen
         void BuildHelp()
         {
             float y = Heading(contentTop, L.T("Hulp en foutlog"), "NexusPen " + Program.Version + ", Nexus of Language");
-            y = Toggle(y, L.T("Uitleg bij de knoppen"), L.T("Een tekstje tonen als je met de muis over een knop gaat"), delegate { return Cfg.ShowTips; }, delegate(bool v) { Cfg.ShowTips = v; }) + 8 * S;
-            y = Para(y, L.T("Loopt er iets vast? Druk op Esc: je bent dan altijd terug bij de muis. Werkt dat niet, rechtsklik dan op het logo bij de klok en kies Noodstop. Is je tekening weg, kies daar Vorige tekening terughalen."), 64 * S);
+            y = Toggle(y, L.T("Uitleg bij de knoppen"), null, delegate { return Cfg.ShowTips; }, delegate(bool v) { Cfg.ShowTips = v; }) + 8 * S;
+            y = Para(y, L.T("Loopt er iets vast? Druk op Esc."), 30 * S);
             float bx = contentX;
             bx += Button(bx, y + 6 * S, L.T("Foutlog openen"), "info", delegate
             {
@@ -1402,7 +1433,7 @@ namespace NexusPen
             }, false) + 10 * S;
             Button(bx, y + 6 * S, L.T("Map met licenties"), "map", delegate { OpenFolder(Path.Combine(Path.GetDirectoryName(Application.ExecutablePath), "licenties")); }, false);
             y += 64 * S;
-            y = Para(y, L.T("Icoontjes: Lucide (ISC-licentie). Lettertypes Andika, Atkinson Hyperlegible, Lexend, Nunito en Patrick Hand: SIL Open Font License."), 40 * S);
+            y = Para(y, L.T("Icoontjes: Lucide (ISC). Lettertypes: SIL Open Font License."), 30 * S);
             // terugzetten: hier achteraan, niet op een pagina die je vaak gebruikt
             Settings c = Cfg;
             y = Section(y + 10 * S, L.T("Terugzetten"));
@@ -1421,10 +1452,7 @@ namespace NexusPen
                 ov.RegisterGlobalHotkeys();
                 Changed(); BuildItems(); Notice(L.T("Alles staat weer op standaard."));
             });
-            // snelheidsmeter: alleen tijden, nooit wat je tekent
-            if (Perf.Ink.Count > 0 || Perf.Click.Count > 0)
-                Para(y, L.F("Snelheid sinds het starten: inkt op het scherm na {0} ms (traagst {1} ms), een klik op een knop na {2} ms.",
-                    Perf.Ink.Percentile(0.5).ToString("0.0"), Perf.Ink.Percentile(0.95).ToString("0.0"), Perf.Click.Percentile(0.5).ToString("0.0")), 40 * S);
+
         }
 
         // ---- tekenen

@@ -49,6 +49,8 @@ namespace NexusPen
         // selecteren en verplaatsen
         Stroke selected;
         bool dragging, movedThisDrag, lifted, resizing;
+        bool quietMove;            // tekst verplaatsen met de Tekst-knop: zonder selectiekader en zonder balkje
+        Point quietClickAt;
         PointF dragLast, resizeAnchor;
         float resizeStartDist;
         Stroke resizeOriginal;
@@ -408,6 +410,7 @@ namespace NexusPen
             bool esc = (W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0;
             // Esc: eerst een open venstertje van de balk dicht, dan pas terug naar de muis
             if (esc && !lastEsc && MenuPopup.IsOpen) { MenuPopup.CloseOpen(); lastEsc = true; return; }   // eerst een open menu
+            if (esc && !lastEsc && pinnedLoupes.Count > 0) { CloseAllLoupes(); lastEsc = true; return; }   // dan de vergrootglazen
             if (esc && !lastEsc && toolbar != null && toolbar.AnyPopupOpen) { toolbar.ClosePopups(); lastEsc = true; return; }
             if (esc && !lastEsc && DrawMode && typing != null) { CloseTextInput(true); lastEsc = true; return; }   // ook als het toetsenbord ergens anders zat
             if (esc && !lastEsc && DrawMode && typing == null)
@@ -759,6 +762,7 @@ namespace NexusPen
 
         void DrawSelection(Graphics g)
         {
+            if (quietMove) return;   // tekst gewoon verplaatsen: geen kader eromheen
             RectangleF r = SelectionBox();
             Color acc = Theme.Accent;
             using (GraphicsPath gp = Svg.RoundRect(r, 6))
@@ -898,7 +902,7 @@ namespace NexusPen
             updating = true;   // meteen: dan kan er niet een tweede vraag of download bij komen
             if (MessageBox.Show(this, L.F("NexusPen bijwerken naar {0}? NexusPen sluit even en start daarna vanzelf weer. Je tekening blijft staan.", info.Version), "NexusPen",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) { updating = false; return; }
-            if (toolbar != null) toolbar.ShowToast(L.T("De nieuwe versie wordt opgehaald..."), "", null);
+            if (toolbar != null) toolbar.ShowToast(L.T("De nieuwe versie wordt opgehaald..."), "", null, "download");
             Usage.Log("bijwerken", info.Version, "");
             Updates.Download(info, delegate(string file)
             {
@@ -1595,6 +1599,8 @@ namespace NexusPen
                 pinnedLoupes.Add(l);
                 l.Show();
                 Usage.Log("vergrootglas", "vastzetten", "");
+                // vastgezet: meteen weer je pen, dan kun je in het vergrote stuk schrijven (Esc haalt de glazen weg)
+                SetTool(LastDrawTool);
             }
             catch (Exception ex) { Log.Error("Vergrootglas vastzetten", ex); }
         }
@@ -2289,9 +2295,10 @@ namespace NexusPen
                 Stroke onText = StrokesVisible ? TopHit(p) : null;
                 if (onText != null && onText.Tool == Tool.Text)
                 {
-                    OpenTextInput(e.Location, onText);
-                    // ingedrukt houden en bewegen: de hele tekst verplaatsen; gewoon klikken: het streepje komt waar je klikte
-                    if (typing != null) { textDrag = 5; textDragFrom = p; textPtFrom = typing.Pts[0]; Capture = true; }
+                    // ingedrukt houden en bewegen: de tekst gewoon verplaatsen (geen streepje, geen kader);
+                    // loslaten zonder te bewegen = een klik: dan pas de tekst openen om te typen
+                    selected = onText; quietMove = true; quietClickAt = e.Location;
+                    dragging = true; movedThisDrag = false; dragLast = p; Capture = true;
                 }
                 else OpenTextInput(e.Location);
                 return;
@@ -2360,6 +2367,7 @@ namespace NexusPen
                     if (dx * dx + dy * dy < 9) return;
                     EditSelected();
                     movedThisDrag = true;
+                    if (quietMove) SetOverlayCursor(Cursors.SizeAll);
                     lifted = true;
                     Rebuild();
                 }
@@ -2428,6 +2436,17 @@ namespace NexusPen
                 resizing = false;
                 if (lifted) { lifted = false; Rebuild(); }
                 if (selected != null && toolbar != null) toolbar.ShowMiniBar(SelectionScreenRect());
+                return;
+            }
+            if (dragging && quietMove)
+            {
+                // tekst met de Tekst-knop: verplaatst, of alleen geklikt (dan typen)
+                Stroke t = selected; bool moved = movedThisDrag;
+                dragging = false; quietMove = false; Capture = false;
+                selected = null;
+                if (lifted) { lifted = false; Rebuild(); }
+                dirty = true;
+                if (!moved && t != null) OpenTextInput(quietClickAt, t);
                 return;
             }
             if (dragging)

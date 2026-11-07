@@ -24,6 +24,8 @@ namespace NexusPen
         [DllImport("user32.dll")] static extern bool SetLayeredWindowAttributes(IntPtr hwnd, int key, byte alpha, int flags);
         [DllImport("user32.dll")] static extern bool InvalidateRect(IntPtr hwnd, IntPtr rect, bool erase);
         [DllImport("user32.dll")] static extern int SetWindowRgn(IntPtr hwnd, IntPtr rgn, bool redraw);
+        [DllImport("gdi32.dll")] static extern IntPtr CreateRoundRectRgn(int x1, int y1, int x2, int y2, int w, int h);
+        [DllImport("gdi32.dll")] static extern IntPtr CreateEllipticRgn(int x1, int y1, int x2, int y2);
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern IntPtr GetModuleHandle(string name);
 
         const int WS_CHILD = 0x40000000, WS_VISIBLE = 0x10000000, MS_SHOWMAGNIFIEDCURSOR = 0x1, LWA_ALPHA = 0x2, MW_FILTERMODE_EXCLUDE = 0;
@@ -98,7 +100,7 @@ namespace NexusPen
             {
                 CreateParams cp = base.CreateParams;
                 cp.ExStyle |= W.WS_EX_LAYERED | W.WS_EX_TOOLWINDOW | W.WS_EX_TOPMOST | W.WS_EX_NOACTIVATE;
-                if (follow) cp.ExStyle |= W.WS_EX_TRANSPARENT;   // meegaand: je klikt er gewoon doorheen
+                cp.ExStyle |= W.WS_EX_TRANSPARENT;   // je klikt en tekent er gewoon doorheen (verplaatsen gaat met het balkje)
                 return cp;
             }
         }
@@ -110,16 +112,13 @@ namespace NexusPen
             {
                 SetLayeredWindowAttributes(Handle, 0, 255, LWA_ALPHA);
                 ApplyShape();
-                mag = CreateWindowEx(0, "Magnifier", "NexusPenMagnifier", WS_CHILD | WS_VISIBLE | (follow ? MS_SHOWMAGNIFIEDCURSOR : 0),
+                // zonder vergrote muis: anders zie je je muis twee keer
+                mag = CreateWindowEx(0, "Magnifier", "NexusPenMagnifier", WS_CHILD | WS_VISIBLE,
                     Border, Border, Width - Border * 2, Height - Border * 2, Handle, IntPtr.Zero, GetModuleHandle(null), IntPtr.Zero);
                 if (mag == IntPtr.Zero) { Log.Info("Vergrootglas: geen Magnifier-venster"); return; }
-                if (ov.Cfg.LoupeShape == 1)
-                    using (GraphicsPath gp = new GraphicsPath())
-                    {
-                        // rond: ook het beeld zelf rond, zodat de rand overal even dik is
-                        gp.AddEllipse(0, 0, Width - Border * 2, Height - Border * 2);
-                        using (Region rg = new Region(gp)) using (Graphics g = CreateGraphics()) SetWindowRgn(mag, rg.GetHrgn(g), true);
-                    }
+                // ook het beeld zelf afgerond, zodat de rand overal even dik is en de hoeken echt rond zijn
+                int iw = Width - Border * 2, ih = Height - Border * 2;
+                SetWindowRgn(mag, ov.Cfg.LoupeShape == 1 ? CreateEllipticRgn(0, 0, iw + 1, ih + 1) : CreateRoundRectRgn(0, 0, iw + 1, ih + 1, (int)(26 * sc), (int)(26 * sc)), true);
                 all.Add(this);
                 Skip(Handle, true);   // het glas zelf (en de andere glazen) niet vergroten
                 ApplyZoom();
@@ -128,13 +127,12 @@ namespace NexusPen
             catch (Exception ex) { Log.Error("Vergrootglas", ex); }
         }
 
+        // de vorm van het glas: met Windows zelf afgerond (een Region uit een GraphicsPath valt bij dit soort vensters weg)
         void ApplyShape()
         {
-            using (GraphicsPath gp = ov.Cfg.LoupeShape == 1 ? Ellipse() : Svg.RoundRect(new RectangleF(0, 0, Width, Height), 16 * sc))
-                Region = new Region(gp);
+            IntPtr rgn = ov.Cfg.LoupeShape == 1 ? CreateEllipticRgn(0, 0, Width + 1, Height + 1) : CreateRoundRectRgn(0, 0, Width + 1, Height + 1, (int)(32 * sc), (int)(32 * sc));
+            SetWindowRgn(Handle, rgn, true);   // Windows wordt eigenaar van rgn
         }
-
-        GraphicsPath Ellipse() { GraphicsPath gp = new GraphicsPath(); gp.AddEllipse(0, 0, Width, Height); return gp; }
 
         void ApplyZoom()
         {

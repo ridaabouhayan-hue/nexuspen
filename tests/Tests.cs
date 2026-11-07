@@ -247,6 +247,13 @@ static class Tests {
       Check(Updates.IsNewer("1.3.2", "1.3.1") && !Updates.IsNewer("1.3.1", "1.3.1") && !Updates.IsNewer("1.2.9", "1.3.0"), "Versienummers vergelijken");
     }
 
+    // 15e. Wat is er nieuw: bovenaan staat deze versie, en elk icoontje bestaat
+    {
+      bool iconsOk = true;
+      foreach (var cv in Changelog.All) foreach (var ln in cv.Lines) if (!IconData.All.ContainsKey(ln[0])) iconsOk = false;
+      Check(Changelog.All.Length > 0 && Changelog.All[0].Number == Program.Version && iconsOk, "Wat is er nieuw: deze versie staat bovenaan en alle icoontjes bestaan");
+    }
+
     // 15c. Instellingen exporteren en importeren: alleen echte NexusPen-bestanden
     {
       string ex = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np-export-test.nexuspen");

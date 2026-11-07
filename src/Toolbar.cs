@@ -968,12 +968,15 @@ namespace NexusPen
             widthTip.Show(screenPt, width, min, max, label);
         }
 
-        public void ShowToast(string text, string bold, string folder)
+        // icon: wat er gebeurt (foto bij een schermafbeelding, anders een rustig info-icoontje)
+        public void ShowToast(string text, string bold, string folder) { ShowToast(text, bold, folder, folder != null ? "foto" : "info"); }
+
+        public void ShowToast(string text, string bold, string folder, string icon)
         {
             if (collapsed) return;
             if (toast == null || toast.IsDisposed) toast = new Toast(ov);
             toast.S = W.UiScaleAt(Location);
-            toast.ShowMessage(text, bold, folder);
+            toast.ShowMessage(text, bold, folder, icon);
         }
 
         // ---- wegschuiven naar de rand: de tekeningen blijven staan

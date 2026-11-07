@@ -16,7 +16,7 @@ MAP = {
  "meer": "chevrons-right", "rand": "type-outline", "groter": "maximize-2", "aftekenen": "log-out", "vergrootglas": "search",
  "afsluiten": "power", "verplaats": "move", "krijt": "brush", "zoom": "zoom-in",
  "puntjes": "ellipsis", "puntjesstaand": "ellipsis-vertical", "zandloper": "hourglass", "timer": "timer",
- "pauze": "pause", "afspelen": "play", "terugzetten": "rotate-ccw", "vastzetten": "pin", "losmaken": "pin-off",
+ "download": "download", "pauze": "pause", "afspelen": "play", "terugzetten": "rotate-ccw", "vastzetten": "pin", "losmaken": "pin-off",
 }
 def elements(name):
     p = os.path.join(D, name + ".svg")

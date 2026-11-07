@@ -711,13 +711,13 @@ namespace NexusPen
     class Toast : BarForm
     {
         System.Windows.Forms.Timer hideTimer = new System.Windows.Forms.Timer();
-        string text = "", bold = "", folder;
+        string text = "", bold = "", folder, icon = "info";
 
         public Toast(Overlay o) : base(o) { hideTimer.Interval = 4500; hideTimer.Tick += delegate { hideTimer.Stop(); Hide(); }; }
 
-        public void ShowMessage(string t, string b, string dir)
+        public void ShowMessage(string t, string b, string dir, string ic)
         {
-            text = t; bold = b; folder = dir;
+            text = t; bold = b ?? ""; folder = dir; icon = ic ?? "info";
             Rebuild();
             Rectangle wa = Screen.FromPoint(Control.MousePosition).WorkingArea;
             Location = new Point(wa.Left + (wa.Width - Width) / 2, wa.Bottom - Height - (int)(40 * S));
@@ -746,7 +746,8 @@ namespace NexusPen
         protected override void PaintExtra(Graphics g)
         {
             Theme t = T;
-            Icons.Draw(g, "foto", new RectangleF(14 * S, 0, 20 * S, ClientSize.Height), 18 * S, t.Accent, 2f);
+            // foto (schermafbeelding) in de accentkleur; een gewone melding rustig in de kleur van de tekst
+            Icons.Draw(g, icon, new RectangleF(14 * S, 0, 20 * S, ClientSize.Height), 18 * S, icon == "foto" ? t.Accent : t.Muted, 2f);
             using (Font f = Fonts.Make(UiFont.Name, 13 * S, FontStyle.Regular))
             using (Font fb = UiFont.Make(13 * S, true))
             using (SolidBrush b = new SolidBrush(t.Text))
