@@ -146,11 +146,14 @@ namespace NexusPen
             {
                 IntPtr fg = GetForegroundWindow();
                 if (fg == h) { SetFocus(h); return; }
+                // meestal mag het gewoon (je klikte net op de tekenlaag); alleen als Windows weigert even koppelen
+                if (SetForegroundWindow(h)) { SetFocus(h); return; }
                 uint me = GetCurrentThreadId(), other = fg != IntPtr.Zero ? GetWindowThreadProcessId(fg, IntPtr.Zero) : 0;
                 // nooit koppelen aan een programma dat vastzit: dan zou NexusPen meehangen
                 bool attached = other != 0 && other != me && !IsHungAppWindow(fg) && AttachThreadInput(me, other, true);
-                try { SetForegroundWindow(h); SetFocus(h); }
+                try { SetForegroundWindow(h); }
                 finally { if (attached) AttachThreadInput(me, other, false); }
+                SetFocus(h);   // pas na het loskoppelen
             }
             catch { }
         }

@@ -13,7 +13,9 @@ namespace NexusPen
         int setSeconds = 5 * 60;          // de gekozen tijd
         double leftMs = 5 * 60 * 1000;    // wat er nog over is
         bool running, big, done;
-        DateTime lastTick, doneAt;
+        DateTime doneAt;
+        readonly System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();   // niet van de Windows-klok afhankelijk
+        double lastTick;
         readonly System.Windows.Forms.Timer clock = new System.Windows.Forms.Timer();
         float baseS = 1;
 
@@ -70,7 +72,7 @@ namespace NexusPen
         {
             if (done || leftMs <= 0) { leftMs = setSeconds * 1000.0; done = false; }
             running = !running;
-            lastTick = DateTime.Now;
+            lastTick = watch.Elapsed.TotalMilliseconds;
             if (running) clock.Start(); else clock.Stop();
             Usage.Log("timer", running ? "start" : "pauze", "");
             Invalidate();
@@ -98,8 +100,9 @@ namespace NexusPen
             DateTime now = DateTime.Now;
             if (running)
             {
-                leftMs -= (now - lastTick).TotalMilliseconds;
-                lastTick = now;
+                double t = watch.Elapsed.TotalMilliseconds;
+                leftMs -= t - lastTick;
+                lastTick = t;
                 if (leftMs <= 0)
                 {
                     leftMs = 0; running = false; done = true; doneAt = now;

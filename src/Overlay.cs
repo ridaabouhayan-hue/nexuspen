@@ -407,6 +407,7 @@ namespace NexusPen
             // Esc werkt altijd, ook als de tekenlaag niet het actieve venster is
             bool esc = (W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0;
             // Esc: eerst een open venstertje van de balk dicht, dan pas terug naar de muis
+            if (esc && !lastEsc && MenuPopup.IsOpen) { MenuPopup.CloseOpen(); lastEsc = true; return; }   // eerst een open menu
             if (esc && !lastEsc && toolbar != null && toolbar.AnyPopupOpen) { toolbar.ClosePopups(); lastEsc = true; return; }
             if (esc && !lastEsc && DrawMode && typing != null) { CloseTextInput(true); lastEsc = true; return; }   // ook als het toetsenbord ergens anders zat
             if (esc && !lastEsc && DrawMode && typing == null)
@@ -421,6 +422,7 @@ namespace NexusPen
                 lastTopAt = DateTime.Now;
                 if (Visible) W.KeepOnTop(Handle);
                 if (toolbar != null) toolbar.KeepAllOnTop();
+                KeepExtrasOnTop();
             }
 
             // Automatisch bewaren, 1,5 seconde na de laatste wijziging
@@ -1516,6 +1518,18 @@ namespace NexusPen
             if (followLoupe == l) followLoupe = null;
         }
 
+        // Timer, vergrootglazen en een open menu boven de tekenlaag houden (anders vangt die hun klikken)
+        void KeepExtrasOnTop()
+        {
+            List<Form> fs = new List<Form>();
+            foreach (Loupe l in pinnedLoupes) { fs.Add(l); if (l.Strip != null) fs.Add(l.Strip); }
+            if (followLoupe != null) fs.Add(followLoupe);
+            if (lesTimer != null) fs.Add(lesTimer);
+            if (MenuPopup.Current != null) fs.Add(MenuPopup.Current);
+            foreach (Form f in fs)
+                try { if (f != null && !f.IsDisposed && f.Visible && f.IsHandleCreated) W.KeepOnTop(f.Handle); } catch { }
+        }
+
         void CloseAllLoupes()
         {
             StopFollowLoupe();
@@ -1554,7 +1568,7 @@ namespace NexusPen
         public void SetColor(int i)
         {
             ColorIndex = Math.Max(0, Math.Min(ColorCount - 1, i));
-            Usage.Log("kleur", Palette.NameOf(PaletteIndex, CurrentColor), "");
+            Usage.Log("kleur", Palette.KeyOf(PaletteIndex, CurrentColor), "");
             if (selected != null) { RecolorSelected(CurrentColor); return; }
             // alleen de kleur: geen ander gereedschap en geen bord erbij (dat kies je zelf)
             Cfg.ColorIndex = ColorIndex;
@@ -2117,6 +2131,7 @@ namespace NexusPen
             if (!DrawMode || RealMouseInSelfTest) return;
             if (e.Clicks < 2) skipDoubleClick = false;
             if (toolbar != null) toolbar.ClosePopups();
+            MenuPopup.CloseOpen();
             PointF p = e.Location;
             if (typing != null && e.Button == MouseButtons.Left && TextMouseDown(e)) return;
             if (typing != null) CloseTextInput(true);   // ergens anders geklikt: de tekst is klaar

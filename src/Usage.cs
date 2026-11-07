@@ -32,11 +32,11 @@ namespace NexusPen
             switch (kind)
             {
                 case "klik": case "bord": case "stempel": case "sneltoets": case "verberg": case "inkorten": return Clicks;
-                case "gereedschap": return Tools;
+                case "gereedschap": case "timer": case "vergrootglas": case "stand": return Tools;
                 case "kleur": case "dikte": case "palet": return Colors;
                 case "instelling": case "menu": return Menus;
                 case "ongedaan": case "gum-na-tekenen": case "zoeken": return Doubt;
-                case "start": case "stop": case "inklappen": case "uitklappen": case "wegschuiven": case "opslaan": case "foto": return Lessons;
+                case "start": case "stop": case "inklappen": case "uitklappen": case "wegschuiven": case "opslaan": case "foto": case "afsluiten": return Lessons;
                 default: return Tech;
             }
         }

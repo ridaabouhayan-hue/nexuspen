@@ -133,6 +133,14 @@ namespace NexusPen
             return sb.ToString();
         }
 
+        // Voor het gebruikslogboek: altijd de Nederlandse naam (niet afhankelijk van de taal), of "eigen"
+        public static string KeyOf(int set, Color c)
+        {
+            set = Math.Max(0, Math.Min(Sets.Length - 1, set));
+            for (int i = 0; i < Sets[set].Length; i++) if (Sets[set][i].ToArgb() == c.ToArgb()) return Labels[set][i];
+            return "eigen";
+        }
+
         // Naam van een kleur: de standaardnaam als het een standaardkleur is, anders "Eigen kleur"
         public static string NameOf(int set, Color c)
         {

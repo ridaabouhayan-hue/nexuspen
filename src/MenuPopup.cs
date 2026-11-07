@@ -21,7 +21,7 @@ namespace NexusPen
         public MenuPopup(Overlay o) : base(o)
         {
             Text = "NexusPen menu";
-            watch.Interval = 40;
+            watch.Interval = 20;   // ook een korte tik met pen of vinger buiten het menu zien
             watch.Tick += delegate { Watch(); };
         }
 
@@ -102,6 +102,8 @@ namespace NexusPen
         }
 
         public static void CloseOpen() { if (open != null && !open.IsDisposed) open.Close(); }
+        public static bool IsOpen { get { return open != null && !open.IsDisposed && open.Visible; } }
+        public static MenuPopup Current { get { return IsOpen ? open : null; } }
 
         void Watch()
         {

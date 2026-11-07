@@ -23,7 +23,7 @@ namespace NexusPen
         static extern IntPtr CreateWindowEx(int ex, string cls, string name, int style, int x, int y, int w, int h, IntPtr parent, IntPtr menu, IntPtr inst, IntPtr param);
         [DllImport("user32.dll")] static extern bool SetLayeredWindowAttributes(IntPtr hwnd, int key, byte alpha, int flags);
         [DllImport("user32.dll")] static extern bool InvalidateRect(IntPtr hwnd, IntPtr rect, bool erase);
-        [DllImport("user32.dll")] static extern bool MoveWindow(IntPtr hwnd, int x, int y, int w, int h, bool repaint);
+        [DllImport("user32.dll")] static extern int SetWindowRgn(IntPtr hwnd, IntPtr rgn, bool redraw);
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] static extern IntPtr GetModuleHandle(string name);
 
         const int WS_CHILD = 0x40000000, WS_VISIBLE = 0x10000000, MS_SHOWMAGNIFIEDCURSOR = 0x1, LWA_ALPHA = 0x2, MW_FILTERMODE_EXCLUDE = 0;
@@ -45,6 +45,22 @@ namespace NexusPen
         Point source;              // midden van wat je vergroot (vast bij een vastgezet glas)
         float zoom;
         const int Border = 3;
+        float sc = 1;
+        W.RECT lastSrc;
+
+        // Alle glazen en hun balkjes: elk glas laat die weg bij het vergroten (anders zie je een tunnel)
+        static readonly System.Collections.Generic.List<IntPtr> skip = new System.Collections.Generic.List<IntPtr>();
+        static readonly System.Collections.Generic.List<Loupe> all = new System.Collections.Generic.List<Loupe>();
+
+        static void RefreshFilters()
+        {
+            IntPtr[] list = skip.ToArray();
+            foreach (Loupe l in all)
+                if (l.mag != IntPtr.Zero && list.Length > 0)
+                    try { if (!MagSetWindowFilterList(l.mag, MW_FILTERMODE_EXCLUDE, list.Length, list)) Log.Info("Vergrootglas: uitsluiten mislukt"); } catch { }
+        }
+
+        public static void Skip(IntPtr h, bool add) { if (add) { if (!skip.Contains(h)) skip.Add(h); } else skip.Remove(h); RefreshFilters(); }
 
         public Loupe(Overlay o, bool following, Point at)
         {
@@ -56,11 +72,20 @@ namespace NexusPen
             TopMost = true;
             Text = "NexusPen vergrootglas";
             BackColor = o.Theme.Accent;   // de rand in de accentkleur
-            float sc = Math.Max(1f, W.UiScaleAt(at));
+            sc = Math.Max(1f, W.UiScaleAt(at));
             Size sz = o.Cfg.LoupeShape == 1 ? new Size((int)(260 * sc), (int)(260 * sc)) : new Size((int)(440 * sc), (int)(200 * sc));
             Size = sz;
-            Location = new Point(at.X - sz.Width / 2, at.Y - sz.Height / 2);
-            tick.Interval = 16;
+            int x0 = at.X - sz.Width / 2, y0 = at.Y - sz.Height / 2;
+            if (!following)
+            {
+                // vastgezet: glas plus balkje eronder moeten op het scherm passen
+                Rectangle wa = Screen.FromPoint(at).WorkingArea;
+                int stripH = (int)(40 * sc);
+                x0 = Math.Max(wa.Left, Math.Min(wa.Right - sz.Width, x0));
+                y0 = Math.Max(wa.Top, Math.Min(wa.Bottom - sz.Height - stripH, y0));
+            }
+            Location = new Point(x0, y0);
+            tick.Interval = following ? 16 : 40;   // vastgezet hoeft minder vaak: alleen nieuwe inkt eronder
             tick.Tick += delegate { Step(); };
         }
 
@@ -87,8 +112,15 @@ namespace NexusPen
                 mag = CreateWindowEx(0, "Magnifier", "NexusPenMagnifier", WS_CHILD | WS_VISIBLE | (follow ? MS_SHOWMAGNIFIEDCURSOR : 0),
                     Border, Border, Width - Border * 2, Height - Border * 2, Handle, IntPtr.Zero, GetModuleHandle(null), IntPtr.Zero);
                 if (mag == IntPtr.Zero) { Log.Info("Vergrootglas: geen Magnifier-venster"); return; }
-                // het glas zelf niet vergroten (anders zie je een tunnel)
-                MagSetWindowFilterList(mag, MW_FILTERMODE_EXCLUDE, 1, new IntPtr[] { Handle });
+                if (ov.Cfg.LoupeShape == 1)
+                    using (GraphicsPath gp = new GraphicsPath())
+                    {
+                        // rond: ook het beeld zelf rond, zodat de rand overal even dik is
+                        gp.AddEllipse(0, 0, Width - Border * 2, Height - Border * 2);
+                        using (Region rg = new Region(gp)) using (Graphics g = CreateGraphics()) SetWindowRgn(mag, rg.GetHrgn(g), true);
+                    }
+                all.Add(this);
+                Skip(Handle, true);   // het glas zelf (en de andere glazen) niet vergroten
                 ApplyZoom();
                 tick.Start();
             }
@@ -97,7 +129,7 @@ namespace NexusPen
 
         void ApplyShape()
         {
-            using (GraphicsPath gp = ov.Cfg.LoupeShape == 1 ? Ellipse() : Svg.RoundRect(new RectangleF(0, 0, Width, Height), 16))
+            using (GraphicsPath gp = ov.Cfg.LoupeShape == 1 ? Ellipse() : Svg.RoundRect(new RectangleF(0, 0, Width, Height), 16 * sc))
                 Region = new Region(gp);
         }
 
@@ -130,11 +162,16 @@ namespace NexusPen
             }
             int iw = Width - Border * 2, ih = Height - Border * 2;
             int sw = (int)(iw / zoom), sh = (int)(ih / zoom);
-            Rectangle vs = SystemInformation.VirtualScreen;
+            Rectangle vs = Screen.FromPoint(source).Bounds;   // binnen het scherm waar je bent (geen zwarte stukken tussen schermen)
             int x = Math.Max(vs.Left, Math.Min(vs.Right - sw, source.X - sw / 2));
             int y = Math.Max(vs.Top, Math.Min(vs.Bottom - sh, source.Y - sh / 2));
             W.RECT r = new W.RECT(); r.Left = x; r.Top = y; r.Right = x + sw; r.Bottom = y + sh;
-            try { MagSetWindowSource(mag, r); InvalidateRect(mag, IntPtr.Zero, true); } catch { }
+            try
+            {
+                if (r.Left != lastSrc.Left || r.Top != lastSrc.Top || r.Right != lastSrc.Right || r.Bottom != lastSrc.Bottom) { MagSetWindowSource(mag, r); lastSrc = r; }
+                InvalidateRect(mag, IntPtr.Zero, true);   // ook als er niets verschuift: nieuwe inkt eronder laten zien
+            }
+            catch { }
         }
 
         // ---- vastgezet glas: een klein balkje eronder om te verslepen, in of uit te zoomen en te sluiten
@@ -156,9 +193,17 @@ namespace NexusPen
             Location = new Point(stripLoc.X + stripSize.Width / 2 - Width / 2, stripLoc.Y - Height - 4);
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == W.WM_DPICHANGED) { m.Result = IntPtr.Zero; return; }   // maat zelf houden (vorm en beeld blijven kloppen)
+            base.WndProc(ref m);
+        }
+
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
             tick.Stop(); tick.Dispose();
+            all.Remove(this);
+            if (IsHandleCreated) Skip(Handle, false);
             if (strip != null && !strip.IsDisposed) strip.Close();
             ov.LoupeClosed(this);
             base.OnFormClosed(e);
@@ -179,6 +224,9 @@ namespace NexusPen
         }
 
         protected override bool AlwaysShared { get { return true; } }
+
+        protected override void OnHandleCreated(EventArgs e) { base.OnHandleCreated(e); Loupe.Skip(Handle, true); }
+        protected override void OnFormClosed(FormClosedEventArgs e) { Loupe.Skip(Handle, false); base.OnFormClosed(e); }
 
         public void Place()
         {
