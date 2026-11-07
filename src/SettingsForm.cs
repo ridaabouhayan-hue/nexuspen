@@ -363,9 +363,15 @@ namespace NexusPen
                 ov.RegisterGlobalHotkeys();
                 Changed(); BuildItems(); Notice(L.T("Alles staat weer op standaard."));
             }, false);
+            // alleen de knoppen in de balk terug naar de standaard (met vragen, dan gaat het nooit per ongeluk)
+            float bx = contentX + rw + 10 * S;
+            bx += Button(bx, y + 16 * S, L.T("Standaardbalk terugzetten"), "undo", delegate
+            {
+                if (MessageBox.Show(this, L.T("De knoppen in de balk terugzetten naar de standaard? Je eigen volgorde en verborgen knoppen gaan dan verloren."), "NexusPen", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                c.BarLayout = ""; c.ShortenAt = 0; Changed(); BuildItems(); Notice(L.T("De werkbalk heeft weer de standaardknoppen."));
+            }, false) + 10 * S;
             // NexusPen helemaal afsluiten
-            float qx = contentX + rw + 10 * S;
-            Button(qx, y + 16 * S, L.T("NexusPen afsluiten"), "afsluiten", delegate { Close(); ov.AskQuit(); }, false);
+            Button(bx, y + 16 * S, L.T("NexusPen afsluiten"), "afsluiten", delegate { Close(); ov.AskQuit(); }, false);
         }
 
         // ---- Taal
@@ -529,9 +535,6 @@ namespace NexusPen
             y += trayArea.Height + 16 * S;
             y = Para(y, L.T("Erbij zetten: sleep een knop uit de bak omhoog. Weghalen: sleep hem naar beneden, of rechtsklik in de balk en kies Verbergen."), 40 * S);
             y = Segments(y + 4 * S, L.T("Stand"), null, new string[] { L.T("Liggend"), L.T("Staand") }, delegate { return c.Vertical ? 1 : 0; }, delegate(int i) { c.Vertical = i == 1; });
-            float bx2 = contentX;
-            bx2 += Button(bx2, y + 12 * S, L.T("Standaardbalk terugzetten"), "undo", delegate { c.BarLayout = ""; c.ShortenAt = 0; Changed(); BuildItems(); }, false) + 10 * S;
-            Button(bx2, y + 12 * S, L.T("Werkbalk terug naar zijn plek"), "op", delegate { if (ov.Bar != null) ov.Bar.ResetPosition(); Notice(L.T("De werkbalk staat weer op zijn plek.")); }, false);
         }
 
         void PaintKey(Graphics g, RectangleF r, string k, bool hv, bool ghost)

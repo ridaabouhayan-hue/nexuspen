@@ -125,8 +125,6 @@ Stand | Orientation | Orientation | Orientación
 Liggend | Horizontal | Horizontale | Horizontal
 Staand | Vertical | Verticale | Vertical
 Standaardbalk terugzetten | Restore the default bar | Rétablir la barre par défaut | Restablecer la barra predeterminada
-Werkbalk terug naar zijn plek | Move the toolbar back into place | Replacer la barre d'outils | Devolver la barra a su sitio
-De werkbalk staat weer op zijn plek. | The toolbar is back in place. | La barre d'outils est revenue à sa place. | La barra ha vuelto a su sitio.
 Pen en kleuren | Pen and colours | Stylo et couleurs | Lápiz y colores
 Kleuren | Colours | Couleurs | Colores
 Felle kleuren vallen op, zachte zijn rustiger voor de ogen | Bright colours stand out, soft ones are easier on the eyes | Les couleurs vives ressortent, les douces reposent les yeux | Los colores vivos destacan, los suaves descansan la vista
@@ -389,3 +387,5 @@ Timer | Timer | Minuteur | Temporizador
 Vergrootglas: gaat met je muis mee. Klik = vastzetten op die plek. Muiswiel = meer of minder groot. Rechtsklik = vorm en vergroting | Magnifier: follows your mouse. Click = pin it there. Mouse wheel = more or less zoom. Right-click = shape and zoom | Loupe : suit la souris. Clic = la fixer à cet endroit. Molette = plus ou moins grand. Clic droit = forme et grossissement | Lupa: sigue al ratón. Clic = fijarla ahí. Rueda = más o menos zoom. Clic derecho = forma y aumento
 Timer: kies een tijd en start. Je cursisten zien hem ook bij schermdelen | Timer: choose a time and start. Your students also see it when you share your screen | Minuteur : choisissez une durée et démarrez. Vos apprenants le voient aussi en partage d'écran | Temporizador: elige un tiempo e inicia. Tus alumnos también lo ven al compartir pantalla
 {0} keer zo groot | {0} times bigger | {0} fois plus grand | {0} veces más grande
+De knoppen in de balk terugzetten naar de standaard? Je eigen volgorde en verborgen knoppen gaan dan verloren. | Reset the buttons in the bar to the default? Your own order and hidden buttons will be lost. | Remettre les boutons de la barre par défaut ? Votre ordre et les boutons masqués seront perdus. | ¿Restablecer los botones de la barra? Se perderán tu orden y los botones ocultos.
+De werkbalk heeft weer de standaardknoppen. | The toolbar has the default buttons again. | La barre a de nouveau les boutons par défaut. | La barra vuelve a tener los botones predeterminados.
