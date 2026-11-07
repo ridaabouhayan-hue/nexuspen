@@ -1,15 +1,14 @@
-NexusPen 1.3.0 voor Windows 10 en 11.
+NexusPen 1.3.1 voor Windows 10 en 11.
 
 **Installeren:** download `NexusPen-Setup.exe` en open het. Je installeert gewoon over de vorige versie heen: je tekeningen en instellingen blijven staan. `NexusPen.exe` is hetzelfde programma zonder installeren.
 
-**Nieuw in 1.3.0**
-- **Timer** (nieuwe knop): kies een tijd, start en pauzeer, maak hem groot of klein en versleep hem. Aan het eind een zacht geluidje. Je cursisten zien hem ook in Zoom of Teams.
-- **Vergrootglas** (nieuwe knop): gaat met je muis mee. Klik om het vast te zetten op die plek. Muiswiel = meer of minder groot. Rechtsklik op de knop = rechthoek of rond, 2, 3 of 4 keer.
-- **16 kleuren**, van meest naar minst gebruikt. Bij Instellingen > Pen en kleuren zet je ze in je eigen volgorde, haal je kleuren weg of voeg je er zelf toe.
-- **Tekst zoals in Word:** selecteer woorden en sleep ze naar een andere plek (met Ctrl: een kopie). Druk met Tekst op een tekst en beweeg: de hele tekst schuift mee.
-- **Vervagen** is nu een gewone aan/uit-knop met een zandloper. De tijd kies je in Instellingen.
-- **Laser:** kies in Instellingen of hij snel weggaat, langzaam, of blijft staan tot je een nieuwe lijn begint of op Esc drukt.
-- **Inklappen en weer uitklappen:** je gaat precies verder waar je was, ook op het bord.
-- **Instellingen staat altijd in de balk** en kan niet meer per ongeluk verdwijnen. Het knopje voor verborgen knoppen heeft drie puntjes.
-- Balk inkorten aan de rand van het scherm: de balk schuift zelf op.
-- Nieuwe, nette rechtsklikmenu's met gelijke marges.
+**Nieuw in 1.3.1: minder tekst, meer doen**
+- **Kleuren** (Instellingen > Pen en kleuren): sleep een kleur naar een andere plek, klik op het kruisje om hem weg te halen, op het plusje om er een toe te voegen, en op het pijltje voor de standaardkleuren.
+- **Werkbalk** (Instellingen > Werkbalk): kruisje op een knop = weghalen, klik op een knop in de bak = erbij. Slepen kan ook nog.
+- **Venstertjes van de balk** (gum, stempel, bord) laten alleen icoontjes zien. De naam van de knop staat klein onderin als je eroverheen gaat.
+- **Sneltoetsen:** potloodje = wijzigen, prullenbakje = uitzetten.
+- **Nieuw stempel: zo-zo**, een gele golf voor "het is oké, net niet helemaal".
+- **Zoomen op het bord** met Ctrl+plus, Ctrl+min, Ctrl+0 of Ctrl+muiswiel.
+- **Zelf kiezen** in welke map je schermafbeeldingen komen (Instellingen > Opslaan).
+- **Instellingen overzetten** naar een andere computer: Exporteren maakt een bestandje, op de andere computer kies je Importeren.
+- **Standaardbalk terugzetten** staat nu bij Algemeen en vraagt eerst of je het zeker weet.
