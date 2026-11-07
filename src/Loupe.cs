@@ -72,6 +72,7 @@ namespace NexusPen
             TopMost = true;
             Text = "NexusPen vergrootglas";
             BackColor = o.Theme.Accent;   // de rand in de accentkleur
+            Owner = o;                    // altijd boven de tekenlaag
             sc = Math.Max(1f, W.UiScaleAt(at));
             Size sz = o.Cfg.LoupeShape == 1 ? new Size((int)(260 * sc), (int)(260 * sc)) : new Size((int)(440 * sc), (int)(200 * sc));
             Size = sz;
@@ -219,6 +220,7 @@ namespace NexusPen
         public LoupeBar(Overlay o, Loupe g) : base(o)
         {
             glass = g; draggable = true; Text = "NexusPen vergrootglas balk";
+            Owner = g;
             S = Math.Max(1f, W.UiScaleAt(g.Location));
             LocationChanged += delegate { if (!placing && Visible) glass.FollowStrip(Location, Size); };
         }

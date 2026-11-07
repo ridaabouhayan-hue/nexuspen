@@ -21,6 +21,7 @@ namespace NexusPen
         public MenuPopup(Overlay o) : base(o)
         {
             Text = "NexusPen menu";
+            Owner = o;   // altijd boven de tekenlaag
             watch.Interval = 20;   // ook een korte tik met pen of vinger buiten het menu zien
             watch.Tick += delegate { Watch(); };
         }
@@ -107,9 +108,12 @@ namespace NexusPen
 
         void Watch()
         {
-            bool down = (W.GetAsyncKeyState(0x01) & 0x8000) != 0 || (W.GetAsyncKeyState(0x02) & 0x8000) != 0;
-            if (!down) { armed = true; }
+            // & 1: er is sinds de vorige keer geklikt (ook een korte tik met pen of touchpad)
+            short l = W.GetAsyncKeyState(0x01), r = W.GetAsyncKeyState(0x02);
+            bool down = (l & 0x8000) != 0 || (r & 0x8000) != 0, tapped = (l & 1) != 0 || (r & 1) != 0;
+            if (!down && !tapped) { armed = true; }
             else if (armed && !Bounds.Contains(Control.MousePosition)) { Close(); return; }
+            else if (!down) armed = true;
             if ((W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0) Close();
         }
 

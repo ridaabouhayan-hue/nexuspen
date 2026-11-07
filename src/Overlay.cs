@@ -659,7 +659,8 @@ namespace NexusPen
         void FadeLasersNow()
         {
             DateTime now = DateTime.Now;
-            foreach (Stroke s in lasers) if (!s.FadeNow) { s.FadeNow = true; s.Born = now; }
+            // alleen lijnen die nog stilstaan; wat al aan het vervagen is, gaat gewoon verder
+            foreach (Stroke s in lasers) if (!s.FadeNow && (now - s.Born).TotalMilliseconds < LaserHold(s)) { s.FadeNow = true; s.Born = now; }
             if (lasers.Count > 0) dirty = true;
         }
 
@@ -1409,6 +1410,7 @@ namespace NexusPen
         {
             Cfg.Clamp();
             Cfg.Save();
+            if (TimerVisible) lesTimer.Restyle();
             bool langChanged = L.Code != Cfg.Language;
             L.Set(Cfg.Language);
             UpdateTrayIcon();
@@ -1427,7 +1429,7 @@ namespace NexusPen
         // ---------- modus en gereedschap
         void SetDrawMode(bool on)
         {
-            if (on && allHidden) ExpandAll();
+            if (on && allHidden) { collapsedDraw = false; ExpandAll(); }   // je kiest zelf een gereedschap: dat gaat voor
             DrawMode = on;
             int ex = W.GetWindowLong(Handle, W.GWL_EXSTYLE);
             if (on) ex &= ~W.WS_EX_TRANSPARENT; else ex |= W.WS_EX_TRANSPARENT;
@@ -1553,11 +1555,12 @@ namespace NexusPen
         TimerForm lesTimer;
         bool timerWasVisible;
         public bool TimerVisible { get { return lesTimer != null && !lesTimer.IsDisposed && lesTimer.Visible; } }
+        public bool TimerRunningHidden { get { return lesTimer != null && !lesTimer.IsDisposed && !lesTimer.Visible && lesTimer.Running; } }
 
         public void ToggleTimer()
         {
             if (TimerVisible) { lesTimer.Hide(); RefreshUi(); return; }
-            if (lesTimer == null || lesTimer.IsDisposed) lesTimer = new TimerForm(this);
+            if (lesTimer == null || lesTimer.IsDisposed) { lesTimer = new TimerForm(this); lesTimer.Owner = this; }
             Point at = toolbar != null ? new Point(toolbar.Left, toolbar.Bottom + 10) : Control.MousePosition;
             lesTimer.ShowNear(at);
             Usage.Log("timer", "open", "");
@@ -1608,6 +1611,7 @@ namespace NexusPen
         {
             PaletteIndex = Math.Max(0, Math.Min(Palette.Sets.Length - 1, p));
             Cfg.PaletteIndex = PaletteIndex;
+            ColorIndex = Math.Min(ColorIndex, ColorCount - 1); Cfg.ColorIndex = ColorIndex;   // eigen lijsten kunnen korter zijn
             Usage.Log("palet", Palette.Names[PaletteIndex], "");
             RefreshUi();
         }
@@ -1793,7 +1797,13 @@ namespace NexusPen
             RenderFrame();
             if (toolbar != null) toolbar.ShowExpanded();
             if (timerWasVisible && lesTimer != null && !lesTimer.IsDisposed) { lesTimer.Show(); timerWasVisible = false; }
-            if (collapsedDraw && !DrawMode) { collapsedDraw = false; SetDrawMode(true); if (collapsedTool != Tool.Mouse && CurrentTool != collapsedTool) SetTool(collapsedTool); }
+            if (collapsedDraw && !DrawMode)
+            {
+                collapsedDraw = false;
+                SetDrawMode(true);
+                if (collapsedTool != Tool.Mouse && CurrentTool != collapsedTool) SetTool(collapsedTool);
+            }
+            if (DrawMode && CurrentTool == Tool.Loupe) StartFollowLoupe();   // het vergrootglas weer laten meegaan
             Usage.Log("uitklappen", "", "");
         }
 
@@ -2214,7 +2224,7 @@ namespace NexusPen
                 return;
             }
             if (current != null) pendingDirty = U(pendingDirty, StrokeBounds(current));   // oude lijn zonder loslaten: netjes weghalen
-            if (CurrentTool == Tool.Laser) FadeLasersNow();   // een nieuwe laserlijn: de vorige (die bleef staan) gaat weg
+            if (CurrentTool == Tool.Laser && Cfg.LaserMode == 2) FadeLasersNow();   // een nieuwe laserlijn: de vorige (die bleef staan) gaat weg
             current = new Stroke();
             current.Tool = CurrentTool;
             current.Color = CurrentColor;
@@ -2657,7 +2667,7 @@ namespace NexusPen
                 return;
             }
             int n = Shortcuts.ColorFor(e);
-            if (n >= 0) { SetColor(n); e.Handled = true; return; }
+            if (n >= 0) { if (n < ColorCount) SetColor(n); e.Handled = true; return; }
             if (e.Control || e.Alt) return;
             if (e.KeyCode == Keys.Delete) { ClearAll(); return; }
             if (e.KeyCode == Keys.Oemplus || e.KeyCode == Keys.Add) SetWidth(PenWidth + (PenWidth < 6 ? 1 : 2));

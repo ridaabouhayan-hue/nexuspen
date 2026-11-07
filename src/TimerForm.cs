@@ -61,11 +61,34 @@ namespace NexusPen
 
         void SetTime(int seconds)
         {
-            setSeconds = Math.Max(10, Math.Min(99 * 60, seconds));
+            setSeconds = Math.Max(60, Math.Min(99 * 60, seconds));
             leftMs = setSeconds * 1000.0;
             done = false;
             Usage.Log("timer", (setSeconds / 60).ToString(), "kiezen");
             Invalidate();
+        }
+
+        // Een minuut erbij of eraf, ook terwijl de timer loopt (nooit onder een minuut als hij stilstaat)
+        void AddMinute(int dir)
+        {
+            if (running || leftMs < setSeconds * 1000.0 - 500)
+            {
+                leftMs = Math.Max(1000, Math.Min(99 * 60 * 1000.0, leftMs + dir * 60000.0));
+                done = false;
+                Invalidate();
+                return;
+            }
+            SetTime(Math.Max(60, setSeconds + dir * 60));
+        }
+
+        // Ander thema, taal of grootte: opnieuw opbouwen op dezelfde plek
+        public void Restyle()
+        {
+            Point keep = Location;
+            baseS = Math.Max(1f, W.UiScaleAt(keep));
+            S = big ? baseS * 2.2f : baseS;
+            Rebuild();
+            Location = keep;
         }
 
         void StartPause()
@@ -149,10 +172,10 @@ namespace NexusPen
             // snelknoppen: min, plus en een paar vaste tijden
             float chip = (w - pad * 2 - gap * (Presets.Length + 1)) / (Presets.Length + 2);
             float cx = pad;
-            Item minus = Add(new RectangleF(cx, y, chip, 26 * S), L.T("Een minuut minder"), delegate { SetTime(setSeconds - 60); });
+            Item minus = Add(new RectangleF(cx, y, chip, 26 * S), L.T("Een minuut minder"), delegate { AddMinute(-1); });
             minus.Paint = delegate(Graphics g, Item it, bool h) { PaintSmall(g, it, h, "-1", false); };
             cx += chip + gap;
-            Item plus = Add(new RectangleF(cx, y, chip, 26 * S), L.T("Een minuut meer"), delegate { SetTime(setSeconds + 60); });
+            Item plus = Add(new RectangleF(cx, y, chip, 26 * S), L.T("Een minuut meer"), delegate { AddMinute(1); });
             plus.Paint = delegate(Graphics g, Item it, bool h) { PaintSmall(g, it, h, "+1", false); };
             cx += chip + gap;
             foreach (int m0 in Presets)

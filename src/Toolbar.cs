@@ -347,7 +347,7 @@ namespace NexusPen
                     break;
                 case "timer":
                     it = Button(r, "timer", L.T("Timer: kies een tijd en start. Je cursisten zien hem ook bij schermdelen"),
-                        delegate { Use(key); ClosePopups(); o.ToggleTimer(); }, delegate { return o.TimerVisible; }, null);
+                        delegate { Use(key); ClosePopups(); o.ToggleTimer(); }, delegate { return o.TimerVisible; }, delegate { return o.TimerRunningHidden; });
                     break;
                 case "undo":
                     it = Button(r, "undo", Shortcuts.Tip(L.T("Ongedaan maken"), "undo") + ". " + Shortcuts.Tip(L.T("Rechtsklik = opnieuw"), "redo"), delegate { Use(key); o.Undo(); }, null, null);
@@ -479,6 +479,7 @@ namespace NexusPen
 
         // ---- inkorten met het sleeprandje
         bool hoverHandle;
+        Rectangle shortenArea;              // het scherm waar de balk stond bij het vastpakken
         int shortenTotal, shortenAnchor;   // shortenAnchor: waar de balk begon (links of boven) bij het vastpakken
         float shortenOffset;   // afstand tussen de muis en het begin van het randje bij het vastpakken
         System.Windows.Forms.Timer edgeGrow;
@@ -496,7 +497,7 @@ namespace NexusPen
             shortenPreview = n;
             Rebuild();
             // past de balk niet meer op het scherm, dan schuift hij op (nooit verder dan waar hij begon)
-            Rectangle wa = Screen.FromPoint(Control.MousePosition).WorkingArea;
+            Rectangle wa = shortenArea;
             if (vertical) Top = Math.Max(wa.Top, Math.Min(shortenAnchor, wa.Bottom - Height));
             else Left = Math.Max(wa.Left, Math.Min(shortenAnchor, wa.Right - Width));
         }
@@ -506,7 +507,7 @@ namespace NexusPen
         {
             if (!shortening || shortenPreview >= shortenTotal) return;
             Point m = Control.MousePosition;
-            Rectangle wa = Screen.FromPoint(m).WorkingArea;
+            Rectangle wa = shortenArea;
             bool atEdge = vertical ? m.Y >= wa.Bottom - 3 : m.X >= wa.Right - 3;
             if (!atEdge) return;
             ApplyShorten(shortenPreview + 1);
@@ -538,6 +539,7 @@ namespace NexusPen
 
         protected override bool OnPress(MouseEventArgs e)
         {
+            MenuPopup.CloseOpen();   // een klik op de balk sluit een open menu
             // het logo: klikken = inklappen, slepen = de balk verplaatsen
             if (e.Button == MouseButtons.Left && logoItem != null && logoItem.R.Contains(e.Location))
             {
@@ -554,6 +556,7 @@ namespace NexusPen
                 foreach (string k in Layout(ov.Cfg)) if (k != "|") shortenTotal++;
                 shortenPreview = ov.Cfg.ShortenAt > 0 ? Math.Min(ov.Cfg.ShortenAt, shortenTotal) : shortenTotal;
                 shortenAnchor = vertical ? Top : Left;
+                shortenArea = Screen.FromRectangle(Bounds).WorkingArea;
                 shortenOffset = (vertical ? e.Y : e.X) - HandleStart(shortenPreview);
                 shortening = true;
                 if (edgeGrow == null) { edgeGrow = new System.Windows.Forms.Timer(); edgeGrow.Interval = 220; edgeGrow.Tick += delegate { EdgeGrowTick(); }; }
@@ -607,7 +610,14 @@ namespace NexusPen
             base.OnMouseCaptureChanged(e);
             if (dragging && !Capture) EndDrag();
             if (logoDown && !Capture) logoDown = false;
-            if (shortening && !Capture) { shortening = false; if (edgeGrow != null) edgeGrow.Stop(); Rebuild(); EnsureOnScreen(); }   // muis kwijt (Alt+Tab): terug naar de bewaarde stand
+            if (shortening && !Capture)
+            {
+                shortening = false; if (edgeGrow != null) edgeGrow.Stop();
+                Rebuild();
+                if (vertical) Top = shortenAnchor; else Left = shortenAnchor;   // terug waar hij stond
+                EnsureOnScreen();
+                ov.Cfg.ToolbarX = Left; ov.Cfg.ToolbarY = Top;
+            }   // muis kwijt (Alt+Tab): terug naar de bewaarde stand
         }
 
         // Ligt hier geen ander scherm? Dan is dit een echte rand.
