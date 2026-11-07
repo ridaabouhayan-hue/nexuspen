@@ -12,11 +12,11 @@ namespace NexusPen
     // zodat je ze in Instellingen kunt slepen en met rechtsklik kunt verbergen.
     class Toolbar : BarForm
     {
-        public const string DefaultLayout = "muis,selecteer|pen,markeer,laser|vormen,tekst,gum|kleur,stempel,focus|undo,bord,foto|opslaan,oog,wis,instellingen,afsluiten,weg";
+        public const string DefaultLayout = "muis,selecteer|pen,markeer,laser|vormen,tekst,gum|kleur,stempel,focus,loep|undo,bord,timer,foto|opslaan,oog,wis,instellingen,afsluiten,weg";
 
         // alle knoppen die in de balk kunnen; de losse vormen, Krijt en Opnieuw staan standaard in de bak
         public static readonly string[] Catalog = { "muis", "selecteer", "pen", "krijt", "markeer", "laser", "vormen", "lijn", "pijl", "rechthoek", "cirkel",
-            "tekst", "gum", "kleur", "stempel", "focus", "undo", "redo", "wis", "bord", "foto", "opslaan", "oog", "instellingen", "afsluiten", "weg" };
+            "tekst", "gum", "kleur", "stempel", "focus", "loep", "timer", "undo", "redo", "wis", "bord", "foto", "opslaan", "oog", "instellingen", "afsluiten", "weg" };
 
         public static string NameOf(string key)
         {
@@ -38,6 +38,8 @@ namespace NexusPen
                 case "kleur": return L.T("Kleur en dikte");
                 case "stempel": return L.T("Stempel");
                 case "focus": return L.T("Spotlicht");
+                case "loep": return L.T("Vergrootglas");
+                case "timer": return L.T("Timer");
                 case "undo": return L.T("Ongedaan maken");
                 case "redo": return L.T("Opnieuw");
                 case "wis": return L.T("Alles wissen");
@@ -60,6 +62,7 @@ namespace NexusPen
                 case "weg": return "op";
                 case "kleur": return "kleuren";
                 case "wis": return "prullenbak";
+                case "loep": return "zoom";
                 default: return key;
             }
         }
@@ -127,6 +130,19 @@ namespace NexusPen
             vertical = ov.Cfg.Vertical;
             BarAlpha = OpacityValue;
             // vanaf 1.2.6 staat krijt niet meer standaard in de balk: stond krijt nog aan van de krijtknop, dan weer gewone pen
+            // vanaf 1.3.0: timer en vergrootglas ook in een eigen (aangepaste) balk zetten, een keer
+            if (!ov.Cfg.Buttons130)
+            {
+                ov.Cfg.Buttons130 = true;
+                if (!string.IsNullOrEmpty(ov.Cfg.BarLayout))
+                {
+                    List<string> keys = Layout(ov.Cfg);
+                    if (!keys.Contains("loep")) { int fi = keys.IndexOf("focus"); keys.Insert(fi >= 0 ? fi + 1 : keys.Count, "loep"); }
+                    if (!keys.Contains("timer")) { int bi = keys.IndexOf("bord"); keys.Insert(bi >= 0 ? bi + 1 : keys.Count, "timer"); }
+                    ov.Cfg.BarLayout = LayoutString(keys);
+                }
+                ov.Cfg.Save();
+            }
             if (!ov.Cfg.ChalkChecked) { ov.Cfg.ChalkChecked = true; if (!Layout(ov.Cfg).Contains("krijt")) ov.Cfg.Chalk = false; ov.Cfg.Save(); }
             flash = new System.Windows.Forms.Timer();
             flash.Interval = 1700;
@@ -324,6 +340,14 @@ namespace NexusPen
                 case "focus":
                     it = Button(r, "focus", Shortcuts.Tip(L.T("Spotlicht: alleen rond je muis is het licht. Muiswiel = groter of kleiner. Rechtsklik = rond of rechthoek"), "focus"),
                         delegate { Use(key); ClosePopups(); o.ToggleFocus(); }, delegate { return o.DrawMode && o.CurrentTool == Tool.Focus; }, null);
+                    break;
+                case "loep":
+                    it = Button(r, "zoom", Shortcuts.Tip(L.T("Vergrootglas: gaat met je muis mee. Klik = vastzetten op die plek. Muiswiel = meer of minder groot. Rechtsklik = vorm en vergroting"), "loep"),
+                        delegate { Use(key); ClosePopups(); o.ToggleLoupe(); }, delegate { return o.DrawMode && o.CurrentTool == Tool.Loupe; }, null);
+                    break;
+                case "timer":
+                    it = Button(r, "timer", L.T("Timer: kies een tijd en start. Je cursisten zien hem ook bij schermdelen"),
+                        delegate { Use(key); ClosePopups(); o.ToggleTimer(); }, delegate { return o.TimerVisible; }, null);
                     break;
                 case "undo":
                     it = Button(r, "undo", Shortcuts.Tip(L.T("Ongedaan maken"), "undo") + ". " + Shortcuts.Tip(L.T("Rechtsklik = opnieuw"), "redo"), delegate { Use(key); o.Undo(); }, null, null);
@@ -662,6 +686,18 @@ namespace NexusPen
         void ShowButtonMenu(Item it)
         {
             MenuPopup m = new MenuPopup(ov);
+            if (it.Key == "loep")
+            {
+                m.AddCheck(L.T("Rechthoek (om te lezen)"), ov.Cfg.LoupeShape == 0, delegate { ov.SetLoupeShape(0); });
+                m.AddCheck(L.T("Rond"), ov.Cfg.LoupeShape == 1, delegate { ov.SetLoupeShape(1); });
+                m.AddSeparator();
+                foreach (float z0 in new float[] { 2f, 3f, 4f })
+                {
+                    float z = z0;
+                    m.AddCheck(L.F("{0} keer zo groot", z), Math.Abs(ov.Cfg.LoupeZoom - z) < 0.01f, delegate { ov.SetLoupeZoom(z); });
+                }
+                m.AddSeparator();
+            }
             if (it.Key == "focus")
             {
                 m.AddCheck(L.T("Rond"), ov.Cfg.FocusShape == 0, delegate { ov.SetFocusShape(0); });

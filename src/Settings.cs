@@ -40,6 +40,9 @@ namespace NexusPen
         public float StampPx = 0;               // eigen stempelgrootte (muiswiel); 0 = S, M of L
         public int BoardScale = 1;              // (oud, niet meer gebruikt)
         public float BoardZoom = 1;             // lijnen en ruitjes: van 0,5 (veel kleine regels) tot 6 (een grote regel)
+        public float LoupeZoom = 2f;            // vergrootglas: 1,5 tot 6 keer
+        public int LoupeShape = 0;              // 0 rechthoek (om te lezen), 1 rond
+        public bool Buttons130;                 // eenmalig: timer en vergrootglas in een eigen balk zetten (vanaf 1.3.0)
         public int LaserMode = 0;               // laser: 0 snel weg, 1 langzaam, 2 blijft staan tot een nieuwe lijn of Esc
         public int ActiveStyle = 0;             // gekozen knop: 0 rustig (ingedrukt), 1 in de accentkleur
         public bool ChalkChecked;               // eenmalige controle bij het bijwerken naar 1.2.6
@@ -179,6 +182,9 @@ namespace NexusPen
             FocusShape = Math.Max(0, Math.Min(1, FocusShape));
             ActiveStyle = Math.Max(0, Math.Min(1, ActiveStyle));
             LaserMode = Math.Max(0, Math.Min(2, LaserMode));
+            if (float.IsNaN(LoupeZoom) || float.IsInfinity(LoupeZoom)) LoupeZoom = 2f;
+            LoupeZoom = Math.Max(1.5f, Math.Min(6f, LoupeZoom));
+            LoupeShape = Math.Max(0, Math.Min(1, LoupeShape));
             if (FadeSeconds != 3 && FadeSeconds != 5 && FadeSeconds != 7 && FadeSeconds != 12) FadeSeconds = 5;
             if (float.IsNaN(StampPx) || StampPx < 0) StampPx = 0;
             StampPx = Math.Min(200, StampPx);
@@ -198,7 +204,7 @@ namespace NexusPen
             KeepDrawing = Math.Max(0, Math.Min(2, KeepDrawing));
             ShortcutMode = Math.Max(0, Math.Min(2, ShortcutMode));
             ShortenAt = Math.Max(0, ShortenAt);
-            if (Tool == Tool.Focus || Tool == Tool.Select || Tool == Tool.Mouse) Tool = Tool.Pen;
+            if (Tool == Tool.Focus || Tool == Tool.Select || Tool == Tool.Mouse || Tool == Tool.Loupe) Tool = Tool.Pen;
             if (Array.IndexOf(L.Codes, Language) < 0) Language = "nl";
         }
 

@@ -233,6 +233,21 @@ static class Tests {
     }
     Check(Icons.DeviceStroke(2, 20 / 24f) == 2 && Icons.DeviceStroke(2, 30 / 24f) == 3 && Icons.DeviceStroke(2, 16 / 24f) == 1, "Lijndikte van icoontjes in hele pixels");
 
+    // 15b. Woorden slepen in een tekst (zoals in Word)
+    {
+      var ms = new Stroke{Tool=Tool.Text, Text="ik ga snel naar huis", FontSize=30}; ms.Pts.Add(new PointF(0, 0));
+      var me = new TextEditor(ms, 0);
+      me.SelectWordAt(7);                                    // "snel"
+      bool moved = me.MoveSelectionTo(ms.Text.Length, false);
+      Check(moved && ms.Text == "ik ga  naar huissnel" && me.Selected == "snel", "Geselecteerde woorden naar het einde slepen (" + ms.Text + ")");
+      me.Undo();
+      Check(ms.Text == "ik ga snel naar huis", "Woorden slepen is ongedaan te maken");
+      me.SelectWordAt(7);
+      Check(!me.MoveSelectionTo(8, false) && ms.Text == "ik ga snel naar huis", "Loslaten in de selectie zelf doet niets");
+      me.MoveSelectionTo(0, true);
+      Check(ms.Text == "snelik ga snel naar huis", "Met Ctrl slepen maakt een kopie");
+    }
+
     // 15. Teksteditor: pijltjes, selectie, woorden, ongedaan maken
     {
       var ts = new Stroke{Tool=Tool.Text, Text="", FontSize=30, FontName="Andika"}; ts.Pts.Add(new PointF(100, 100));

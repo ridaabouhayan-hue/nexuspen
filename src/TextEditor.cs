@@ -151,6 +151,26 @@ namespace NexusPen
             wantX = keep;
         }
 
+        // De selectie naar een andere plek in de tekst slepen (met copy: een kopie daar neerzetten)
+        public bool MoveSelectionTo(int target, bool copy)
+        {
+            if (!HasSelection) return false;
+            int a = SelStart, b = SelEnd;
+            target = Math.Max(0, Math.Min(Text.Length, target));
+            if (!copy && target >= a && target <= b) return false;   // in de selectie zelf losgelaten: niets doen
+            string sel = Text.Substring(a, b - a);
+            Snapshot("slepen");
+            string s = Text;
+            if (!copy)
+            {
+                s = s.Substring(0, a) + s.Substring(b);
+                if (target > b) target -= b - a;
+            }
+            S.Text = s.Substring(0, target) + sel + s.Substring(target);
+            Anchor = target; Caret = target + sel.Length; wantX = -1;
+            return true;
+        }
+
         public void SelectAll() { Anchor = 0; Caret = Text.Length; wantX = -1; }
 
         public void SelectWordAt(int pos)

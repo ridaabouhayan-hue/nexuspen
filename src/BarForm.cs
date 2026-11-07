@@ -68,7 +68,7 @@ namespace NexusPen
         {
             base.OnHandleCreated(e);
             W.SetProp(Handle, "MicrosoftTabletPenServiceProperty", new IntPtr(W.TABLET_FLAGS));
-            W.HideFromCapture(Handle, ov.Cfg.HideFromCapture);
+            W.HideFromCapture(Handle, ov.Cfg.HideFromCapture && !AlwaysShared);
             RenderNow();
         }
 
@@ -112,7 +112,10 @@ namespace NexusPen
             base.WndProc(ref m);
         }
 
-        public void ApplyCaptureSetting() { if (IsHandleCreated) W.HideFromCapture(Handle, ov.Cfg.HideFromCapture); }
+        public void ApplyCaptureSetting() { if (IsHandleCreated) W.HideFromCapture(Handle, ov.Cfg.HideFromCapture && !AlwaysShared); }
+
+        // Vensters die je cursisten juist moeten zien (de timer): nooit verbergen bij schermdelen
+        protected virtual bool AlwaysShared { get { return false; } }
 
         // ---- zelf tekenen met UpdateLayeredWindow: zachte ronde hoeken, scherpe rand, en direct zichtbaar na een klik
         byte alpha = 255;

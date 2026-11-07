@@ -134,7 +134,6 @@ Fel | Bright | Vives | Vivos
 Zacht | Soft | Douces | Suaves
 Lijnen van de pen zien eruit als krijt op een bord | Pen lines look like chalk on a board | Les traits du stylo ressemblent à de la craie au tableau | Las líneas del lápiz parecen tiza en una pizarra
 Wat je met pen of markeerstift tekent, verdwijnt vanzelf. Handig om iets snel aan te wijzen | What you draw with the pen or highlighter disappears by itself. Handy for pointing something out quickly | Ce que vous dessinez au stylo ou au surligneur disparaît tout seul. Pratique pour montrer quelque chose rapidement | Lo que dibujas con el lápiz o el resaltador desaparece solo. Útil para señalar algo rápido
-De laserpen verdwijnt altijd vanzelf na anderhalve seconde. De dikte verander je met het muiswiel, door te knijpen op het touchpad of met het schuifje bij de kleuren. | The laser pointer always disappears by itself after one and a half seconds. Change the thickness with the mouse wheel, by pinching on the touchpad or with the slider next to the colours. | Le pointeur laser disparaît toujours tout seul après une seconde et demie. Changez l'épaisseur avec la molette, en pinçant sur le pavé tactile ou avec le curseur près des couleurs. | El puntero láser siempre desaparece solo tras un segundo y medio. Cambia el grosor con la rueda, pellizcando en el touchpad o con el control junto a los colores.
 Tekst | Text | Texte | Texto
 Lettertype | Font | Police | Fuente
 Aanbevolen | Recommended | Recommandée | Recomendada
@@ -313,8 +312,6 @@ Terug met Ctrl+Z | Undo with Ctrl+Z | Annuler avec Ctrl+Z | Deshacer con Ctrl+Z
 Snelheid sinds het starten: inkt op het scherm na {0} ms (traagst {1} ms), een klik op een knop na {2} ms. | Speed since start: ink on screen after {0} ms (slowest {1} ms), a click on a button after {2} ms. | Vitesse depuis le démarrage : encre à l'écran après {0} ms (au plus lent {1} ms), un clic sur un bouton après {2} ms. | Velocidad desde el inicio: tinta en pantalla tras {0} ms (lo más lento {1} ms), un clic en un botón tras {2} ms.
 De vorige tekening staat er al. | The previous drawing is already back. | Le dessin précédent est déjà revenu. | El dibujo anterior ya ha vuelto.
 Tekstgrootte | Text size | Taille du texte | Tamaño del texto
-Vervaagt na {0} s | Fades after {0} s | S'efface après {0} s | Se borra tras {0} s
-Wat je tekent verdwijnt vanzelf. Klik nog een keer voor een andere tijd: 3, 5, 7 of 12 seconden | What you draw disappears by itself. Click again for another time: 3, 5, 7 or 12 seconds | Ce que vous dessinez disparaît tout seul. Cliquez encore pour une autre durée : 3, 5, 7 ou 12 secondes | Lo que dibujas desaparece solo. Haz clic otra vez para otro tiempo: 3, 5, 7 o 12 segundos
 Zwart bord | Blackboard | Tableau noir | Pizarra negra
 Extra groot | Extra large | Très grand | Muy grande
 Een rechthoek is handig om een zin of een woord te lezen | A rectangle is handy for reading a sentence or a word | Un rectangle est pratique pour lire une phrase ou un mot | Un rectángulo es útil para leer una frase o una palabra
@@ -348,3 +345,47 @@ Rustig wit | Calm white | Blanc discret | Blanco discreto
 Rustig zwart | Calm black | Noir discret | Negro discreto
 Gewoon wit en grijs, valt niet op | White and grey, no colour | Simplement blanc et gris, discret | Solo blanco y gris, discreto
 Gewoon zwart en grijs, valt niet op | Black and grey, no colour | Simplement noir et gris, discret | Solo negro y gris, discreto
+Sleep om het vergrootglas te verplaatsen | Drag to move the magnifier | Faites glisser pour déplacer la loupe | Arrastra para mover la lupa
+Minder groot | Less zoom | Moins grand | Menos zoom
+Vergrootglas weghalen | Remove magnifier | Retirer la loupe | Quitar la lupa
+Het vergrootglas werkt niet op deze computer. | The magnifier does not work on this computer. | La loupe ne fonctionne pas sur cet ordinateur. | La lupa no funciona en este ordenador.
+Wat je tekent verdwijnt vanzelf na {0} seconden. De tijd kies je in Instellingen | What you draw disappears after {0} seconds. Choose the time in Settings | Ce que vous dessinez disparaît après {0} secondes. Choisissez la durée dans Paramètres | Lo que dibujas desaparece tras {0} segundos. Elige el tiempo en Ajustes
+Instellingen blijft altijd in de balk. | Settings always stays in the bar. | Paramètres reste toujours dans la barre. | Ajustes siempre se queda en la barra.
+Eerder | Earlier | Avant | Antes
+Later | Later | Après | Después
+Weghalen | Remove | Retirer | Quitar
+Kleur toevoegen | Add colour | Ajouter une couleur | Añadir color
+Standaard | Default | Par défaut | Predeterminado
+Hoe lang blijft de laser zichtbaar? | How long does the laser stay visible? | Combien de temps le laser reste-t-il visible ? | ¿Cuánto tiempo se ve el láser?
+Snel weg | Quick | Rapide | Rápido
+Langzaam | Slow | Lent | Lento
+Blijft staan | Stays | Reste | Se queda
+Er moet minstens een kleur blijven. | At least one colour must remain. | Il doit rester au moins une couleur. | Debe quedar al menos un color.
+Hoogstens {0} kleuren. | At most {0} colours. | {0} couleurs au maximum. | Como máximo {0} colores.
+Deze kleur staat er al. | This colour is already there. | Cette couleur est déjà là. | Este color ya está.
+Vergrootglas | Magnifier | Loupe | Lupa
+Eigen kleur | Own colour | Couleur personnelle | Color propio
+Bruin | Brown | Marron | Marrón
+Turquoise | Turquoise | Turquoise | Turquesa
+Donkergroen | Dark green | Vert foncé | Verde oscuro
+Donkerblauw | Navy | Bleu marine | Azul marino
+Bordeaux | Burgundy | Bordeaux | Burdeos
+Donkergrijs | Dark grey | Gris foncé | Gris oscuro
+Zacht bruin | Soft brown | Marron doux | Marrón suave
+Lichtgrijs | Light grey | Gris clair | Gris claro
+Zacht turquoise | Soft turquoise | Turquoise doux | Turquesa suave
+Zacht donkergroen | Soft dark green | Vert foncé doux | Verde oscuro suave
+Zacht donkerblauw | Soft navy | Bleu marine doux | Azul marino suave
+Zacht bordeaux | Soft burgundy | Bordeaux doux | Burdeos suave
+Klik om te starten of te pauzeren | Click to start or pause | Cliquez pour démarrer ou mettre en pause | Haz clic para iniciar o pausar
+Starten of pauzeren | Start or pause | Démarrer ou pause | Iniciar o pausar
+Opnieuw beginnen | Start over | Recommencer | Empezar de nuevo
+Groot of klein | Big or small | Grand ou petit | Grande o pequeño
+Timer sluiten | Close timer | Fermer le minuteur | Cerrar temporizador
+Een minuut minder | One minute less | Une minute de moins | Un minuto menos
+Een minuut meer | One minute more | Une minute de plus | Un minuto más
+{0} minuten | {0} minutes | {0} minutes | {0} minutos
+Timer | Timer | Minuteur | Temporizador
+Vergrootglas: gaat met je muis mee. Klik = vastzetten op die plek. Muiswiel = meer of minder groot. Rechtsklik = vorm en vergroting | Magnifier: follows your mouse. Click = pin it there. Mouse wheel = more or less zoom. Right-click = shape and zoom | Loupe : suit la souris. Clic = la fixer à cet endroit. Molette = plus ou moins grand. Clic droit = forme et grossissement | Lupa: sigue al ratón. Clic = fijarla ahí. Rueda = más o menos zoom. Clic derecho = forma y aumento
+Timer: kies een tijd en start. Je cursisten zien hem ook bij schermdelen | Timer: choose a time and start. Your students also see it when you share your screen | Minuteur : choisissez une durée et démarrez. Vos apprenants le voient aussi en partage d'écran | Temporizador: elige un tiempo e inicia. Tus alumnos también lo ven al compartir pantalla
+{0} keer zo groot | {0} times bigger | {0} fois plus grand | {0} veces más grande

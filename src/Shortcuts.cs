@@ -30,6 +30,7 @@ namespace NexusPen
             new Shortcut("cirkel", "Cirkel", "cirkel", Keys.O, null),
             new Shortcut("stempel", "Stempel", "stempel", Keys.S, null),
             new Shortcut("focus", "Spotlicht", "focus", Keys.F, null),
+            new Shortcut("loep", "Vergrootglas", "zoom", Keys.G, null),
             new Shortcut("bord", "Bord", "bord", Keys.B, null),
             new Shortcut("foto", "Schermafbeelding", "foto", Keys.C, null),
             new Shortcut("oog", "Tekeningen verbergen", "oog", Keys.H, null),

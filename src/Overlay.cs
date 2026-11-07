@@ -68,7 +68,9 @@ namespace NexusPen
         int typingIndex = -1, typingUndoCount = -1;
         bool caretOn;
         TextEditor ed;             // pijltjes, selectie, muis en eigen Ongedaan maken in de tekst
-        int textDrag;              // 0 niets, 1 selecteren met de muis, 2 verplaatsen, 3 groter of kleiner
+        int textDrag;              // 0 niets, 1 selecteren met de muis, 2 verplaatsen, 3 groter of kleiner,
+                                   // 4 geselecteerde woorden slepen, 5 ingedrukt op een tekst (slepen = hele tekst verplaatsen)
+        int textDropIdx = -1;      // bij 4: waar de woorden terechtkomen
         PointF textDragFrom, textPtFrom;
         float textSizeFrom, textDistFrom;
         DateTime caretAt;
@@ -1025,7 +1027,19 @@ namespace NexusPen
                         case 20:
                             Console.WriteLine("Spotlicht later: buiten alfa " + ((FramePixels(new Rectangle(20, 20, 1, 1))[0] >> 24) & 0xFF) + ", DrawMode " + DrawMode + ", tool " + CurrentTool);
                             screen("19-spotlicht-rechthoek"); Cfg.FocusShape = 0; SetTool(Tool.Mouse); break;
-                        case 21: ShowSettings(null); break;
+                        case 21:
+                            // vergrootglas vast boven de werkbalk, en de timer erbij
+                            Console.WriteLine("Vergrootglas beschikbaar: " + Loupe.Available);
+                            if (toolbar != null) PinLoupe(new Point(toolbar.Left + 160, toolbar.Top + toolbar.Height / 2 + 40));
+                            ToggleTimer();
+                            break;
+                        case 22:
+                            screen("20-vergrootglas-timer");
+                            if (lesTimer != null) snap(lesTimer, "21-timer");
+                            foreach (Loupe l in pinnedLoupes) if (l.Strip != null) snap(l.Strip, "22-vergrootglas-balkje");
+                            CloseAllLoupes(); ToggleTimer();
+                            break;
+                        case 23: ShowSettings(null); break;
                         default:
                             if (settingsForm != null && pageStep < pagesToShow.Length)
                             {
@@ -1302,12 +1316,13 @@ namespace NexusPen
         void SyncCfg()
         {
             Cfg.ColorIndex = ColorIndex; Cfg.PaletteIndex = PaletteIndex; Cfg.Width = PenWidth;
-            Cfg.Tool = (LastDrawTool == Tool.Focus || LastDrawTool == Tool.Select) ? Tool.Pen : LastDrawTool;
+            Cfg.Tool = (LastDrawTool == Tool.Focus || LastDrawTool == Tool.Select || LastDrawTool == Tool.Loupe) ? Tool.Pen : LastDrawTool;
             if (toolbar != null && toolbar.Visible) { Cfg.ToolbarX = toolbar.Left; Cfg.ToolbarY = toolbar.Top; }
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            try { CloseAllLoupes(); if (lesTimer != null && !lesTimer.IsDisposed) lesTimer.Dispose(); } catch { }
             try { CloseTextInput(true); } catch (Exception ex) { Log.Error("Tekst afmaken bij afsluiten", ex); }   // getypte tekst niet kwijtraken
             for (int i = 1; i <= 2; i++) W.UnregisterHotKey(Handle, i);
             SystemEvents.DisplaySettingsChanged -= OnDisplayChanged;
@@ -1415,7 +1430,7 @@ namespace NexusPen
             int ex = W.GetWindowLong(Handle, W.GWL_EXSTYLE);
             if (on) ex &= ~W.WS_EX_TRANSPARENT; else ex |= W.WS_EX_TRANSPARENT;
             W.SetWindowLong(Handle, W.GWL_EXSTYLE, ex);
-            if (!on) { current = null; erasing = false; CloseTextInput(true); Deselect(); FadeLasersNow(); Usage.ToolChanged("Mouse"); }
+            if (!on) { current = null; erasing = false; CloseTextInput(true); Deselect(); FadeLasersNow(); StopFollowLoupe(); Usage.ToolChanged("Mouse"); }
             // Met de muis werk je op je gewone scherm: het bord gaat weg. Het komt pas terug als je zelf weer een bord kiest.
             if (!on && BoardMode != Board.None && !keepBoardOnce) SetBoard(Board.None, false);
             Rebuild();
@@ -1434,8 +1449,9 @@ namespace NexusPen
             if (t != Tool.Laser) FadeLasersNow();
             bool wasFocus = CurrentTool == Tool.Focus;
             CurrentTool = t;
-            if (t != Tool.Focus && t != Tool.Select) LastDrawTool = t;
+            if (t != Tool.Focus && t != Tool.Select && t != Tool.Loupe) LastDrawTool = t;
             if (IsShape(t)) LastShape = t;
+            if (t == Tool.Loupe) StartFollowLoupe(); else StopFollowLoupe();
             if (Cfg.PerToolWidth && HasWidth(t)) PenWidth = Cfg.WidthFor(t, PenWidth);
             if (Cfg.PerToolWidth && t == Tool.Eraser) PenWidth = Math.Min(PenWidth, ToolCursor.MaxCircle / 4);   // oude, te grote gummaat
             Usage.ToolChanged(t.ToString());
@@ -1452,6 +1468,87 @@ namespace NexusPen
         public void ToggleDraw() { if (DrawMode) SetTool(Tool.Mouse); else SetTool(LastDrawTool); }
 
         public void ToggleFocus() { if (FocusOn) SetTool(Tool.Mouse); else SetTool(Tool.Focus); }
+
+        // ---------- vergrootglas
+        Loupe followLoupe;
+        readonly List<Loupe> pinnedLoupes = new List<Loupe>();
+
+        public void ToggleLoupe()
+        {
+            if (DrawMode && CurrentTool == Tool.Loupe) { SetTool(LastDrawTool); return; }
+            if (!Loupe.Available) { if (toolbar != null) toolbar.ShowToast(L.T("Het vergrootglas werkt niet op deze computer."), null, null); return; }
+            SetTool(Tool.Loupe);
+        }
+
+        void StartFollowLoupe()
+        {
+            if (followLoupe != null && !followLoupe.IsDisposed) return;
+            if (!Loupe.Available) return;
+            try { followLoupe = new Loupe(this, true, Control.MousePosition); followLoupe.Show(); Usage.Log("vergrootglas", "aan", ""); }
+            catch (Exception ex) { Log.Error("Vergrootglas tonen", ex); followLoupe = null; }
+        }
+
+        void StopFollowLoupe()
+        {
+            if (followLoupe == null) return;
+            Loupe l = followLoupe; followLoupe = null;
+            try { if (!l.IsDisposed) l.Close(); } catch { }
+        }
+
+        // Klik met het vergrootglas: een vast glas op deze plek (hoogstens drie tegelijk)
+        void PinLoupe(Point screenPt)
+        {
+            if (!Loupe.Available) return;
+            if (pinnedLoupes.Count >= 3) { Loupe oldest = pinnedLoupes[0]; oldest.Close(); }
+            try
+            {
+                Loupe l = new Loupe(this, false, screenPt);
+                pinnedLoupes.Add(l);
+                l.Show();
+                Usage.Log("vergrootglas", "vastzetten", "");
+            }
+            catch (Exception ex) { Log.Error("Vergrootglas vastzetten", ex); }
+        }
+
+        public void LoupeClosed(Loupe l)
+        {
+            pinnedLoupes.Remove(l);
+            if (followLoupe == l) followLoupe = null;
+        }
+
+        void CloseAllLoupes()
+        {
+            StopFollowLoupe();
+            foreach (Loupe l in pinnedLoupes.ToArray()) { try { l.Close(); } catch { } }
+            pinnedLoupes.Clear();
+        }
+
+        public void SetLoupeShape(int shape)
+        {
+            Cfg.LoupeShape = shape; Cfg.Save();
+            if (followLoupe != null) { StopFollowLoupe(); if (DrawMode && CurrentTool == Tool.Loupe) StartFollowLoupe(); }
+        }
+
+        public void SetLoupeZoom(float z)
+        {
+            Cfg.LoupeZoom = z; Cfg.Save();
+            if (followLoupe != null) { StopFollowLoupe(); StartFollowLoupe(); }
+        }
+
+        // ---------- timer
+        TimerForm lesTimer;
+        bool timerWasVisible;
+        public bool TimerVisible { get { return lesTimer != null && !lesTimer.IsDisposed && lesTimer.Visible; } }
+
+        public void ToggleTimer()
+        {
+            if (TimerVisible) { lesTimer.Hide(); RefreshUi(); return; }
+            if (lesTimer == null || lesTimer.IsDisposed) lesTimer = new TimerForm(this);
+            Point at = toolbar != null ? new Point(toolbar.Left, toolbar.Bottom + 10) : Control.MousePosition;
+            lesTimer.ShowNear(at);
+            Usage.Log("timer", "open", "");
+            RefreshUi();
+        }
 
         // Kleur kiezen pakt weer een tekengereedschap als je aan het gummen of selecteren was
         public void SetColor(int i)
@@ -1517,6 +1614,11 @@ namespace NexusPen
 
         public void Wheel(int delta)
         {
+            if (DrawMode && CurrentTool == Tool.Loupe)
+            {
+                if (followLoupe != null) followLoupe.ChangeZoom(delta);
+                return;
+            }
             if (FocusOn)
             {
                 Cfg.FocusRadius = Math.Max(60, Math.Min(700, Cfg.FocusRadius + (delta > 0 ? 20 : -20)));
@@ -1657,6 +1759,9 @@ namespace NexusPen
         {
             if (allHidden) return;
             collapsedDraw = DrawMode; collapsedTool = CurrentTool;
+            // alles weg: ook de vergrootglazen; de timer loopt door maar is even onzichtbaar
+            CloseAllLoupes();
+            timerWasVisible = TimerVisible; if (timerWasVisible) lesTimer.Hide();
             if (DrawMode) { keepBoardOnce = true; try { SetDrawMode(false); } finally { keepBoardOnce = false; } }
             Deselect();
             allHidden = true;
@@ -1673,6 +1778,7 @@ namespace NexusPen
             Rebuild();
             RenderFrame();
             if (toolbar != null) toolbar.ShowExpanded();
+            if (timerWasVisible && lesTimer != null && !lesTimer.IsDisposed) { lesTimer.Show(); timerWasVisible = false; }
             if (collapsedDraw && !DrawMode) { collapsedDraw = false; SetDrawMode(true); if (collapsedTool != Tool.Mouse && CurrentTool != collapsedTool) SetTool(collapsedTool); }
             Usage.Log("uitklappen", "", "");
         }
@@ -1722,7 +1828,7 @@ namespace NexusPen
                         c = ToolCursor.For("stempel|" + st.Text + "|" + st.FontSize, delegate { return ToolCursor.Stamp(st); });
                         break;
                     }
-                    case Tool.Select: case Tool.Focus: c = Cursors.Default; break;
+                    case Tool.Select: case Tool.Focus: case Tool.Loupe: c = Cursors.Default; break;
                 }
             }
             catch (Exception ex) { Log.Error("Cursor", ex); }
@@ -2015,6 +2121,7 @@ namespace NexusPen
             if (typing != null && e.Button == MouseButtons.Left && TextMouseDown(e)) return;
             if (typing != null) CloseTextInput(true);   // ergens anders geklikt: de tekst is klaar
             if (CurrentTool == Tool.Focus) return;
+            if (CurrentTool == Tool.Loupe) { if (e.Button == MouseButtons.Left) PinLoupe(PointToScreen(e.Location)); return; }
             // dubbelklik op iets wat er staat (met pen, markeerstift of een vorm): meteen selecteren
             if (e.Button == MouseButtons.Left && e.Clicks >= 2 && StrokesVisible && (CurrentTool == Tool.Pen || CurrentTool == Tool.Marker || IsShape(CurrentTool)))
             {
@@ -2065,7 +2172,13 @@ namespace NexusPen
             {
                 // klik op een tekst die er al staat: die wijzigen. Anders: nieuwe tekst op deze plek.
                 Stroke onText = StrokesVisible ? TopHit(p) : null;
-                if (onText != null && onText.Tool == Tool.Text) OpenTextInput(e.Location, onText); else OpenTextInput(e.Location);
+                if (onText != null && onText.Tool == Tool.Text)
+                {
+                    OpenTextInput(e.Location, onText);
+                    // ingedrukt houden en bewegen: de hele tekst verplaatsen; gewoon klikken: het streepje komt waar je klikte
+                    if (typing != null) { textDrag = 5; textDragFrom = p; textPtFrom = typing.Pts[0]; Capture = true; }
+                }
+                else OpenTextInput(e.Location);
                 return;
             }
             if (!StrokesVisible && CurrentTool != Tool.Laser) { StrokesVisible = true; Rebuild(); RefreshUi(); }
@@ -2186,7 +2299,14 @@ namespace NexusPen
         {
             base.OnMouseUp(e);
             if (RealMouseInSelfTest) return;
-            if (textDrag != 0) { textDrag = 0; Capture = false; RenderSoon(); return; }
+            if (textDrag == 4 && typing != null && ed != null)
+            {
+                // losgelaten: de woorden naar die plek (met Ctrl: een kopie). Niet bewogen: gewoon het streepje daar.
+                if (textDropIdx >= 0) ed.MoveSelectionTo(textDropIdx, (Control.ModifierKeys & Keys.Control) != 0);
+                else using (TextLayout lay = new TextLayout(typing)) ed.PlaceAt(lay.Hit(e.Location), false);
+                textDrag = 0; textDropIdx = -1; Capture = false; TypingChanged(); return;
+            }
+            if (textDrag != 0) { textDrag = 0; textDropIdx = -1; Capture = false; RenderSoon(); return; }
             if (erasing) { erasing = false; return; }
             if (resizing)
             {
@@ -2351,7 +2471,19 @@ namespace NexusPen
             if (RectangleF.Inflate(f, 4, 4).Contains(p))
             {
                 int idx;
-                using (TextLayout lay = new TextLayout(typing)) idx = lay.Hit(p);
+                bool inSel = false;
+                using (TextLayout lay = new TextLayout(typing))
+                {
+                    idx = lay.Hit(p);
+                    if (ed.HasSelection && e.Clicks < 2 && (Control.ModifierKeys & Keys.Shift) == 0)
+                        foreach (RectangleF r in lay.SelectionRects(ed.SelStart, ed.SelEnd)) if (r.Contains(p)) inSel = true;
+                }
+                if (inSel)
+                {
+                    // op geselecteerde woorden gedrukt: slepen = die woorden verplaatsen (zoals in Word)
+                    textDrag = 4; textDragFrom = p; textDropIdx = -1; Capture = true;
+                    return true;
+                }
                 if (e.Clicks >= 2) ed.SelectWordAt(idx);
                 else ed.PlaceAt(idx, (Control.ModifierKeys & Keys.Shift) != 0);
                 textDrag = e.Clicks >= 2 ? 0 : 1; Capture = textDrag != 0;
@@ -2371,6 +2503,19 @@ namespace NexusPen
                 ed.PlaceAt(idx, true);
                 TypingChanged();
                 return true;
+            }
+            if (textDrag == 4)
+            {
+                if (Dist2(p, textDragFrom) < 16 && textDropIdx < 0) return true;   // nog niet echt bewogen
+                using (TextLayout lay = new TextLayout(typing)) textDropIdx = lay.Hit(p);
+                SetOverlayCursor(Cursors.Arrow);
+                TypingChanged();
+                return true;
+            }
+            if (textDrag == 5)
+            {
+                if (Dist2(p, textDragFrom) < 25) return true;
+                textDrag = 2;   // ingedrukt en bewogen: de hele tekst gaat mee
             }
             if (textDrag == 2)
             {
@@ -2428,6 +2573,13 @@ namespace NexusPen
                         g.FillRectangle(Brushes.White, sh.X - 6, sh.Y - 6, 12, 12);
                         using (Pen p = new Pen(Color.FromArgb(200, 30, 30, 34), 1.2f)) g.DrawRectangle(p, sh.X - 6, sh.Y - 6, 12, 12);
                     }
+                    if (textDrag == 4 && textDropIdx >= 0)
+                    {
+                        // waar de gesleepte woorden terechtkomen: een streepje in de accentkleur
+                        RectangleF dr = lay.CaretRect(textDropIdx, 2);
+                        g.FillRectangle(Brushes.White, RectangleF.Inflate(dr, 1, 1));
+                        using (SolidBrush b = new SolidBrush(Theme.Accent)) g.FillRectangle(b, dr);
+                    }
                     if (caretOn && !ed.HasSelection)
                     {
                         // gewoon streepje zoals in Windows: zwart met een dun wit randje, 2 pixels breed
@@ -2478,6 +2630,7 @@ namespace NexusPen
                     case "cirkel": SetTool(Tool.Ellipse); break;
                     case "stempel": SetTool(Tool.Stamp); break;
                     case "focus": ToggleFocus(); break;
+                    case "loep": ToggleLoupe(); break;
                     case "bord": CycleBoard(); break;
                     case "foto": Screenshot(); break;
                     case "oog": ToggleStrokesVisible(); break;
