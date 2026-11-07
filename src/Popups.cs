@@ -165,6 +165,7 @@ namespace NexusPen
         protected Item Chip(string text, string icon, Color iconColor, string tipText, Func<bool> on, Action click)
         {
             float w = (text == null ? 0 : TextWidth(text, 13) + 20 * S) + (icon != null ? (text == null ? 32 * S : 22 * S) : 0);
+            if (text == null && icon == null) w = 32 * S;   // zelf getekend (rondje, golf, getal): even breed als een icoonknop
             Item it = Add(new RectangleF(x, pad, w, h), tipText, click);
             it.Paint = delegate(Graphics g, Item item, bool hv) { PaintChip(g, item.R, on != null && on(), hv, text, icon, iconColor); };
             it.Name = text ?? tipText; it.On = on;
