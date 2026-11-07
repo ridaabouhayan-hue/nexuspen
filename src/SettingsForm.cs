@@ -99,7 +99,32 @@ namespace NexusPen
         {
             ov.ApplySettings();
             try { Theme t = T; Icon old = Icon; Icon = Logo.MakeIcon(32, t.Accent, Logo.LetterColor(t.Accent, t.OnAccent)); if (old != null) old.Dispose(); } catch { }
+            // rustig laten zien dat het bewaard is: een vinkje en "Opgeslagen" rechtsonder, even
+            savedAt = DateTime.Now;
+            if (savedTimer == null)
+            {
+                savedTimer = new System.Windows.Forms.Timer(); savedTimer.Interval = 1600;
+                savedTimer.Tick += delegate { savedTimer.Stop(); if (!IsDisposed) Invalidate(); };
+            }
+            savedTimer.Stop(); savedTimer.Start();
             Invalidate();
+        }
+
+        DateTime savedAt = DateTime.MinValue;
+        System.Windows.Forms.Timer savedTimer;
+
+        void PaintSaved(Graphics g, float W0, float H0)
+        {
+            if ((DateTime.Now - savedAt).TotalMilliseconds > 1500) return;
+            if (notice != null && (DateTime.Now - noticeAt).TotalMilliseconds < 3000) return;   // een echte melding gaat voor
+            Theme t = T;
+            string text = L.T("Opgeslagen");
+            float tw = Measure(text, 12, true);
+            RectangleF r = new RectangleF(W0 - tw - 54 * S, H0 - 46 * S, tw + 40 * S, 30 * S);
+            RoundFill(g, r, Raised, 15);
+            using (SolidBrush b = new SolidBrush(ColorTranslator.FromHtml("#16A34A"))) g.FillEllipse(b, r.X + 8 * S, r.Y + 7 * S, 16 * S, 16 * S);
+            Icons.Draw(g, "vink", new RectangleF(r.X + 8 * S, r.Y + 7 * S, 16 * S, 16 * S), 11 * S, Color.White, 2.6f);
+            Txt(g, text, new RectangleF(r.X + 30 * S, r.Y, tw + 4 * S, r.Height), t.Text, 12, true, StringAlignment.Near, false, Raised);
         }
 
         void Notice(string text)
@@ -1502,6 +1527,7 @@ namespace NexusPen
                 RoundFill(g, new RectangleF(W0 - 4 * S - bw, sb.Y + 4 * S, bw, sb.Height - 8 * S), T.IsLight ? Color.FromArgb(big ? 110 : 70, 0, 0, 0) : Color.FromArgb(big ? 110 : 70, 255, 255, 255), 3);
             }
             if (dragActive) PaintDrag(g);   // het gesleepte knopje bovenop alles (ook boven de vaste kop)
+            PaintSaved(g, W0, H0);
             if (notice != null && (DateTime.Now - noticeAt).TotalMilliseconds < 3000)
             {
                 float nw = Measure(notice, 13, true) + 40 * S;

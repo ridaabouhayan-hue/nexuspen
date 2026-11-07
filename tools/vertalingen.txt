@@ -401,3 +401,4 @@ Loopt er iets vast? Druk op Esc. | Something stuck? Press Esc. | Quelque chose b
 Icoontjes: Lucide (ISC). Lettertypes: SIL Open Font License. | Icons: Lucide (ISC). Fonts: SIL Open Font License. | Icônes : Lucide (ISC). Polices : SIL Open Font License. | Iconos: Lucide (ISC). Fuentes: SIL Open Font License.
 Wat is er nieuw | What's new | Nouveautés | Novedades
 jouw versie | your version | votre version | tu versión
+Opgeslagen | Saved | Enregistré | Guardado

@@ -122,6 +122,7 @@ namespace NexusPen
             new string[] { "Vraagteken", "Question mark", "Point d'interrogation", "Interrogación" },
             new string[] { "Zo-zo", "So-so", "Bof", "Regular" },
             new string[] { "NexusPen instellingen", "NexusPen settings", "Paramètres de NexusPen", "Ajustes de NexusPen" },
+            new string[] { "Opgeslagen", "Saved", "Enregistré", "Guardado" },
             new string[] { "Sluiten", "Close", "Fermer", "Cerrar" },
             new string[] { "Algemeen", "General", "Général", "General" },
             new string[] { "Starten", "Start-up", "Démarrage", "Inicio" },
