@@ -506,7 +506,9 @@ namespace NexusPen
                 bool keep = File.Exists(StrokeStore.KeepPath);
                 bool crashed = File.Exists(StrokeStore.LockPath);
                 // net bijgewerkt: de tekening van voor het bijwerken weer laten zien
-                if (File.Exists(Updates.FlagPath)) { justUpdated = true; try { File.Delete(Updates.FlagPath); } catch { } }
+                int flag = Updates.ReadFlag();
+                justUpdated = flag == 1; updateFailed = flag == -1;
+                Updates.CleanUp();
                 // 0 = nooit bewaren, 1 = na Opslaan, 2 = altijd
                 bool load = crashed || justUpdated || Cfg.KeepDrawing == 2 || (Cfg.KeepDrawing == 1 && keep);
                 if (load)
@@ -834,7 +836,9 @@ namespace NexusPen
             warm.Tick += delegate { warm.Stop(); warm.Dispose(); WarmUp(); };
             warm.Start();
             if (StartCollapsed) CollapseAll();
-            if (justUpdated)
+            if (updateFailed)
+                tray.ShowBalloonTip(5000, "NexusPen", L.T("Bijwerken is niet gelukt. Je werkt nog met de vorige versie. Probeer het later nog eens."), ToolTipIcon.Warning);
+            else if (justUpdated)
                 tray.ShowBalloonTip(4000, "NexusPen", L.F("NexusPen is bijgewerkt naar {0}. Je tekening staat er nog.", Program.Version), ToolTipIcon.Info);
             else if (restoredAfterCrash)
                 tray.ShowBalloonTip(4000, "NexusPen", L.T("Je tekening van de vorige keer is teruggezet, want NexusPen was onverwacht gestopt. Alles wissen kan met de Delete-toets."), ToolTipIcon.Info);
@@ -850,16 +854,18 @@ namespace NexusPen
 
         // ---------- bijwerken met een klik
         public Updates.Info PendingUpdate;
-        bool updating, justUpdated;
+        bool updating, justUpdated, updateFailed, balloonIsUpdate;
 
         void UpdateFound(Updates.Info info, bool fromSettings)
         {
             PendingUpdate = info;
-            updateUrl = info.PageUrl; updateShownAt = DateTime.Now;
             SetupTrayMenu();
             RefreshSettingsWindow();
             if (!fromSettings)
+            {
+                updateUrl = info.PageUrl; updateShownAt = DateTime.Now; balloonIsUpdate = true;
                 tray.ShowBalloonTip(8000, "NexusPen", L.F("Er is een nieuwe versie: {0}. Klik hier om bij te werken.", info.Version), ToolTipIcon.Info);
+            }
         }
 
         // Nu kijken (vanuit Instellingen). result: true = er is iets nieuws, false = je hebt de nieuwste
@@ -885,9 +891,9 @@ namespace NexusPen
                 try { if (info.PageUrl.StartsWith("https://github.com/")) System.Diagnostics.Process.Start(info.PageUrl); } catch { }
                 return;
             }
+            updating = true;   // meteen: dan kan er niet een tweede vraag of download bij komen
             if (MessageBox.Show(this, L.F("NexusPen bijwerken naar {0}? NexusPen sluit even en start daarna vanzelf weer. Je tekening blijft staan.", info.Version), "NexusPen",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
-            updating = true;
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) { updating = false; return; }
             if (toolbar != null) toolbar.ShowToast(L.T("De nieuwe versie wordt opgehaald..."), "", null);
             Usage.Log("bijwerken", info.Version, "");
             Updates.Download(info, delegate(string file)
@@ -906,8 +912,8 @@ namespace NexusPen
                         {
                             CloseTextInput(true);
                             SaveNow();
-                            File.WriteAllText(Updates.FlagPath, info.Version);   // bij de volgende start: tekening terugzetten
-                            System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo(file, "/SILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL");
+                            Updates.WriteFlag(info.Version);   // bij de volgende start: tekening terugzetten (of melden dat het niet lukte)
+                            System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo(file, "/SILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL /BIJWERKEN");
                             psi.UseShellExecute = true;
                             System.Diagnostics.Process.Start(psi);
                             Close();   // de installer vervangt het programma en start het daarna weer
@@ -957,8 +963,8 @@ namespace NexusPen
 
         void OnBalloonClicked(object sender, EventArgs e)
         {
-            if (updateUrl == null || (DateTime.Now - updateShownAt).TotalSeconds > 12) return;   // alleen de melding over de nieuwe versie
-            updateUrl = null;
+            if (!balloonIsUpdate || updateUrl == null || (DateTime.Now - updateShownAt).TotalSeconds > 12) return;   // alleen de melding over de nieuwe versie
+            updateUrl = null; balloonIsUpdate = false;
             InstallUpdate();
         }
 

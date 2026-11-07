@@ -87,17 +87,23 @@ namespace NexusPen
                 try
                 {
                     if (info == null || info.SetupUrl == null || info.Sha256 == null) { done(null); return; }
-                    string dir = Path.Combine(Path.GetTempPath(), "NexusPen-bijwerken");
+                    // een nieuwe map met een willekeurige naam (niemand kan die van tevoren klaarzetten)
+                    string dir = Path.Combine(Path.GetTempPath(), "NexusPen-bijwerken-" + Path.GetRandomFileName().Replace(".", ""));
                     Directory.CreateDirectory(dir);
                     file = Path.Combine(dir, "NexusPen-Setup-" + Regex.Replace(info.Version, "[^0-9.]", "") + ".exe");
                     ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072;
                     HttpWebRequest req = (HttpWebRequest)WebRequest.Create(info.SetupUrl);
                     req.UserAgent = "NexusPen/" + Program.Version;
                     req.Timeout = 30000; req.ReadWriteTimeout = 30000;
+                    string got;
                     using (WebResponse resp = req.GetResponse())
                     using (Stream src = resp.GetResponseStream())
-                    using (FileStream dst = File.Create(file))
+                    using (FileStream dst = new FileStream(file, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                    using (SHA256 sha = SHA256.Create())
                     {
+                        // GitHub stuurt door naar zijn eigen opslag; nergens anders heen
+                        Uri u = resp.ResponseUri;
+                        if (u.Scheme != "https" || !(u.Host == "github.com" || u.Host.EndsWith(".githubusercontent.com"))) throw new IOException("Onverwachte plek: " + u.Host);
                         byte[] buf = new byte[81920];
                         long total = 0; int n;
                         while ((n = src.Read(buf, 0, buf.Length)) > 0)
@@ -105,11 +111,12 @@ namespace NexusPen
                             total += n;
                             if (total > 60L * 1024 * 1024) throw new IOException("Download te groot");   // een installer is een paar MB
                             dst.Write(buf, 0, n);
+                            sha.TransformBlock(buf, 0, n, null, 0);   // de controlecode tijdens het schrijven uitrekenen
                         }
+                        sha.TransformFinalBlock(new byte[0], 0, 0);
+                        got = BitConverter.ToString(sha.Hash).Replace("-", "").ToLowerInvariant();
                     }
                     // klopt de controlecode? Dan is het echt het bestand van GitHub en is er onderweg niets aan veranderd
-                    string got;
-                    using (SHA256 sha = SHA256.Create()) using (FileStream fs = File.OpenRead(file)) got = BitConverter.ToString(sha.ComputeHash(fs)).Replace("-", "").ToLowerInvariant();
                     if (got != info.Sha256) { Log.Info("Bijwerken: controlecode klopt niet, bestand weggegooid"); try { File.Delete(file); } catch { } done(null); return; }
                     done(file);
                 }
@@ -117,6 +124,35 @@ namespace NexusPen
             });
             th.IsBackground = true;
             th.Start();
+        }
+
+        // Oude downloads opruimen (bij het starten; een installer die nog loopt laten we staan)
+        public static void CleanUp()
+        {
+            try
+            {
+                foreach (string d in Directory.GetDirectories(Path.GetTempPath(), "NexusPen-bijwerken*"))
+                    try { Directory.Delete(d, true); } catch { }
+            }
+            catch { }
+        }
+
+        // Het vlagbestand: welke versie we gingen installeren en wanneer
+        public static void WriteFlag(string version) { File.WriteAllText(FlagPath, version + "|" + DateTime.UtcNow.Ticks); }
+
+        // Na de start: 1 = net goed bijgewerkt, -1 = bijwerken is niet gelukt, 0 = er was niets
+        public static int ReadFlag()
+        {
+            try
+            {
+                if (!File.Exists(FlagPath)) return 0;
+                string[] p = File.ReadAllText(FlagPath).Trim().Split('|');
+                File.Delete(FlagPath);
+                long t;
+                bool recent = p.Length == 2 && long.TryParse(p[1], out t) && (DateTime.UtcNow - new DateTime(t, DateTimeKind.Utc)).TotalMinutes < 30;
+                return recent && p[0] == Program.Version ? 1 : -1;
+            }
+            catch { return 0; }
         }
 
         public static bool IsNewer(string other, string mine)

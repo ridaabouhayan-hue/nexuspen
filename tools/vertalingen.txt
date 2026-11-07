@@ -401,3 +401,4 @@ Bijwerken naar {0} | Update to {0} | Mettre à jour vers {0} | Actualizar a {0}
 Kijken of er een nieuwe versie is | Check for a new version | Rechercher une nouvelle version | Buscar una nueva versión
 Even kijken... | Checking... | Vérification... | Comprobando...
 Je hebt de nieuwste versie ({0}). | You have the latest version ({0}). | Vous avez la dernière version ({0}). | Tienes la versión más reciente ({0}).
+Bijwerken is niet gelukt. Je werkt nog met de vorige versie. Probeer het later nog eens. | Updating did not work. You are still using the previous version. Please try again later. | La mise à jour n'a pas fonctionné. Vous utilisez encore la version précédente. Réessayez plus tard. | No se pudo actualizar. Sigues con la versión anterior. Inténtalo más tarde.

@@ -24,6 +24,7 @@ SolidCompression=yes
 WizardStyle=modern
 CloseApplications=force
 RestartApplications=no
+SetupMutex=NexusPenSetup
 
 [Languages]
 Name: "nl"; MessagesFile: "compiler:Languages\Dutch.isl"
@@ -45,13 +46,13 @@ Name: "{userprograms}\NexusPen"; Filename: "{app}\NexusPen.exe"
 Name: "{userdesktop}\NexusPen"; Filename: "{app}\NexusPen.exe"; Tasks: desktop
 
 [Registry]
-Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "NexusPen"; ValueData: """{app}\NexusPen.exe"" --opstarten"; Tasks: autostart; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "NexusPen"; ValueData: """{app}\NexusPen.exe"" --opstarten"; Tasks: autostart; Flags: uninsdeletevalue; Check: not IsUpdateRun
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: none; ValueName: "NexusPen"; Flags: uninsdeletevalue dontcreatekey
 
 [Run]
 Filename: "{app}\NexusPen.exe"; Description: "NexusPen openen"; Flags: nowait postinstall skipifsilent
-; bijwerken vanuit NexusPen gaat stil: dan NexusPen daarna vanzelf weer starten
-Filename: "{app}\NexusPen.exe"; Flags: nowait; Check: WizardSilent
+; bijwerken vanuit NexusPen (met /BIJWERKEN): dan NexusPen daarna vanzelf weer starten
+Filename: "{app}\NexusPen.exe"; Flags: nowait; Check: IsUpdateRun
 
 [UninstallRun]
 Filename: "{cmd}"; Parameters: "/C taskkill /IM NexusPen.exe /F"; Flags: runhidden; RunOnceId: "StopNexusPen"
@@ -63,6 +64,37 @@ fr.AskDeleteData=Voulez-vous aussi supprimer vos dessins, paramètres et le jour
 es.AskDeleteData=¿Quieres borrar también tus dibujos, ajustes y el registro de errores de NexusPen?%n%nElige No si quieres volver a usar NexusPen más adelante: todo seguirá ahí.
 
 [Code]
+var
+  Installed: Boolean;
+
+// Is deze installer gestart door "bijwerken met een klik" in NexusPen?
+function IsUpdateRun: Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := 1 to ParamCount do
+    if CompareText(ParamStr(i), '/BIJWERKEN') = 0 then Result := True;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then Installed := True;
+end;
+
+// Mislukt het bijwerken (virusscanner, volle schijf): NexusPen toch weer starten, de oude versie staat er nog
+procedure DeinitializeSetup;
+var
+  rc: Integer;
+  exe: String;
+begin
+  if IsUpdateRun and (not Installed) then
+  begin
+    exe := ExpandConstant('{localappdata}\Programs\NexusPen\NexusPen.exe');
+    if FileExists(exe) then Exec(exe, '', '', SW_SHOWNORMAL, ewNoWait, rc);
+  end;
+end;
+
 // Na het verwijderen: vragen of de tekeningen en instellingen in %APPDATA%\NexusPen ook weg mogen.
 // Bij stil verwijderen (bijvoorbeeld bij bijwerken) nooit iets weggooien.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

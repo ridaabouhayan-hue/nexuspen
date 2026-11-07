@@ -240,6 +240,10 @@ static class Tests {
       Check(ui != null && ui.Version == "1.3.1" && ui.Sha256 != null && ui.Sha256.Length == 64 && ui.SetupUrl != null && ui.SetupUrl.EndsWith("/v1.3.1/NexusPen-Setup.exe"), "Bijwerken: installer en controlecode uit het GitHub-antwoord");
       var ubad = Updates.Parse(gh.Replace("https://github.com/ridaabouhayan-hue/nexuspen/releases/download/", "https://example.com/x/"));
       Check(ubad != null && ubad.SetupUrl == null, "Bijwerken: een download van een andere plek wordt nooit gebruikt");
+      System.IO.Directory.CreateDirectory(StrokeStore.Dir);
+      Updates.WriteFlag(Program.Version); int f1 = Updates.ReadFlag();
+      Updates.WriteFlag("0.0.1"); int f2 = Updates.ReadFlag();
+      Check(f1 == 1 && f2 == -1 && Updates.ReadFlag() == 0, "Na bijwerken: gelukt, niet gelukt of niets, en het vlagbestand wordt opgeruimd");
       Check(Updates.IsNewer("1.3.2", "1.3.1") && !Updates.IsNewer("1.3.1", "1.3.1") && !Updates.IsNewer("1.2.9", "1.3.0"), "Versienummers vergelijken");
     }
 
