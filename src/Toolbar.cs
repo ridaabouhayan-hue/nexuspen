@@ -74,6 +74,8 @@ namespace NexusPen
                 foreach (string k in group.Split(','))
                     if (Array.IndexOf(Catalog, k.Trim()) >= 0 && !list.Contains(k.Trim())) list.Add(k.Trim());
             }
+            // Instellingen kan nooit verdwijnen: anders kom je er niet meer bij
+            if (!list.Contains("instellingen")) { if (list.Count > 0) list.Add("|"); list.Add("instellingen"); }
             return list;
         }
 
@@ -241,7 +243,7 @@ namespace NexusPen
             foreach (string k in layout)
             {
                 if (k == "|") { needSep = true; continue; }
-                if (placed >= limit) { overflow.Add(k); continue; }
+                if (placed >= limit && k != "instellingen") { overflow.Add(k); continue; }   // Instellingen blijft altijd staan
                 if (needSep) { AddSep(ref pos, cross, thick); needSep = false; }
                 Item it = AddButton(k, Rect(pos, cross, Long(bw, bh), Cross(bw, bh)));
                 buttonOrder.Add(it);
@@ -443,18 +445,49 @@ namespace NexusPen
 
         void PaintOverflow(Graphics g, Item it, bool h)
         {
-            // gewoon een knop met pijltjes, zoals de andere knoppen (zonder rand en zonder getal)
+            // gewoon een knop met drie puntjes ("meer"), zoals de andere knoppen (zonder rand en zonder getal)
             Theme t = T;
             bool open = IsOpen(overflowPopup);
             if (h || open)
                 using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(Highlight(it.R), 7 * S)) g.FillPath(b, gp);
-            Icons.Draw(g, vertical ? "neer" : "meer", it.R, IconSize, t.Icon, StrokeW);
+            Icons.Draw(g, vertical ? "puntjesstaand" : "puntjes", it.R, IconSize, t.Icon, StrokeW);
         }
 
         // ---- inkorten met het sleeprandje
         bool hoverHandle;
-        int shortenTotal;
+        int shortenTotal, shortenAnchor;   // shortenAnchor: waar de balk begon (links of boven) bij het vastpakken
         float shortenOffset;   // afstand tussen de muis en het begin van het randje bij het vastpakken
+        System.Windows.Forms.Timer edgeGrow;
+
+        // Muis op het scherm, gemeten vanaf het begin van de balk bij het vastpakken
+        float ShortenPos()
+        {
+            Point m = Control.MousePosition;
+            return (vertical ? m.Y : m.X) - shortenAnchor - shortenOffset;
+        }
+
+        void ApplyShorten(int n)
+        {
+            if (n == shortenPreview) return;
+            shortenPreview = n;
+            Rebuild();
+            // past de balk niet meer op het scherm, dan schuift hij op (nooit verder dan waar hij begon)
+            Rectangle wa = Screen.FromPoint(Control.MousePosition).WorkingArea;
+            if (vertical) Top = Math.Max(wa.Top, Math.Min(shortenAnchor, wa.Bottom - Height));
+            else Left = Math.Max(wa.Left, Math.Min(shortenAnchor, wa.Right - Width));
+        }
+
+        // Houd je de muis tegen de rand van het scherm, dan komt er steeds een knop bij
+        void EdgeGrowTick()
+        {
+            if (!shortening || shortenPreview >= shortenTotal) return;
+            Point m = Control.MousePosition;
+            Rectangle wa = Screen.FromPoint(m).WorkingArea;
+            bool atEdge = vertical ? m.Y >= wa.Bottom - 3 : m.X >= wa.Right - 3;
+            if (!atEdge) return;
+            ApplyShorten(shortenPreview + 1);
+            shortenOffset = (vertical ? m.Y : m.X) - shortenAnchor - HandleStart(shortenPreview);   // de muis hoort nu bij deze stand
+        }
 
         // Waar zou het randje beginnen met n knoppen? Zelfde rekensom als Build, maar zonder iets te tekenen.
         float HandleStart(int n)
@@ -467,7 +500,7 @@ namespace NexusPen
             foreach (string k in Layout(ov.Cfg))
             {
                 if (k == "|") { needSep = true; continue; }
-                if (placed >= n) { rest++; continue; }
+                if (placed >= n && k != "instellingen") { rest++; continue; }
                 if (needSep) { pos += sepW; needSep = false; }
                 pos += Long(bw, bh) + gap;
                 placed++;
@@ -496,8 +529,11 @@ namespace NexusPen
                 shortenTotal = 0;
                 foreach (string k in Layout(ov.Cfg)) if (k != "|") shortenTotal++;
                 shortenPreview = ov.Cfg.ShortenAt > 0 ? Math.Min(ov.Cfg.ShortenAt, shortenTotal) : shortenTotal;
+                shortenAnchor = vertical ? Top : Left;
                 shortenOffset = (vertical ? e.Y : e.X) - HandleStart(shortenPreview);
                 shortening = true;
+                if (edgeGrow == null) { edgeGrow = new System.Windows.Forms.Timer(); edgeGrow.Interval = 220; edgeGrow.Tick += delegate { EdgeGrowTick(); }; }
+                edgeGrow.Start();
                 return true;
             }
             return false;
@@ -547,7 +583,7 @@ namespace NexusPen
             base.OnMouseCaptureChanged(e);
             if (dragging && !Capture) EndDrag();
             if (logoDown && !Capture) logoDown = false;
-            if (shortening && !Capture) { shortening = false; Rebuild(); }   // muis kwijt (Alt+Tab): terug naar de bewaarde stand
+            if (shortening && !Capture) { shortening = false; if (edgeGrow != null) edgeGrow.Stop(); Rebuild(); EnsureOnScreen(); }   // muis kwijt (Alt+Tab): terug naar de bewaarde stand
         }
 
         // Ligt hier geen ander scherm? Dan is dit een echte rand.
@@ -580,7 +616,7 @@ namespace NexusPen
             if (shortening)
             {
                 // een knop erbij of eraf zodra je de muis voorbij het midden van die knop sleept
-                float p = (vertical ? e.Y : e.X) - shortenOffset;
+                float p = ShortenPos();
                 int n = shortenPreview;
                 float best = float.MaxValue;
                 for (int i = 1; i <= shortenTotal; i++)
@@ -588,7 +624,7 @@ namespace NexusPen
                     float d = Math.Abs(HandleStart(i) - p);
                     if (d < best - 0.5f) { best = d; n = i; }
                 }
-                if (n != shortenPreview) { shortenPreview = n; Rebuild(); }
+                ApplyShorten(n);
                 return;
             }
             bool hh = handleItem != null && RectangleF.Inflate(handleItem.R, 4 * S, 4 * S).Contains(e.Location);
@@ -605,6 +641,7 @@ namespace NexusPen
             if (logoDown) { logoDown = false; Capture = false; if (logoItem != null && logoItem.R.Contains(e.Location)) ov.CollapseAll(); return; }
             if (!shortening) return;
             shortening = false;
+            if (edgeGrow != null) edgeGrow.Stop();
             Capture = false;
             ov.Cfg.ShortenAt = shortenPreview >= shortenTotal ? 0 : shortenPreview;
             ov.Cfg.Save();
@@ -612,6 +649,8 @@ namespace NexusPen
             Point k = Location;
             Rebuild();
             Location = k;
+            EnsureOnScreen();
+            ov.Cfg.ToolbarX = Left; ov.Cfg.ToolbarY = Top; ov.Cfg.Save();
         }
 
         Point TipPoint(Item it)
@@ -648,6 +687,7 @@ namespace NexusPen
 
         public void HideKey(string key)
         {
+            if (key == "instellingen") return;   // blijft altijd in de balk
             List<string> keys = Layout(ov.Cfg);
             keys.Remove(key);
             ov.Cfg.BarLayout = LayoutString(keys);

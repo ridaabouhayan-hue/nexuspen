@@ -566,6 +566,7 @@ namespace NexusPen
             int ins = InsertIndex(p);
             if (dragFrom >= 0)
             {
+                if (ins < 0 && trayArea.Contains(p) && dragKey == "instellingen") { Notice(L.T("Instellingen blijft altijd in de balk.")); return; }
                 if (ins < 0 && trayArea.Contains(p)) { layout.RemoveAt(dragFrom); Usage.Log("instelling", "verberg", dragKey); }
                 else if (ins >= 0) { layout.RemoveAt(dragFrom); if (ins > dragFrom) ins--; layout.Insert(ins, dragKey); }
                 else return;

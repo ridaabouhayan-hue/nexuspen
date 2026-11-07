@@ -1,7 +1,7 @@
 # Maakt src/IconData.cs uit Lucide (npm-pakket lucide-static). Draai opnieuw als er icoontjes bijkomen.
 # Gebruik: python3 tools/maak_icoontjes.py <map met lucide-static/icons>
 import os, re, sys
-D = sys.argv[1] if len(sys.argv) > 1 else "/home/claude/lucide/package/icons"
+D = sys.argv[1] if len(sys.argv) > 1 else "lucide/package/icons"
 MAP = {
  "muis": "mouse-pointer-2", "selecteer": "square-dashed-mouse-pointer", "pen": "pencil", "markeer": "highlighter",
  "laser": "circle-dot", "vormen": "shapes", "tekst": "type", "gum": "eraser", "stempel": "stamp", "focus": "flashlight",
@@ -14,6 +14,9 @@ MAP = {
  "ster": "star", "vraag": "circle-question-mark", "hekje": "hash", "lijnen": "align-justify", "ruitjes": "grid-3x3",
  "schrijflijnen": "text", "leeg": "square", "scherm": "monitor", "whiteboard": "square", "krijtbord": "square",
  "meer": "chevrons-right", "rand": "type-outline", "groter": "maximize-2", "aftekenen": "log-out", "vergrootglas": "search",
+ "afsluiten": "power", "verplaats": "move", "krijt": "brush", "zoom": "zoom-in",
+ "puntjes": "ellipsis", "puntjesstaand": "ellipsis-vertical", "zandloper": "hourglass", "timer": "timer",
+ "pauze": "pause", "afspelen": "play", "terugzetten": "rotate-ccw", "vastzetten": "pin", "losmaken": "pin-off",
 }
 def elements(name):
     p = os.path.join(D, name + ".svg")

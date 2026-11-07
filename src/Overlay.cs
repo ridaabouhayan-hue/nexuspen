@@ -1392,7 +1392,7 @@ namespace NexusPen
             W.SetWindowLong(Handle, W.GWL_EXSTYLE, ex);
             if (!on) { current = null; erasing = false; CloseTextInput(true); Deselect(); Usage.ToolChanged("Mouse"); }
             // Met de muis werk je op je gewone scherm: het bord gaat weg. Het komt pas terug als je zelf weer een bord kiest.
-            if (!on && BoardMode != Board.None) SetBoard(Board.None, false);
+            if (!on && BoardMode != Board.None && !keepBoardOnce) SetBoard(Board.None, false);
             Rebuild();
             RenderFrame();
             if (on) Activate();
@@ -1623,10 +1623,15 @@ namespace NexusPen
         // ---------- inklappen: alles weg (balk, tekeningen, bord), alleen het logo blijft
         public bool IsCollapsed { get { return allHidden; } }
 
+        // Inklappen onthoudt waar je was (tekenen, gereedschap, bord en pagina); uitklappen gaat daar precies verder
+        bool keepBoardOnce, collapsedDraw;
+        Tool collapsedTool = Tool.Pen;
+
         public void CollapseAll()
         {
             if (allHidden) return;
-            if (DrawMode) SetDrawMode(false);
+            collapsedDraw = DrawMode; collapsedTool = CurrentTool;
+            if (DrawMode) { keepBoardOnce = true; try { SetDrawMode(false); } finally { keepBoardOnce = false; } }
             Deselect();
             allHidden = true;
             Hide();
@@ -1642,6 +1647,7 @@ namespace NexusPen
             Rebuild();
             RenderFrame();
             if (toolbar != null) toolbar.ShowExpanded();
+            if (collapsedDraw && !DrawMode) { collapsedDraw = false; SetDrawMode(true); if (collapsedTool != Tool.Mouse && CurrentTool != collapsedTool) SetTool(collapsedTool); }
             Usage.Log("uitklappen", "", "");
         }
 
