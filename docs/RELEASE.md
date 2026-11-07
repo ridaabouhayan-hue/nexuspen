@@ -1,10 +1,9 @@
-NexusPen 1.3.2 voor Windows 10 en 11.
+NexusPen 1.3.3 voor Windows 10 en 11.
 
-**Installeren:** download `NexusPen-Setup.exe` en open het. Je installeert gewoon over de vorige versie heen: je tekeningen en instellingen blijven staan. `NexusPen.exe` is hetzelfde programma zonder installeren.
+**Installeren:** heb je 1.3.2, dan krijg je een melding en werk je bij met een klik. Anders: download `NexusPen-Setup.exe` en open het. Je tekeningen en instellingen blijven staan.
 
-**Nieuw in 1.3.2: bijwerken met een klik**
-- Is er een nieuwe versie, dan krijg je een melding. Klik erop en kies Ja: NexusPen haalt de nieuwe versie op, controleert of het bestand echt van GitHub komt en niet veranderd is, sluit even en start daarna vanzelf weer.
-- Je tekening blijft staan, en "Starten met Windows" blijft zoals je het zelf hebt ingesteld.
-- Lukt het bijwerken niet, dan start NexusPen gewoon weer met de vorige versie en zegt dat.
-- Zelf kijken kan ook: Instellingen > Algemeen > "Kijken of er een nieuwe versie is", of het menu bij het icoontje naast de klok.
-- Dit werkt vanaf deze versie. Deze ene keer installeer je hem nog zelf.
+**Nieuw in 1.3.3**
+- **Instellingen kunnen scrollen**: lange pagina's (zoals "Wat doet elke knop") passen nu helemaal, met een vaste kop bovenin als je naar beneden gaat.
+- **Nieuwe pagina Bijwerken** in de zijbalk: je ziet meteen of je de nieuwste versie hebt, met een knop Nu kijken of Nu bijwerken. Een oranje stip in de zijbalk laat zien dat er een nieuwe versie klaarstaat.
+- **Rustigere zijbalk**: de pagina's staan in groepen met een dun streepje ertussen, overal dezelfde ruimte.
+- **Algemeen opgeruimd**: terugzetten staat nu onderaan bij Hulp en foutlog, met twee duidelijk verschillende keuzes (alleen de werkbalk, of alle instellingen). De knop NexusPen afsluiten is weg uit Instellingen; die zit al in de werkbalk.
