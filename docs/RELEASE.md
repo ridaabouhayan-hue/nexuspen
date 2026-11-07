@@ -1,9 +1,11 @@
-NexusPen 1.3.3 voor Windows 10 en 11.
+NexusPen 1.3.4 voor Windows 10 en 11.
 
-**Installeren:** heb je 1.3.2, dan krijg je een melding en werk je bij met een klik. Anders: download `NexusPen-Setup.exe` en open het. Je tekeningen en instellingen blijven staan.
+**Installeren:** heb je 1.3.2 of nieuwer, dan werk je bij met een klik (Instellingen > Bijwerken). Anders: download `NexusPen-Setup.exe` en open het. Je tekeningen en instellingen blijven staan.
 
-**Nieuw in 1.3.3**
-- **Instellingen kunnen scrollen**: met het muiswiel, door met je vinger of pen op een lege plek te slepen, met het schuifbalkje rechts, of met Page Up, Page Down, Home en End. Lange pagina's (zoals "Wat doet elke knop") passen nu helemaal, met een vaste kop bovenin.
-- **Nieuwe pagina Bijwerken** in de zijbalk: je ziet meteen of je de nieuwste versie hebt, met een knop Nu kijken of Nu bijwerken. Een oranje stip in de zijbalk laat zien dat er een nieuwe versie klaarstaat.
-- **Rustigere zijbalk**: de pagina's staan in groepen met een dun streepje ertussen, overal dezelfde ruimte.
-- **Algemeen opgeruimd**: terugzetten staat nu onderaan bij Hulp en foutlog, met twee duidelijk verschillende keuzes (alleen de werkbalk, of alle instellingen). De knop NexusPen afsluiten is weg uit Instellingen; die zit al in de werkbalk.
+**Nieuw in 1.3.4**
+- **Tekst verplaatsen:** druk met Tekst op een tekst, houd vast en beweeg. De tekst schuift mee, zonder streepje en zonder kader. Gewoon klikken opent de tekst om te typen.
+- **Vergrootglas:** echte ronde hoeken, je muis zie je nog maar één keer, en een vastgezet glas staat boven de plek die het vergroot. Esc haalt de glazen weg.
+- **"Opgeslagen"** verschijnt even rechtsonder als je iets verandert in Instellingen.
+- **Rustigere meldingen** met een icoontje dat past bij wat er gebeurt.
+- **Wat is er nieuw:** bij Instellingen > Bijwerken zie je per versie wat erbij kwam.
+- **Kortere teksten** in Instellingen: alleen uitleg waar die echt nodig is.

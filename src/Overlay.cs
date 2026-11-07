@@ -410,9 +410,9 @@ namespace NexusPen
             bool esc = (W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0;
             // Esc: eerst een open venstertje van de balk dicht, dan pas terug naar de muis
             if (esc && !lastEsc && MenuPopup.IsOpen) { MenuPopup.CloseOpen(); lastEsc = true; return; }   // eerst een open menu
-            if (esc && !lastEsc && pinnedLoupes.Count > 0) { CloseAllLoupes(); lastEsc = true; return; }   // dan de vergrootglazen
             if (esc && !lastEsc && toolbar != null && toolbar.AnyPopupOpen) { toolbar.ClosePopups(); lastEsc = true; return; }
             if (esc && !lastEsc && DrawMode && typing != null) { CloseTextInput(true); lastEsc = true; return; }   // ook als het toetsenbord ergens anders zat
+            if (esc && !lastEsc && DrawMode && pinnedLoupes.Count > 0) { CloseAllLoupes(); lastEsc = true; return; }   // dan de vergrootglazen (alleen als je met NexusPen werkt)
             if (esc && !lastEsc && DrawMode && typing == null)
             {
                 if (selected != null) Deselect(); else SetTool(Tool.Mouse);
@@ -594,7 +594,7 @@ namespace NexusPen
                 DrawMode = false;
                 current = null;
                 erasing = false;
-                dragging = false;
+                dragging = false; quietMove = false;
                 lifted = false;
                 Rebuild();
                 RenderFrame();
@@ -1599,7 +1599,8 @@ namespace NexusPen
                 pinnedLoupes.Add(l);
                 l.Show();
                 Usage.Log("vergrootglas", "vastzetten", "");
-                // vastgezet: meteen weer je pen, dan kun je in het vergrote stuk schrijven (Esc haalt de glazen weg)
+                // vastgezet: het glas staat net boven die plek; meteen weer je pen, dan schrijf je op de echte plek
+                // en zie je het vergroot in het glas (Esc haalt de glazen weg)
                 SetTool(LastDrawTool);
             }
             catch (Exception ex) { Log.Error("Vergrootglas vastzetten", ex); }
@@ -2020,6 +2021,7 @@ namespace NexusPen
 
         public void Deselect()
         {
+            quietMove = false;   // stil verplaatsen van een tekst is hiermee ook klaar
             if (selected == null) return;
             selected = null;
             dragging = false;
@@ -2438,11 +2440,12 @@ namespace NexusPen
                 if (selected != null && toolbar != null) toolbar.ShowMiniBar(SelectionScreenRect());
                 return;
             }
-            if (dragging && quietMove)
+            if (dragging && quietMove && selected != null && selected.Tool == Tool.Text)
             {
                 // tekst met de Tekst-knop: verplaatst, of alleen geklikt (dan typen)
                 Stroke t = selected; bool moved = movedThisDrag;
                 dragging = false; quietMove = false; Capture = false;
+                UpdateCursor();   // weer de gewone cursor van Tekst
                 selected = null;
                 if (lifted) { lifted = false; Rebuild(); }
                 dirty = true;

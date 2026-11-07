@@ -265,6 +265,7 @@ namespace NexusPen
             new string[] { "Bezig...", "Working...", "En cours...", "En curso..." },
             new string[] { "Nu bijwerken", "Update now", "Mettre à jour", "Actualizar ahora" },
             new string[] { "Nu kijken", "Check now", "Vérifier", "Comprobar" },
+            new string[] { "Wat is er nieuw in {0}?", "What's new in {0}?", "Quoi de neuf dans la {0} ?", "¿Qué hay de nuevo en {0}?" },
             new string[] { "Melding als er een nieuwe versie is", "Notify me when there is a new version", "Prévenir quand une nouvelle version existe", "Avisar cuando haya una versión nueva" },
             new string[] { "Er gaat niets van jou mee.", "Nothing of yours is sent.", "Rien de vous n'est envoyé.", "No se envía nada tuyo." },
             new string[] { "Wat is er nieuw", "What's new", "Nouveautés", "Novedades" },

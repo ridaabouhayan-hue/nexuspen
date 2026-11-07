@@ -13,10 +13,11 @@ namespace NexusPen
         public static readonly Version[] All = {
             V("1.3.4", "7 november 2026",
                 I("tekst", "Tekst ingedrukt verplaatsen, zonder streepje en zonder kader"),
-                I("zoom", "Vergrootglas: echte ronde hoeken, je muis maar één keer, Esc haalt het weg"),
+                I("zoom", "Vergrootglas: ronde hoeken, je muis één keer, staat boven de plek die het vergroot"),
+                I("vink", "\"Opgeslagen\" rechtsonder als je iets verandert in Instellingen"),
                 I("info", "Rustigere meldingen met een passend icoontje"),
                 I("download", "Hier: wat er in elke versie nieuw is"),
-                I("vink", "Kortere teksten in Instellingen")),
+                I("tekst", "Kortere teksten in Instellingen")),
             V("1.3.3", "7 november 2026",
                 I("verplaats", "Instellingen scrollen: muiswiel, slepen, schuifbalkje of toetsen"),
                 I("download", "Nieuwe pagina Bijwerken"),

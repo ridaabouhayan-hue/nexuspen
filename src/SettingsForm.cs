@@ -1384,6 +1384,13 @@ namespace NexusPen
                 Txt(g, bl, new RectangleF(it.R.X + 36 * S, it.R.Y, it.R.Width - 44 * S, it.R.Height), primary ? t.OnAccent : t.Text, 13, true, StringAlignment.Near, false);
             });
             y += cardH + 16 * S;
+            if (pu != null && pu.PageUrl != null && pu.PageUrl.StartsWith("https://github.com/"))
+            {
+                // wat de nieuwe versie brengt (die staat nog niet in de lijst hieronder)
+                string url = pu.PageUrl;
+                Button(contentX, y, L.F("Wat is er nieuw in {0}?", pu.Version), "info", delegate { try { Process.Start(url); } catch (Exception ex) { Log.Error("Downloadpagina openen", ex); } }, false);
+                y += 50 * S;
+            }
             y = Toggle(y, L.T("Melding als er een nieuwe versie is"), L.T("Er gaat niets van jou mee."), delegate { return c.UpdateCheck; }, delegate(bool v) { c.UpdateCheck = v; });
             // wat is er nieuw: per versie een paar regels met een icoontje (zit in NexusPen zelf)
             y = Section(y + 14 * S, L.T("Wat is er nieuw"));

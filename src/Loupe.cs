@@ -81,9 +81,12 @@ namespace NexusPen
             int x0 = at.X - sz.Width / 2, y0 = at.Y - sz.Height / 2;
             if (!following)
             {
-                // vastgezet: glas plus balkje eronder moeten op het scherm passen
+                // vastgezet: het glas staat boven de plek die het vergroot (of eronder als het boven niet past),
+                // zodat je op de echte plek kunt schrijven en het vergroot ziet; glas plus balkje passen op het scherm
                 Rectangle wa = Screen.FromPoint(at).WorkingArea;
-                int stripH = (int)(40 * sc);
+                int stripH = (int)(40 * sc), gap = (int)(60 * sc);
+                y0 = at.Y - gap - stripH - sz.Height;
+                if (y0 < wa.Top) y0 = at.Y + gap;
                 x0 = Math.Max(wa.Left, Math.Min(wa.Right - sz.Width, x0));
                 y0 = Math.Max(wa.Top, Math.Min(wa.Bottom - sz.Height - stripH, y0));
             }
@@ -118,7 +121,9 @@ namespace NexusPen
                 if (mag == IntPtr.Zero) { Log.Info("Vergrootglas: geen Magnifier-venster"); return; }
                 // ook het beeld zelf afgerond, zodat de rand overal even dik is en de hoeken echt rond zijn
                 int iw = Width - Border * 2, ih = Height - Border * 2;
-                SetWindowRgn(mag, ov.Cfg.LoupeShape == 1 ? CreateEllipticRgn(0, 0, iw + 1, ih + 1) : CreateRoundRectRgn(0, 0, iw + 1, ih + 1, (int)(26 * sc), (int)(26 * sc)), true);
+                int d = (int)(32 * sc) - 2 * Border;   // binnenhoek = buitenhoek min twee keer de rand: overal even dik
+                IntPtr inner = ov.Cfg.LoupeShape == 1 ? CreateEllipticRgn(0, 0, iw + 1, ih + 1) : CreateRoundRectRgn(0, 0, iw + 1, ih + 1, d, d);
+                if (SetWindowRgn(mag, inner, true) == 0) W.DeleteObject(inner);
                 all.Add(this);
                 Skip(Handle, true);   // het glas zelf (en de andere glazen) niet vergroten
                 ApplyZoom();
@@ -131,7 +136,7 @@ namespace NexusPen
         void ApplyShape()
         {
             IntPtr rgn = ov.Cfg.LoupeShape == 1 ? CreateEllipticRgn(0, 0, Width + 1, Height + 1) : CreateRoundRectRgn(0, 0, Width + 1, Height + 1, (int)(32 * sc), (int)(32 * sc));
-            SetWindowRgn(Handle, rgn, true);   // Windows wordt eigenaar van rgn
+            if (SetWindowRgn(Handle, rgn, true) == 0) W.DeleteObject(rgn);   // bij succes wordt Windows eigenaar van rgn
         }
 
         void ApplyZoom()
