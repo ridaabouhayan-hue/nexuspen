@@ -291,7 +291,6 @@ Werkbalk aanpassen... | Customise toolbar... | Personnaliser la barre... | Perso
 Uitklappen | Expand | Déplier | Expandir
 Inklappen | Collapse | Réduire | Contraer
 NexusPen afsluiten | Quit NexusPen | Quitter NexusPen | Salir de NexusPen
-Er is een nieuwe versie: {0}. Klik hier om hem te downloaden. | A new version is available: {0}. Click here to download it. | Une nouvelle version est disponible : {0}. Cliquez ici pour la télécharger. | Hay una versión nueva: {0}. Haz clic aquí para descargarla.
 
 Alles wissen | Clear everything | Tout effacer | Borrar todo
 Terug met Ctrl+Z | Undo with Ctrl+Z | Annuler avec Ctrl+Z | Deshacer con Ctrl+Z
@@ -393,3 +392,12 @@ Je instellingen op deze computer vervangen door die uit het bestand? Je tekening
 Uitzoomen | Zoom out | Dézoomer | Alejar
 Inzoomen | Zoom in | Zoomer | Acercar
 Klik = terug naar 100% | Click = back to 100% | Clic = retour à 100 % | Clic = volver al 100 %
+NexusPen is bijgewerkt naar {0}. Je tekening staat er nog. | NexusPen has been updated to {0}. Your drawing is still there. | NexusPen a été mis à jour vers {0}. Votre dessin est toujours là. | NexusPen se ha actualizado a {0}. Tu dibujo sigue ahí.
+Er is een nieuwe versie: {0}. Klik hier om bij te werken. | There is a new version: {0}. Click here to update. | Une nouvelle version est disponible : {0}. Cliquez ici pour mettre à jour. | Hay una nueva versión: {0}. Haz clic aquí para actualizar.
+NexusPen bijwerken naar {0}? NexusPen sluit even en start daarna vanzelf weer. Je tekening blijft staan. | Update NexusPen to {0}? NexusPen closes for a moment and then starts again by itself. Your drawing stays. | Mettre à jour NexusPen vers {0} ? NexusPen se ferme un instant puis redémarre tout seul. Votre dessin reste. | ¿Actualizar NexusPen a {0}? NexusPen se cierra un momento y vuelve a abrirse solo. Tu dibujo se queda.
+De nieuwe versie wordt opgehaald... | Downloading the new version... | Téléchargement de la nouvelle version... | Descargando la nueva versión...
+Bijwerken lukte niet. Probeer het later nog eens, of download hem zelf van de downloadpagina. | Updating did not work. Try again later, or download it yourself from the download page. | La mise à jour n'a pas fonctionné. Réessayez plus tard ou téléchargez-la vous-même. | No se pudo actualizar. Inténtalo más tarde o descárgala tú desde la página de descargas.
+Bijwerken naar {0} | Update to {0} | Mettre à jour vers {0} | Actualizar a {0}
+Kijken of er een nieuwe versie is | Check for a new version | Rechercher une nouvelle version | Buscar una nueva versión
+Even kijken... | Checking... | Vérification... | Comprobando...
+Je hebt de nieuwste versie ({0}). | You have the latest version ({0}). | Vous avez la dernière version ({0}). | Tienes la versión más reciente ({0}).

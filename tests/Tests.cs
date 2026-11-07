@@ -233,6 +233,16 @@ static class Tests {
     }
     Check(Icons.DeviceStroke(2, 20 / 24f) == 2 && Icons.DeviceStroke(2, 30 / 24f) == 3 && Icons.DeviceStroke(2, 16 / 24f) == 1, "Lijndikte van icoontjes in hele pixels");
 
+    // 15d. Bijwerken: het antwoord van GitHub goed lezen (installer en controlecode), en nooit een vreemde link
+    {
+      string gh = "{\"html_url\":\"https://github.com/ridaabouhayan-hue/nexuspen/releases/tag/v1.3.1\",\"tag_name\":\"v1.3.1\",\"name\":\"NexusPen 1.3.1\",\"assets\":[{\"url\":\"https://api.github.com/repos/ridaabouhayan-hue/nexuspen/releases/assets/719390116\",\"id\":719390116,\"name\":\"NexusPen-Setup.exe\",\"label\":\"\",\"uploader\":{\"login\":\"github-actions[bot]\",\"following_url\":\"https://api.github.com/users/github-actions%5Bbot%5D/following{/other_user}\"},\"content_type\":\"application/x-msdos-program\",\"state\":\"uploaded\",\"size\":2522825,\"digest\":\"sha256:3d6c2d48a90f964b7efce6742415f081c3038b93cf701687780db16003ef81f2\",\"browser_download_url\":\"https://github.com/ridaabouhayan-hue/nexuspen/releases/download/v1.3.1/NexusPen-Setup.exe\"},{\"url\":\"https://api.github.com/repos/ridaabouhayan-hue/nexuspen/releases/assets/719390115\",\"id\":719390115,\"name\":\"NexusPen.exe\",\"label\":\"\",\"uploader\":{\"login\":\"github-actions[bot]\",\"following_url\":\"https://api.github.com/users/github-actions%5Bbot%5D/following{/other_user}\"},\"content_type\":\"application/x-msdos-program\",\"state\":\"uploaded\",\"size\":1242624,\"digest\":\"sha256:08c4ab86c90a0b06e135cc14feac1ff20659983c054da8d7d4f1aa4ca7f0b124\",\"browser_download_url\":\"https://github.com/ridaabouhayan-hue/nexuspen/releases/download/v1.3.1/NexusPen.exe\"}]}";
+      var ui = Updates.Parse(gh);
+      Check(ui != null && ui.Version == "1.3.1" && ui.Sha256 != null && ui.Sha256.Length == 64 && ui.SetupUrl != null && ui.SetupUrl.EndsWith("/v1.3.1/NexusPen-Setup.exe"), "Bijwerken: installer en controlecode uit het GitHub-antwoord");
+      var ubad = Updates.Parse(gh.Replace("https://github.com/ridaabouhayan-hue/nexuspen/releases/download/", "https://example.com/x/"));
+      Check(ubad != null && ubad.SetupUrl == null, "Bijwerken: een download van een andere plek wordt nooit gebruikt");
+      Check(Updates.IsNewer("1.3.2", "1.3.1") && !Updates.IsNewer("1.3.1", "1.3.1") && !Updates.IsNewer("1.2.9", "1.3.0"), "Versienummers vergelijken");
+    }
+
     // 15c. Instellingen exporteren en importeren: alleen echte NexusPen-bestanden
     {
       string ex = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np-export-test.nexuspen");

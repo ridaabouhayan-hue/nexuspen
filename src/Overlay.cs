@@ -505,15 +505,17 @@ namespace NexusPen
                 Directory.CreateDirectory(StrokeStore.Dir);
                 bool keep = File.Exists(StrokeStore.KeepPath);
                 bool crashed = File.Exists(StrokeStore.LockPath);
+                // net bijgewerkt: de tekening van voor het bijwerken weer laten zien
+                if (File.Exists(Updates.FlagPath)) { justUpdated = true; try { File.Delete(Updates.FlagPath); } catch { } }
                 // 0 = nooit bewaren, 1 = na Opslaan, 2 = altijd
-                bool load = crashed || Cfg.KeepDrawing == 2 || (Cfg.KeepDrawing == 1 && keep);
+                bool load = crashed || justUpdated || Cfg.KeepDrawing == 2 || (Cfg.KeepDrawing == 1 && keep);
                 if (load)
                 {
                     screenStrokes = StrokeStore.Load(StrokeStore.CurrentPath);
                     pages = StrokeStore.LoadBoard();
                     int n = screenStrokes.Count;
                     foreach (List<Stroke> pg in pages) n += pg.Count;
-                    if (n > 0) { if (crashed) restoredAfterCrash = true; else restoredSaved = true; }
+                    if (n > 0 && !justUpdated) { if (crashed) restoredAfterCrash = true; else restoredSaved = true; }
                     if (crashed) Log.Info("Vorige sessie niet netjes afgesloten, " + n + " lijnen teruggezet");
                 }
                 else
@@ -832,24 +834,94 @@ namespace NexusPen
             warm.Tick += delegate { warm.Stop(); warm.Dispose(); WarmUp(); };
             warm.Start();
             if (StartCollapsed) CollapseAll();
-            if (restoredAfterCrash)
+            if (justUpdated)
+                tray.ShowBalloonTip(4000, "NexusPen", L.F("NexusPen is bijgewerkt naar {0}. Je tekening staat er nog.", Program.Version), ToolTipIcon.Info);
+            else if (restoredAfterCrash)
                 tray.ShowBalloonTip(4000, "NexusPen", L.T("Je tekening van de vorige keer is teruggezet, want NexusPen was onverwacht gestopt. Alles wissen kan met de Delete-toets."), ToolTipIcon.Info);
             else if (restoredSaved)
                 tray.ShowBalloonTip(4000, "NexusPen", L.T("Je opgeslagen tekening staat er weer. Liever leeg beginnen? Druk op Delete en daarna op Opslaan."), ToolTipIcon.Info);
 
             if (Cfg.UpdateCheck && !Program.SelfTest)
-                Updates.CheckLater(20000, delegate(string version, string url)
+                Updates.CheckLater(20000, delegate(Updates.Info info)
                 {
-                    try
-                    {
-                        BeginInvoke((Action)delegate
-                        {
-                            updateUrl = url; updateShownAt = DateTime.Now;
-                            tray.ShowBalloonTip(8000, "NexusPen", L.F("Er is een nieuwe versie: {0}. Klik hier om hem te downloaden.", version), ToolTipIcon.Info);
-                        });
-                    }
-                    catch { }
+                    try { BeginInvoke((Action)delegate { UpdateFound(info, false); }); } catch { }
                 });
+        }
+
+        // ---------- bijwerken met een klik
+        public Updates.Info PendingUpdate;
+        bool updating, justUpdated;
+
+        void UpdateFound(Updates.Info info, bool fromSettings)
+        {
+            PendingUpdate = info;
+            updateUrl = info.PageUrl; updateShownAt = DateTime.Now;
+            SetupTrayMenu();
+            RefreshSettingsWindow();
+            if (!fromSettings)
+                tray.ShowBalloonTip(8000, "NexusPen", L.F("Er is een nieuwe versie: {0}. Klik hier om bij te werken.", info.Version), ToolTipIcon.Info);
+        }
+
+        // Nu kijken (vanuit Instellingen). result: true = er is iets nieuws, false = je hebt de nieuwste
+        public void CheckForUpdateNow(Action<bool> result)
+        {
+            Updates.CheckLater(0, delegate(Updates.Info info)
+            {
+                try { BeginInvoke((Action)delegate { UpdateFound(info, true); if (result != null) result(true); }); } catch { }
+            }, delegate
+            {
+                try { BeginInvoke((Action)delegate { if (result != null) result(false); }); } catch { }
+            });
+        }
+
+        // Downloaden, controleren, je tekening bewaren, de installer stil laten lopen; die start NexusPen daarna weer
+        public void InstallUpdate()
+        {
+            Updates.Info info = PendingUpdate;
+            if (info == null || updating) return;
+            if (info.SetupUrl == null || info.Sha256 == null)
+            {
+                // geen controlecode bij deze versie: dan niet zelf installeren, alleen de pagina openen
+                try { if (info.PageUrl.StartsWith("https://github.com/")) System.Diagnostics.Process.Start(info.PageUrl); } catch { }
+                return;
+            }
+            if (MessageBox.Show(this, L.F("NexusPen bijwerken naar {0}? NexusPen sluit even en start daarna vanzelf weer. Je tekening blijft staan.", info.Version), "NexusPen",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            updating = true;
+            if (toolbar != null) toolbar.ShowToast(L.T("De nieuwe versie wordt opgehaald..."), "", null);
+            Usage.Log("bijwerken", info.Version, "");
+            Updates.Download(info, delegate(string file)
+            {
+                try
+                {
+                    BeginInvoke((Action)delegate
+                    {
+                        updating = false;
+                        if (file == null)
+                        {
+                            tray.ShowBalloonTip(6000, "NexusPen", L.T("Bijwerken lukte niet. Probeer het later nog eens, of download hem zelf van de downloadpagina."), ToolTipIcon.Warning);
+                            return;
+                        }
+                        try
+                        {
+                            CloseTextInput(true);
+                            SaveNow();
+                            File.WriteAllText(Updates.FlagPath, info.Version);   // bij de volgende start: tekening terugzetten
+                            System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo(file, "/SILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL");
+                            psi.UseShellExecute = true;
+                            System.Diagnostics.Process.Start(psi);
+                            Close();   // de installer vervangt het programma en start het daarna weer
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error("Installer starten", ex);
+                            try { File.Delete(Updates.FlagPath); } catch { }
+                            tray.ShowBalloonTip(6000, "NexusPen", L.T("Bijwerken lukte niet. Probeer het later nog eens, of download hem zelf van de downloadpagina."), ToolTipIcon.Warning);
+                        }
+                    });
+                }
+                catch { }
+            });
         }
 
         void WarmUp()
@@ -886,9 +958,8 @@ namespace NexusPen
         void OnBalloonClicked(object sender, EventArgs e)
         {
             if (updateUrl == null || (DateTime.Now - updateShownAt).TotalSeconds > 12) return;   // alleen de melding over de nieuwe versie
-            string u = updateUrl; updateUrl = null;
-            if (!u.StartsWith("https://github.com/")) return;
-            try { System.Diagnostics.Process.Start(u); } catch (Exception ex) { Log.Error("Downloadpagina openen", ex); }
+            updateUrl = null;
+            InstallUpdate();
         }
 
         // Voor de automatische test op GitHub: alles een keer openen, plaatjes maken en weer netjes sluiten
@@ -1280,6 +1351,7 @@ namespace NexusPen
             m.MenuItems.Add(L.T("Alles in- of uitklappen") + "\t" + Cfg.HotkeyHide, delegate { ToggleAllHidden(); });
             m.MenuItems.Add(L.T("Opslaan voor de volgende keer") + (Shortcuts.Combo("opslaan").Length > 0 ? "\t" + Shortcuts.Combo("opslaan") : ""), delegate { SaveExplicit(); });
             m.MenuItems.Add(L.T("Schermafbeelding maken"), delegate { Screenshot(); });
+            if (PendingUpdate != null) m.MenuItems.Add(L.F("Bijwerken naar {0}", PendingUpdate.Version), delegate { InstallUpdate(); });
             m.MenuItems.Add(L.T("Instellingen..."), delegate { ShowSettings(null); });
             m.MenuItems.Add(L.T("Werkbalk terugzetten"), delegate { if (allHidden) ExpandAll(); toolbar.ResetPosition(); });
             m.MenuItems.Add(L.T("Vorige tekening terughalen"), delegate { RestorePrevious(); });

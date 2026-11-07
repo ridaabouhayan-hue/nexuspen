@@ -50,6 +50,8 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 
 [Run]
 Filename: "{app}\NexusPen.exe"; Description: "NexusPen openen"; Flags: nowait postinstall skipifsilent
+; bijwerken vanuit NexusPen gaat stil: dan NexusPen daarna vanzelf weer starten
+Filename: "{app}\NexusPen.exe"; Flags: nowait; Check: WizardSilent
 
 [UninstallRun]
 Filename: "{cmd}"; Parameters: "/C taskkill /IM NexusPen.exe /F"; Flags: runhidden; RunOnceId: "StopNexusPen"

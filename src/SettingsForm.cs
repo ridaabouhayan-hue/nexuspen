@@ -363,6 +363,19 @@ namespace NexusPen
                 ov.RegisterGlobalHotkeys();
                 Changed(); BuildItems(); Notice(L.T("Alles staat weer op standaard."));
             }, false);
+            // bijwerken: is er al een nieuwe versie gevonden, dan meteen bijwerken; anders nu even kijken
+            Updates.Info pu = ov.PendingUpdate;
+            Button(contentX, y + 62 * S, pu != null ? L.F("Bijwerken naar {0}", pu.Version) : L.T("Kijken of er een nieuwe versie is"), pu != null ? "aftekenen" : "terugzetten", delegate
+            {
+                if (ov.PendingUpdate != null) { ov.InstallUpdate(); return; }
+                Notice(L.T("Even kijken..."));
+                ov.CheckForUpdateNow(delegate(bool found)
+                {
+                    if (IsDisposed) return;
+                    if (!found) Notice(L.F("Je hebt de nieuwste versie ({0}).", Program.Version));
+                    BuildItems(); Invalidate();
+                });
+            }, pu != null);
             // alleen de knoppen in de balk terug naar de standaard (met vragen, dan gaat het nooit per ongeluk)
             float bx = contentX + rw + 10 * S;
             bx += Button(bx, y + 16 * S, L.T("Standaardbalk terugzetten"), "undo", delegate
