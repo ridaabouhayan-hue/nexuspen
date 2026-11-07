@@ -21,10 +21,10 @@ namespace NexusPen
         public static string FlagPath { get { return Path.Combine(StrokeStore.Dir, "bijwerken.vlag"); } }
 
         // Kijkt op de achtergrond. found krijgt de nieuwe versie (bijvoorbeeld "1.2.1") en het adres van de pagina.
-        public static void CheckLater(int delayMs, Action<Info> found) { CheckLater(delayMs, found, null); }
+        public static void CheckLater(int delayMs, Action<Info> found) { CheckLater(delayMs, found, null, null); }
 
-        // nothing: wordt aangeroepen als er geen nieuwe versie is (of geen internet), voor "Nu kijken"
-        public static void CheckLater(int delayMs, Action<Info> found, Action nothing)
+        // nothing: je hebt de nieuwste; failed: kon niet kijken (geen internet). Voor "Nu kijken".
+        public static void CheckLater(int delayMs, Action<Info> found, Action nothing, Action failed)
         {
             Thread th = new Thread(delegate()
             {
@@ -48,8 +48,8 @@ namespace NexusPen
                     if (info != null && IsNewer(info.Version, Program.Version)) found(info);
                     else if (nothing != null) nothing();
                 }
-                catch (WebException) { if (nothing != null) nothing(); }      // geen internet: gewoon niets melden
-                catch (Exception ex) { Log.Error("Zoeken naar een nieuwe versie", ex); if (nothing != null) nothing(); }
+                catch (WebException) { if (failed != null) failed(); }      // geen internet: bij de automatische check niets melden
+                catch (Exception ex) { Log.Error("Zoeken naar een nieuwe versie", ex); if (failed != null) failed(); }
             });
             th.IsBackground = true;
             th.Start();

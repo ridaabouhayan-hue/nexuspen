@@ -95,10 +95,7 @@ Na Opslaan staat je tekening er de volgende keer weer | After Save, your drawing
 Nooit | Never | Jamais | Nunca
 Na Opslaan | After Save | Après Enregistrer | Tras Guardar
 Altijd | Always | Toujours | Siempre
-Overig | Other | Autres | Otros
 Melding als er een nieuwe versie is | Notify me when there is a new version | Prévenir quand une nouvelle version existe | Avisar cuando haya una versión nueva
-Bijwerken met een klik, je instellingen blijven staan | Update with one click, your settings stay | Mise à jour en un clic, vos paramètres restent | Actualiza con un clic, tus ajustes se mantienen
-Alles terugzetten naar standaard | Reset everything to default | Tout remettre par défaut | Restablecer todo
 Alle instellingen terugzetten naar standaard? Je tekeningen blijven staan. | Reset all settings to default? Your drawings stay. | Remettre tous les paramètres par défaut ? Vos dessins restent. | ¿Restablecer todos los ajustes? Tus dibujos se mantienen.
 Alles staat weer op standaard. | Everything is back to default. | Tout est revenu par défaut. | Todo ha vuelto a los valores predeterminados.
 Taal | Language | Langue | Idioma
@@ -122,7 +119,6 @@ Niet in je balk | Not in your bar | Pas dans votre barre | No están en tu barra
 Stand | Orientation | Orientation | Orientación
 Liggend | Horizontal | Horizontale | Horizontal
 Staand | Vertical | Verticale | Vertical
-Standaardbalk terugzetten | Restore the default bar | Rétablir la barre par défaut | Restablecer la barra predeterminada
 Pen en kleuren | Pen and colours | Stylo et couleurs | Lápiz y colores
 Kleuren | Colours | Couleurs | Colores
 Felle kleuren vallen op, zachte zijn rustiger voor de ogen | Bright colours stand out, soft ones are easier on the eyes | Les couleurs vives ressortent, les douces reposent les yeux | Los colores vivos destacan, los suaves descansan la vista
@@ -398,7 +394,24 @@ NexusPen bijwerken naar {0}? NexusPen sluit even en start daarna vanzelf weer. J
 De nieuwe versie wordt opgehaald... | Downloading the new version... | Téléchargement de la nouvelle version... | Descargando la nueva versión...
 Bijwerken lukte niet. Probeer het later nog eens, of download hem zelf van de downloadpagina. | Updating did not work. Try again later, or download it yourself from the download page. | La mise à jour n'a pas fonctionné. Réessayez plus tard ou téléchargez-la vous-même. | No se pudo actualizar. Inténtalo más tarde o descárgala tú desde la página de descargas.
 Bijwerken naar {0} | Update to {0} | Mettre à jour vers {0} | Actualizar a {0}
-Kijken of er een nieuwe versie is | Check for a new version | Rechercher une nouvelle version | Buscar una nueva versión
 Even kijken... | Checking... | Vérification... | Comprobando...
-Je hebt de nieuwste versie ({0}). | You have the latest version ({0}). | Vous avez la dernière version ({0}). | Tienes la versión más reciente ({0}).
 Bijwerken is niet gelukt. Je werkt nog met de vorige versie. Probeer het later nog eens. | Updating did not work. You are still using the previous version. Please try again later. | La mise à jour n'a pas fonctionné. Vous utilisez encore la version précédente. Réessayez plus tard. | No se pudo actualizar. Sigues con la versión anterior. Inténtalo más tarde.
+Bijwerken | Updates | Mises à jour | Actualizaciones
+Versie {0} staat klaar | Version {0} is ready | La version {0} est prête | La versión {0} está lista
+Je tekening en instellingen blijven staan. NexusPen start daarna vanzelf weer. | Your drawing and settings stay. NexusPen then starts again by itself. | Votre dessin et vos paramètres restent. NexusPen redémarre tout seul. | Tu dibujo y tus ajustes se quedan. NexusPen vuelve a abrirse solo.
+NexusPen vraagt GitHub of er een nieuwe versie is. | NexusPen is asking GitHub whether there is a new version. | NexusPen demande à GitHub s'il existe une nouvelle version. | NexusPen pregunta a GitHub si hay una nueva versión.
+Je hebt de nieuwste versie | You have the latest version | Vous avez la dernière version | Tienes la versión más reciente
+NexusPen {0}, gekeken om {1} | NexusPen {0}, checked at {1} | NexusPen {0}, vérifié à {1} | NexusPen {0}, comprobado a las {1}
+Kijken lukte niet | Could not check | Impossible de vérifier | No se pudo comprobar
+Geen internet? Probeer het straks nog eens. | No internet? Try again later. | Pas d'internet ? Réessayez plus tard. | ¿Sin internet? Inténtalo más tarde.
+Kijk of er een nieuwe versie is. | Check whether there is a new version. | Vérifiez s'il existe une nouvelle version. | Comprueba si hay una nueva versión.
+Nu bijwerken | Update now | Mettre à jour | Actualizar ahora
+Nu kijken | Check now | Vérifier | Comprobar
+NexusPen kijkt bij het starten even bij GitHub. Er gaat niets van jou mee. | NexusPen briefly checks GitHub at startup. Nothing of yours is sent. | NexusPen vérifie brièvement GitHub au démarrage. Rien de vous n'est envoyé. | NexusPen consulta GitHub al iniciar. No se envía nada tuyo.
+Wat is er nieuw? | What's new? | Quoi de neuf ? | ¿Qué hay de nuevo?
+Terugzetten | Reset | Réinitialiser | Restablecer
+Alleen de werkbalk | Only the toolbar | Seulement la barre | Solo la barra
+De standaardknoppen in de standaardvolgorde | The default buttons in the default order | Les boutons par défaut dans l'ordre par défaut | Los botones predeterminados en el orden predeterminado
+Alle instellingen | All settings | Tous les paramètres | Todos los ajustes
+Thema, kleuren, sneltoetsen en de rest. Je tekeningen blijven staan. | Theme, colours, shortcuts and the rest. Your drawings stay. | Thème, couleurs, raccourcis et le reste. Vos dessins restent. | Tema, colores, atajos y el resto. Tus dibujos se quedan.
+Alles terugzetten | Reset everything | Tout réinitialiser | Restablecer todo

@@ -868,15 +868,18 @@ namespace NexusPen
             }
         }
 
-        // Nu kijken (vanuit Instellingen). result: true = er is iets nieuws, false = je hebt de nieuwste
-        public void CheckForUpdateNow(Action<bool> result)
+        // Nu kijken (vanuit Instellingen). result: 1 = er is iets nieuws, 0 = je hebt de nieuwste, -1 = kon niet kijken
+        public void CheckForUpdateNow(Action<int> result)
         {
             Updates.CheckLater(0, delegate(Updates.Info info)
             {
-                try { BeginInvoke((Action)delegate { UpdateFound(info, true); if (result != null) result(true); }); } catch { }
+                try { BeginInvoke((Action)delegate { UpdateFound(info, true); if (result != null) result(1); }); } catch { }
             }, delegate
             {
-                try { BeginInvoke((Action)delegate { if (result != null) result(false); }); } catch { }
+                try { BeginInvoke((Action)delegate { if (result != null) result(0); }); } catch { }
+            }, delegate
+            {
+                try { BeginInvoke((Action)delegate { if (result != null) result(-1); }); } catch { }
             });
         }
 
@@ -1132,6 +1135,7 @@ namespace NexusPen
                                 if (pageStep == pagesToShow.Length) { L.Set("en"); settingsForm.ShowPage("Algemeen"); settingsForm.Refresh(); snap(settingsForm, "11-english"); snap(toolbar, "12-werkbalk-english"); L.Set("nl");
                                     // licht thema: zijn de letters rechts ook scherp?
                                     int keepTheme = Cfg.ThemeIndex; Cfg.ThemeIndex = 1; ApplySettings(); settingsForm.Rebuild(); settingsForm.ShowPage("Uiterlijk"); settingsForm.Refresh(); snap(settingsForm, "11-licht-uiterlijk");
+                                    settingsForm.ShowPage("Knoppen"); settingsForm.ScrollToEnd(); settingsForm.Refresh(); snap(settingsForm, "11-knoppen-gescrold");
                                     Cfg.ThemeIndex = keepTheme; ApplySettings(); }
                                 break;
                             }
