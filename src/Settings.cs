@@ -212,7 +212,10 @@ namespace NexusPen
 
         public void Save() { Save(FilePath); }
 
-        public void Save(string path)
+        public void Save(string path) { TrySave(path); }
+
+        // Bewaren en zeggen of het lukte (voor exporteren naar een stick of een andere map)
+        public bool TrySave(string path)
         {
             try
             {
@@ -222,9 +225,27 @@ namespace NexusPen
                 foreach (System.Reflection.FieldInfo f in Fields) lines.Add(f.Name + "=" + Write(f.GetValue(this)));
                 string tmp = path + ".tmp";
                 File.WriteAllLines(tmp, lines.ToArray(), Encoding.UTF8);
-                if (File.Exists(path)) File.Replace(tmp, path, null); else File.Move(tmp, path);
+                if (File.Exists(path)) { try { File.Replace(tmp, path, null); } catch { File.Copy(tmp, path, true); File.Delete(tmp); } }
+                else File.Move(tmp, path);
+                return File.Exists(path);
             }
-            catch (Exception ex) { Log.Error("Instellingen bewaren mislukt", ex); }
+            catch (Exception ex) { Log.Error("Instellingen bewaren mislukt", ex); return false; }
+        }
+
+        // Is dit echt een bestand met NexusPen-instellingen? (kopregel en genoeg bekende namen)
+        public static bool LooksLikeSettings(string path)
+        {
+            try
+            {
+                string[] lines = File.ReadAllLines(path);
+                if (lines.Length == 0 || !lines[0].StartsWith("# NexusPen")) return false;
+                Dictionary<string, bool> known = new Dictionary<string, bool>();
+                foreach (System.Reflection.FieldInfo f in Fields) known[f.Name] = true;
+                int hits = 0;
+                foreach (string l in lines) { int i = l.IndexOf('='); if (i > 0 && known.ContainsKey(l.Substring(0, i).Trim())) hits++; }
+                return hits >= 10;
+            }
+            catch { return false; }
         }
 
         // ---- breedte per gereedschap

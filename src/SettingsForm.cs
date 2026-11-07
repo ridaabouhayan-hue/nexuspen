@@ -506,7 +506,7 @@ namespace NexusPen
                 Item it = Add(slots[i], Toolbar.NameOf(k), null, delegate(Graphics g, Item item, bool hv)
                 {
                     PaintKey(g, item.R, k, hv, dragActive && dragFrom == idx);
-                    if (hv && !dragActive && k != "instellingen") PaintBadge(g, item.R, "kruis");
+                    if (hv && !dragActive && k != "instellingen" && k != "|") PaintBadge(g, item.R, "kruis");
                 });
                 it.Key = "bar:" + idx + ":" + k;
             }
@@ -561,7 +561,12 @@ namespace NexusPen
         {
             List<string> layout = Toolbar.Layout(Cfg);
             int at = layout.IndexOf("instellingen");
-            if (k == "|") { if (at < 0) layout.Add("|"); else layout.Insert(at, "|"); }
+            if (k == "|")
+            {
+                int pos = at < 0 ? layout.Count : at;
+                if (pos == 0 || layout[pos - 1] == "|") return;   // daar staat al een streep
+                layout.Insert(pos, "|");
+            }
             else if (!layout.Contains(k)) { if (at < 0) layout.Add(k); else layout.Insert(at, k); }
             Cfg.BarLayout = Toolbar.LayoutString(layout);
             Usage.Log("instelling", "erbij", k);
@@ -694,7 +699,7 @@ namespace NexusPen
 
         // ---- je eigen kleurenlijst aanpassen (voor de set die nu aan staat: fel of zacht)
         List<RectangleF> colorSlots = new List<RectangleF>();
-        RectangleF ColorBadge(RectangleF r) { float d = 15 * S; return new RectangleF(r.Right - d + 2 * S, r.Y - 2 * S, d, d); }
+        RectangleF ColorBadge(RectangleF r) { float d = 14 * S; return new RectangleF(r.Right - d + 5 * S, r.Y - 5 * S, d, d); }
 
         // Waar komt een gesleepte kleur terecht? (de plek waar je hem loslaat)
         int ColorInsertIndex(Point p)
@@ -1074,7 +1079,8 @@ namespace NexusPen
         }
 
         // Dingen die bij deze computer horen (plek van de balk, opstarten): niet meenemen naar een andere computer
-        static readonly string[] PerComputer = { "ToolbarX", "ToolbarY", "TileX", "TileY", "ShotFolder", "Vertical" };
+        // (en je keuzes over privacy: gebruiksgegevens en de check op een nieuwe versie blijven zoals ze hier staan)
+        static readonly string[] PerComputer = { "ToolbarX", "ToolbarY", "TileX", "TileY", "ShotFolder", "Vertical", "Usage", "UsageCats", "UpdateCheck" };
 
         void ExportSettings()
         {
@@ -1085,8 +1091,12 @@ namespace NexusPen
                 sd.FileName = "NexusPen-instellingen.nexuspen";
                 sd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
                 if (sd.ShowDialog(this) != DialogResult.OK) return;
-                try { Cfg.Save(sd.FileName); Usage.Log("instelling", "exporteren", ""); Notice(L.T("Klaar. Zet dit bestandje op je andere computer en kies daar Importeren.")); }
-                catch (Exception ex) { Log.Error("Instellingen exporteren", ex); Notice(L.T("Exporteren lukte niet.")); }
+                // een kopie zonder wat bij deze computer hoort (plek van de balk, je eigen map met je Windows-naam erin)
+                Settings copy = new Settings(), fresh = new Settings();
+                foreach (System.Reflection.FieldInfo f in typeof(Settings).GetFields())
+                    if (!f.IsStatic && !f.IsInitOnly) f.SetValue(copy, Array.IndexOf(PerComputer, f.Name) < 0 ? f.GetValue(Cfg) : f.GetValue(fresh));
+                if (copy.TrySave(sd.FileName)) { Usage.Log("instelling", "exporteren", ""); Notice(L.T("Klaar. Zet dit bestandje op je andere computer en kies daar Importeren.")); }
+                else Notice(L.T("Exporteren lukte niet."));
             }
         }
 
@@ -1095,12 +1105,14 @@ namespace NexusPen
             using (OpenFileDialog od = new OpenFileDialog())
             {
                 od.Title = L.T("Instellingen importeren");
-                od.Filter = L.T("NexusPen-instellingen") + " (*.nexuspen;*.ini)|*.nexuspen;*.ini";
+                od.Filter = L.T("NexusPen-instellingen") + " (*.nexuspen)|*.nexuspen";
                 od.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
                 if (od.ShowDialog(this) != DialogResult.OK) return;
                 try
                 {
-                    if (new FileInfo(od.FileName).Length > 256 * 1024) { Notice(L.T("Dit is geen bestand met NexusPen-instellingen.")); return; }
+                    if (new FileInfo(od.FileName).Length > 256 * 1024 || !Settings.LooksLikeSettings(od.FileName)) { Notice(L.T("Dit is geen bestand met NexusPen-instellingen.")); return; }
+                    if (MessageBox.Show(this, L.T("Je instellingen op deze computer vervangen door die uit het bestand? Je tekeningen blijven staan."), "NexusPen", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                    try { File.Copy(Settings.FilePath, Settings.FilePath + ".voor-import", true); } catch { }   // voor de zekerheid: de oude bewaren
                     Settings other = Settings.Load(od.FileName);   // leest alleen bekende instellingen, met de gewone controles
                     foreach (System.Reflection.FieldInfo f in typeof(Settings).GetFields())
                         if (!f.IsStatic && !f.IsInitOnly && Array.IndexOf(PerComputer, f.Name) < 0) f.SetValue(Cfg, f.GetValue(other));
@@ -1328,11 +1340,11 @@ namespace NexusPen
             {
                 int ci = int.Parse(it.Key.Substring(4));
                 // kruisje rechtsboven: meteen weghalen
-                if (ColorBadge(it.R).Contains(e.Location) && ov.ColorCount > 1) { RemoveColorAt(ci); return; }
+                if (hover == it && ColorBadge(it.R).Contains(e.Location) && ov.ColorCount > 1) { RemoveColorAt(ci); return; }   // alleen als het kruisje al te zien was
                 pressed = it; pressAt = e.Location; dragActive = false; dragFrom = ci; dragKey = "col"; Capture = true;
                 return;
             }
-            if (it != null && it.Key != null && it.Key.StartsWith("bar:") && KeyBadge(it.R).Contains(e.Location))
+            if (it != null && hover == it && it.Key != null && it.Key.StartsWith("bar:") && !it.Key.EndsWith(":|") && KeyBadge(it.R).Contains(e.Location))
             {
                 string[] bp = it.Key.Split(new char[] { ':' }, 3);
                 int bi;

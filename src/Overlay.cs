@@ -425,6 +425,8 @@ namespace NexusPen
                 KeepExtrasOnTop();
             }
 
+            if (zoomSavePending && (DateTime.Now - zoomChangedAt).TotalMilliseconds > 800) { zoomSavePending = false; Cfg.Save(); }
+
             // Automatisch bewaren, 1,5 seconde na de laatste wijziging
             if (needSave && (DateTime.Now - changedAt).TotalMilliseconds > 1500) SaveNow();
 
@@ -1731,12 +1733,15 @@ namespace NexusPen
         // Lijnen en ruitjes groter of kleiner (om in te zoomen)
         // In- of uitzoomen op het bord: dir +1 groter, -1 kleiner (in stapjes van 20%)
         int zoomWheelAcc;
+        DateTime lastZoomLog = DateTime.MinValue, zoomChangedAt = DateTime.MinValue;
+        bool zoomSavePending;
 
         public void ZoomBoard(int dir)
         {
             float z = dir == 0 ? Cfg.BoardZoom : Cfg.BoardZoom * (dir > 0 ? 1.2f : 1 / 1.2f);
             if (Math.Abs(z - 1) < 0.05f) z = 1;
-            Cfg.BoardZoom = Math.Max(Settings.MinZoom, Math.Min(Settings.MaxZoom, z)); Cfg.Save();
+            Cfg.BoardZoom = Math.Max(Settings.MinZoom, Math.Min(Settings.MaxZoom, z));
+            zoomSavePending = true; zoomChangedAt = DateTime.Now;   // bewaren gebeurt even later (niet bij elke stap)
             if (BoardMode == Board.None) SetBoard(Board.White); else Rebuild();
         }
 
@@ -2393,7 +2398,8 @@ namespace NexusPen
             base.OnMouseWheel(e);
             if (!DrawMode) return;
             // Ctrl+muiswiel op een bord: in- en uitzoomen (gewoon draaien blijft de dikte)
-            if (BoardMode != Board.None && (Control.ModifierKeys & Keys.Control) != 0 && (Control.ModifierKeys & Keys.Shift) == 0)
+            if (BoardMode != Board.None && (Control.ModifierKeys & Keys.Control) != 0 && (Control.ModifierKeys & Keys.Shift) == 0
+                && typing == null && CurrentTool != Tool.Loupe && !FocusOn && CurrentTool != Tool.Text && CurrentTool != Tool.Stamp)
             {
                 if (Math.Sign(e.Delta) != Math.Sign(zoomWheelAcc)) zoomWheelAcc = 0;
                 zoomWheelAcc += e.Delta;
@@ -2632,16 +2638,17 @@ namespace NexusPen
             base.OnKeyDown(e);
             if (TypingKey(e)) return;
             // op een bord: Ctrl+plus en Ctrl+min zoomen in en uit, Ctrl+0 terug naar 100%
-            if (BoardMode != Board.None && e.Control && !e.Shift && !e.Alt)
+            if (BoardMode != Board.None && e.Control && !e.Alt)
             {
                 Keys k = e.KeyCode;
-                int dir = (k == Keys.Oemplus || k == Keys.Add) ? 1 : (k == Keys.OemMinus || k == Keys.Subtract) ? -1 : (k == Keys.D0 || k == Keys.NumPad0) ? 0 : 99;
+                // de + zit op veel toetsenborden onder Shift: Ctrl+Shift+= telt ook
+                int dir = (k == Keys.Oemplus || k == Keys.Add) ? 1 : (!e.Shift && (k == Keys.OemMinus || k == Keys.Subtract)) ? -1 : (!e.Shift && (k == Keys.D0 || k == Keys.NumPad0)) ? 0 : 99;
                 if (dir != 99)
                 {
                     if (dir == 0) Cfg.BoardZoom = 1;
                     ZoomBoard(dir);
                     if (toolbar != null) toolbar.RefreshBoardPopup();
-                    Usage.Log("bord", "zoom", "sneltoets");
+                    if ((DateTime.Now - lastZoomLog).TotalSeconds > 2) { lastZoomLog = DateTime.Now; Usage.Log("bord", "zoom", "sneltoets"); }
                     e.Handled = true; e.SuppressKeyPress = true;
                     return;
                 }
@@ -2854,12 +2861,19 @@ namespace NexusPen
                 {
                     using (Graphics g = Graphics.FromImage(bmp))
                         g.CopyFromScreen(r.X, r.Y, 0, 0, r.Size, CopyPixelOperation.SourceCopy | CopyPixelOperation.CaptureBlt);
-                    Directory.CreateDirectory(ScreenshotDir);
-                    string file = Path.Combine(ScreenshotDir, "NexusPen_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".png");
-                    bmp.Save(file, ImageFormat.Png);
-                    try { Clipboard.SetImage(bmp); } catch { }
+                    try { Clipboard.SetImage(bmp); } catch { }   // eerst op het klembord: dat lukt ook als de map niet werkt
+                    string dir = ScreenshotDir, name = "NexusPen_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".png";
+                    try { Directory.CreateDirectory(dir); bmp.Save(Path.Combine(dir, name), ImageFormat.Png); }
+                    catch (Exception ex)
+                    {
+                        // eigen map werkt niet (alleen-lezen, OneDrive): dan in de gewone map
+                        if (dir == DefaultScreenshotDir) throw;
+                        Log.Error("Schermafbeelding in eigen map", ex);
+                        dir = DefaultScreenshotDir; Directory.CreateDirectory(dir); bmp.Save(Path.Combine(dir, name), ImageFormat.Png);
+                    }
                     Usage.Log("foto", "", "");
-                    if (toolbar != null) toolbar.ShowToast(L.T("Opgeslagen in"), L.T("Afbeeldingen") + " > NexusPen " + L.T("en gekopieerd naar het klembord"), ScreenshotDir);
+                    string shown = dir == DefaultScreenshotDir ? L.T("Afbeeldingen") + " > NexusPen" : Path.GetFileName(dir.TrimEnd('\\'));
+                    if (toolbar != null) toolbar.ShowToast(L.T("Opgeslagen in"), shown + " " + L.T("en gekopieerd naar het klembord"), dir);
                 }
             }
             catch (Exception ex)

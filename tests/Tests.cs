@@ -233,6 +233,16 @@ static class Tests {
     }
     Check(Icons.DeviceStroke(2, 20 / 24f) == 2 && Icons.DeviceStroke(2, 30 / 24f) == 3 && Icons.DeviceStroke(2, 16 / 24f) == 1, "Lijndikte van icoontjes in hele pixels");
 
+    // 15c. Instellingen exporteren en importeren: alleen echte NexusPen-bestanden
+    {
+      string ex = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np-export-test.nexuspen");
+      string junk = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np-export-junk.ini");
+      System.IO.File.WriteAllText(junk, "[.ShellClassInfo]\nIconResource=x\n");
+      bool saved = new Settings().TrySave(ex);
+      Check(saved && Settings.LooksLikeSettings(ex) && !Settings.LooksLikeSettings(junk), "Importeren accepteert alleen echte NexusPen-instellingen");
+      try { System.IO.File.Delete(ex); System.IO.File.Delete(junk); } catch { }
+    }
+
     // 15b. Woorden slepen in een tekst (zoals in Word)
     {
       var ms = new Stroke{Tool=Tool.Text, Text="ik ga snel naar huis", FontSize=30}; ms.Pts.Add(new PointF(0, 0));

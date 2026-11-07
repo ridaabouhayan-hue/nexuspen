@@ -389,3 +389,7 @@ Dit is geen bestand met NexusPen-instellingen. | This is not a NexusPen settings
 Je instellingen zijn overgezet. | Your settings have been transferred. | Vos paramètres ont été transférés. | Tus ajustes se han transferido.
 Importeren lukte niet. | Import did not work. | L'importation n'a pas fonctionné. | No se pudo importar.
 Zo-zo | So-so | Bof | Regular
+Je instellingen op deze computer vervangen door die uit het bestand? Je tekeningen blijven staan. | Replace the settings on this computer with the ones from the file? Your drawings stay. | Remplacer les paramètres de cet ordinateur par ceux du fichier ? Vos dessins restent. | ¿Sustituir los ajustes de este ordenador por los del archivo? Tus dibujos se quedan.
+Uitzoomen | Zoom out | Dézoomer | Alejar
+Inzoomen | Zoom in | Zoomer | Acercar
+Klik = terug naar 100% | Click = back to 100% | Clic = retour à 100 % | Clic = volver al 100 %

@@ -196,12 +196,13 @@ namespace NexusPen
             if (name != null)
             {
                 int cut = name.IndexOf(". ");
-                if (cut > 0 && hover == null) name = name.Substring(0, cut);
+                if (cut > 0) name = name.Substring(0, cut);
+                cut = name.IndexOf("  (");
+                if (cut > 0) name = name.Substring(0, cut);
                 Label(g, name, new RectangleF(10 * S, pad + h, ClientSize.Width - 20 * S, CaptionH * S), hover != null ? T.Text : T.Muted, 11, false, StringAlignment.Center);
             }
         }
 
-        protected override void OnMouseMove(MouseEventArgs e) { Item before = hover; base.OnMouseMove(e); if (hover != before) Invalidate(); }
     }
 
     // ------------------------------------------------------------------ Vormen: lijn, pijl, rechthoek, cirkel
@@ -337,14 +338,16 @@ namespace NexusPen
                     delegate { o.Cfg.BoardBg = idx; o.Cfg.Save(); if (o.BoardMode == Board.None) o.SetBoard(Board.White); else o.Rebuild(); Invalidate(); });
             }
             // zelf in- en uitzoomen: van heel veel kleine regels tot een grote regel
-            Chip(null, "min", Color.Empty, L.T("Lijnen en ruitjes kleiner (meer regels)"), null, delegate { o.ZoomBoard(-1); Rebuild(); });
+            Icon(L.T("Uitzoomen"), "min", Color.Empty, L.T("Lijnen en ruitjes kleiner (meer regels)"), null, delegate { o.ZoomBoard(-1); Rebuild(); });
             Item zl = Add(new RectangleF(x, pad, 56 * S, h), L.T("Grootte van lijnen en ruitjes"), delegate { o.Cfg.BoardZoom = 1; o.Cfg.Save(); o.ZoomBoard(0); Rebuild(); });
+            zl.Name = L.T("Klik = terug naar 100%");
             zl.Paint = delegate(Graphics g, Item item, bool hv) { if (hv) PaintChip(g, item.R, false, true, null, null, Color.Empty); Label(g, Math.Round(o.Cfg.BoardZoom * 100) + "%", item.R, T.Text, 13, true, StringAlignment.Center); };
             x += 56 * S + 6 * S;
-            Chip(null, "zoom", Color.Empty, L.T("Lijnen en ruitjes groter (minder regels)"), null, delegate { o.ZoomBoard(1); Rebuild(); });
+            Icon(L.T("Inzoomen"), "zoom", Color.Empty, L.T("Lijnen en ruitjes groter (minder regels)"), null, delegate { o.ZoomBoard(1); Rebuild(); });
             Sep();
             Chip(null, "links", Color.Empty, L.T("Vorige pagina"), null, delegate { o.PrevPage(); Rebuild(); });
             Item pg = Add(new RectangleF(x, pad, 52 * S, h), L.T("Pagina"), null);
+            pg.Name = L.T("Pagina");
             pg.Paint = delegate(Graphics g, Item item, bool hv) { Label(g, (o.PageIndex + 1) + " / " + o.PageCount, item.R, T.Text, 13, true, StringAlignment.Center); };
             x += 52 * S + 6 * S;
             Chip(null, "rechts", Color.Empty, L.T("Volgende pagina"), null, delegate { o.NextPage(); Rebuild(); });
