@@ -29,8 +29,11 @@ namespace NexusPen
             Overlay o = ov;
             tipFor.Clear();
             float pad = 14 * S, sw = 28 * S, gapX = 12 * S, rowGap = 12 * S;
-            float w = pad * 2 + sw * 5 + gapX * 4;
-            float chipW = Math.Max(TextWidth(L.T("Krijtstreep"), 13), TextWidth(L.F("Vervaagt na {0} s", 12), 13)) + 30 * S;
+            Color[] cols = o.Colors;
+            int perRow = 8, rows = Math.Max(1, (cols.Length + perRow - 1) / perRow);
+            gapX = 10 * S; rowGap = 10 * S;
+            float w = pad * 2 + sw * perRow + gapX * (perRow - 1);
+            float chipW = Math.Max(TextWidth(L.T("Krijtstreep"), 13), TextWidth(L.T("Vervagen"), 13) + 22 * S) + 30 * S;
             w = Math.Max(w, pad * 2 + 8 * S + chipW * 2);
             float y = pad;
             titleRow = new RectangleF(pad, y, w - pad * 2, 16 * S);
@@ -57,21 +60,22 @@ namespace NexusPen
             }
             segBox = new RectangleF(pad, y, w - pad * 2, 34 * S);
             y += 34 * S + 14 * S;
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < cols.Length; i++)
             {
                 int idx = i;
-                float gx = (w - pad * 2 - sw * 5) / 4;  // kleuren gelijk verdeeld over de breedte
-                RectangleF r = new RectangleF(pad + (i % 5) * (sw + gx), y + (i / 5) * (sw + rowGap), sw, sw);
+                Color col = cols[i];
+                float gx = (w - pad * 2 - sw * perRow) / (perRow - 1);  // kleuren gelijk verdeeld over de breedte
+                RectangleF r = new RectangleF(pad + (i % perRow) * (sw + gx), y + (i / perRow) * (sw + rowGap), sw, sw);
                 Item it = Add(RectangleF.Inflate(r, 4 * S, 4 * S), "", delegate { o.SetColor(idx); Invalidate(); });
                 it.Paint = delegate(Graphics g, Item item, bool h)
                 {
                     RectangleF rr = RectangleF.Inflate(item.R, -4 * S, -4 * S);
-                    Swatch(g, rr, Palette.Sets[o.PaletteIndex][idx], o.ColorIndex == idx, sw * (h ? 1.06f : 1f));
+                    Swatch(g, rr, col, o.ColorIndex == idx, sw * (h ? 1.06f : 1f));
                 };
                 it.Tip = null;
                 tipFor[it] = idx;   // tipFor wordt aan het begin van Build leeggemaakt
             }
-            y += sw * 2 + rowGap + 16 * S;
+            y += sw * rows + rowGap * (rows - 1) + 16 * S;
             // dikte
             labelRow = new RectangleF(pad, y, w - pad * 2, 20 * S);
             track = new RectangleF(pad + 46 * S, y + 8 * S, w - pad * 2 - 46 * S - 34 * S, 4 * S);
@@ -79,19 +83,13 @@ namespace NexusPen
             // krijtstreep en vervagen (voor de pen)
             float half = (w - pad * 2 - 8 * S) / 2;
             Item chalk = Add(new RectangleF(pad, y, half, 32 * S), L.T("Lijnen zien eruit als krijt op een bord"), delegate { o.Cfg.Chalk = !o.Cfg.Chalk; o.Cfg.Save(); Invalidate(); if (o.Bar != null) o.Bar.Refresh2(); });
-            chalk.Paint = delegate(Graphics g, Item item, bool h) { PaintChip(g, item.R, o.Cfg.Chalk, h, L.T("Krijtstreep"), null, Color.Empty); };
-            // klikken: uit, 3, 5, 7, 12 seconden en weer uit
-            Item fade = Add(new RectangleF(pad + half + 8 * S, y, half, 32 * S), L.T("Wat je tekent verdwijnt vanzelf. Klik nog een keer voor een andere tijd: 3, 5, 7 of 12 seconden"), delegate
+            chalk.Paint = delegate(Graphics g, Item item, bool h) { PaintChip(g, item.R, o.Cfg.Chalk, h, L.T("Krijtstreep"), "krijt", o.Cfg.Chalk ? T.Text : T.Icon); };
+            // vervagen: gewoon aan of uit; hoe lang het blijft staan kies je in Instellingen > Pen en kleuren
+            Item fade = Add(new RectangleF(pad + half + 8 * S, y, half, 32 * S), L.F("Wat je tekent verdwijnt vanzelf na {0} seconden. De tijd kies je in Instellingen", o.Cfg.FadeSeconds), delegate
             {
-                if (!o.Cfg.Fade) { o.Cfg.Fade = true; o.Cfg.FadeSeconds = 3; }
-                else
-                {
-                    int i = Array.IndexOf(Settings.FadeChoices, o.Cfg.FadeSeconds);
-                    if (i < 0 || i == Settings.FadeChoices.Length - 1) o.Cfg.Fade = false; else o.Cfg.FadeSeconds = Settings.FadeChoices[i + 1];
-                }
-                o.Cfg.Save(); Invalidate();
+                o.Cfg.Fade = !o.Cfg.Fade; o.Cfg.Save(); Invalidate();
             });
-            fade.Paint = delegate(Graphics g, Item item, bool h) { PaintChip(g, item.R, o.Cfg.Fade, h, L.F("Vervaagt na {0} s", o.Cfg.FadeSeconds), null, Color.Empty); };
+            fade.Paint = delegate(Graphics g, Item item, bool h) { PaintChip(g, item.R, o.Cfg.Fade, h, L.T("Vervagen"), "zandloper", o.Cfg.Fade ? T.Text : T.Icon); };
             y += 32 * S + pad;
             ClientSize = new Size((int)Math.Ceiling(w), (int)Math.Ceiling(y));
         }
@@ -106,7 +104,7 @@ namespace NexusPen
             base.OnMouseMove(e);
             int idx;
             if (hover != before && hover != null && tipFor.TryGetValue(hover, out idx))
-                if (ov.Cfg.ShowTips) tip.Show(L.T(Palette.Labels[ov.PaletteIndex][idx]) + (Shortcuts.ColorCombo(idx).Length > 0 ? "  (" + Shortcuts.ColorCombo(idx) + ")" : ""), this, new Point((int)hover.R.X, (int)(hover.R.Bottom + 4 * S)), 2500);
+                if (ov.Cfg.ShowTips) tip.Show(Palette.NameOf(ov.PaletteIndex, ov.Colors[Math.Min(idx, ov.Colors.Length - 1)]) + (Shortcuts.ColorCombo(idx).Length > 0 ? "  (" + Shortcuts.ColorCombo(idx) + ")" : ""), this, new Point((int)hover.R.X, (int)(hover.R.Bottom + 4 * S)), 2500);
         }
 
         protected override bool OnPress(MouseEventArgs e)
@@ -381,7 +379,6 @@ namespace NexusPen
     class MiniBar : BarForm
     {
         public MiniBar(Overlay o) : base(o) { Text = "NexusPen selectie"; }
-        static readonly int[] Picks = { 0, 2, 3, 5, 8, 9 };
         List<RectangleF> barSeps = new List<RectangleF>();
 
         public override void Rebuild() { barSeps.Clear(); base.Rebuild(); }
@@ -391,13 +388,14 @@ namespace NexusPen
             Overlay o = ov;
             float pad = 6 * S, sw = 26 * S, d = 18 * S, h = 30 * S;
             float x = pad + 2 * S;
-            foreach (int pi in Picks)
+            // de eerste zes kleuren uit jouw lijst (je meest gebruikte), plus een knop voor een andere kleur
+            Color[] cols = o.Colors;
+            for (int pi = 0; pi < Math.Min(6, cols.Length); pi++)
             {
-                int idx = pi;
-                Item it = Add(new RectangleF(x, pad, sw, h), L.T(Palette.Labels[o.PaletteIndex][idx]), delegate { o.RecolorSelected(Palette.Sets[o.PaletteIndex][idx]); Invalidate(); });
+                Color c = cols[pi];
+                Item it = Add(new RectangleF(x, pad, sw, h), Palette.NameOf(o.PaletteIndex, c), delegate { o.RecolorSelected(c); Invalidate(); });
                 it.Paint = delegate(Graphics g, Item item, bool hv)
                 {
-                    Color c = Palette.Sets[o.PaletteIndex][idx];
                     Swatch(g, item.R, c, o.SelectedColor.ToArgb() == c.ToArgb(), hv ? d + 2 * S : d);
                 };
                 x += sw;

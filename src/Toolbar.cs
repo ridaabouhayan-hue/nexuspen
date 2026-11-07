@@ -661,28 +661,26 @@ namespace NexusPen
         // ---- rechtsklik-menu's
         void ShowButtonMenu(Item it)
         {
-            ContextMenuStrip m = Menus.Make(T);
+            MenuPopup m = new MenuPopup(ov);
             if (it.Key == "focus")
             {
-                ToolStripMenuItem rond = new ToolStripMenuItem(L.T("Rond"), null, delegate { ov.SetFocusShape(0); });
-                ToolStripMenuItem recht = new ToolStripMenuItem(L.T("Rechthoek (om te lezen)"), null, delegate { ov.SetFocusShape(1); });
-                rond.Checked = ov.Cfg.FocusShape == 0; recht.Checked = ov.Cfg.FocusShape == 1;
-                m.Items.Add(rond); m.Items.Add(recht);
-                m.Items.Add(new ToolStripSeparator());
+                m.AddCheck(L.T("Rond"), ov.Cfg.FocusShape == 0, delegate { ov.SetFocusShape(0); });
+                m.AddCheck(L.T("Rechthoek (om te lezen)"), ov.Cfg.FocusShape == 1, delegate { ov.SetFocusShape(1); });
+                m.AddSeparator();
             }
-            m.Items.Add(L.T("Verbergen uit de balk"), null, delegate { HideKey(it.Key); });
-            m.Items.Add(L.T("Werkbalk aanpassen..."), null, delegate { ov.ShowSettings("Werkbalk"); });
-            m.Show(PointToScreen(new Point((int)it.R.X, (int)it.R.Bottom)));
+            if (it.Key != "instellingen") m.Add(L.T("Verbergen uit de balk"), delegate { HideKey(it.Key); });
+            m.Add(L.T("Werkbalk aanpassen..."), delegate { ov.ShowSettings("Werkbalk"); });
+            m.ShowAt(vertical ? PointToScreen(new Point((int)it.R.Right + (int)(4 * S), (int)it.R.Y)) : PointToScreen(new Point((int)it.R.X, (int)(it.R.Bottom + 4 * S))));
         }
 
         public void ShowLogoMenu(Point at)
         {
-            ContextMenuStrip m = Menus.Make(T);
-            m.Items.Add(collapsed ? L.T("Uitklappen") : L.T("Inklappen"), null, delegate { if (collapsed) ov.ExpandAll(); else ov.CollapseAll(); });
-            m.Items.Add(L.T("Instellingen"), null, delegate { ov.ShowSettings(null); });
-            m.Items.Add(new ToolStripSeparator());
-            m.Items.Add(L.T("NexusPen afsluiten"), null, delegate { ov.AskQuit(); });
-            m.Show(at);
+            MenuPopup m = new MenuPopup(ov);
+            m.Add(collapsed ? L.T("Uitklappen") : L.T("Inklappen"), delegate { if (collapsed) ov.ExpandAll(); else ov.CollapseAll(); });
+            m.Add(L.T("Instellingen"), delegate { ov.ShowSettings(null); });
+            m.AddSeparator();
+            m.Add(L.T("NexusPen afsluiten"), delegate { ov.AskQuit(); });
+            m.ShowAt(at);
         }
 
         public void HideKey(string key)
@@ -1062,101 +1060,6 @@ namespace NexusPen
             if (m.Msg == WM_SYSCOMMAND && (m.WParam.ToInt32() & 0xFFF0) == SC_MINIMIZE) { ov.CollapseAll(); m.Result = IntPtr.Zero; return; }
             if (m.Msg == WM_EXITSIZEMOVE) { base.WndProc(ref m); try { BeginInvoke((MethodInvoker)AutoOrientation); } catch { } return; }
             base.WndProc(ref m);
-        }
-    }
-
-    // Rechtsklik-menu's in de stijl van het thema: ruim, goed leesbaar, met afgeronde hoeken
-    static class Menus
-    {
-        public static ContextMenuStrip Make(Theme t)
-        {
-            float sc = Math.Max(1f, W.UiScaleAt(Control.MousePosition));
-            ContextMenuStrip m = new ContextMenuStrip();
-            m.ShowImageMargin = false;
-            m.Font = UiFont.Make(14 * sc, false);
-            m.Renderer = new MenuRenderer(t, sc);
-            m.BackColor = t.Bar;
-            m.ForeColor = t.Text;
-            m.Padding = new Padding((int)(6 * sc));
-            m.Opening += delegate
-            {
-                // zit er een vinkje in het menu, dan krijgt elke regel dezelfde ruimte links (anders springen de teksten heen en weer)
-                bool checks = false;
-                foreach (ToolStripItem it in m.Items) { ToolStripMenuItem mi = it as ToolStripMenuItem; if (mi != null && (mi.Checked || mi.CheckOnClick)) checks = true; }
-                m.ShowCheckMargin = checks;
-                int n = m.Items.Count;
-                for (int i = 0; i < n; i++)
-                {
-                    ToolStripItem it = m.Items[i];
-                    if (it is ToolStripSeparator) { it.Margin = new Padding(0, (int)(4 * sc), 0, (int)(4 * sc)); continue; }
-                    it.Padding = new Padding((int)((checks ? 4 : 10) * sc), (int)(7 * sc), (int)(18 * sc), (int)(7 * sc));
-                    // de eerste en laatste regel net zo ver van de rand als van elkaar
-                    it.Margin = new Padding(0, (int)((i == 0 ? 3 : 1) * sc), 0, (int)((i == n - 1 ? 3 : 1) * sc));
-                }
-            };
-            // Windows 11: echt afgeronde hoeken voor het menu
-            m.Opened += delegate { try { W.RoundCorners(m.Handle, t.Border); } catch { } };
-            m.Closed += delegate { try { m.BeginInvoke((MethodInvoker)delegate { Font f = m.Font; m.Dispose(); f.Dispose(); }); } catch { } };
-            return m;
-        }
-
-        class MenuRenderer : ToolStripProfessionalRenderer
-        {
-            Theme t; float sc;
-            public MenuRenderer(Theme th, float s) : base(new Colors(th)) { t = th; sc = s; RoundedEdges = true; }
-
-            protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
-            {
-                e.TextColor = e.Item.Enabled ? t.Text : t.Muted;
-                base.OnRenderItemText(e);
-            }
-
-            // de regel onder de muis: een afgerond vlakje, zoals de knoppen in de balk
-            protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
-            {
-                if (!e.Item.Selected || !e.Item.Enabled) return;
-                Graphics g = e.Graphics;
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                RectangleF r = new RectangleF(2 * sc, 1 * sc, e.Item.Width - 4 * sc, e.Item.Height - 2 * sc);
-                using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(r, 6 * sc)) g.FillPath(b, gp);
-            }
-
-            protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs e)
-            {
-                Graphics g = e.Graphics;
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                RectangleF r = e.ImageRectangle;
-                float sz = 16 * sc;
-                Icons.Draw(g, "vink", new RectangleF(r.X + (r.Width - sz) / 2, r.Y + (r.Height - sz) / 2, sz, sz), sz, t.Accent, 2.2f);
-            }
-
-            protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
-            {
-                Graphics g = e.Graphics;
-                g.SmoothingMode = SmoothingMode.AntiAlias;
-                using (Pen p = new Pen(t.Border, 1)) using (GraphicsPath gp = Svg.RoundRect(new RectangleF(0.5f, 0.5f, e.ToolStrip.Width - 1, e.ToolStrip.Height - 1), 8 * sc)) g.DrawPath(p, gp);
-            }
-
-            protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
-            {
-                int y = e.Item.Height / 2;
-                using (Pen p = new Pen(t.Sep, 1)) e.Graphics.DrawLine(p, 8 * sc, y, e.Item.Width - 8 * sc, y);
-            }
-        }
-
-        class Colors : ProfessionalColorTable
-        {
-            Theme t;
-            public Colors(Theme th) { t = th; UseSystemColors = false; }
-            public override Color ToolStripDropDownBackground { get { return t.Bar; } }
-            public override Color MenuBorder { get { return t.Border; } }
-            public override Color MenuItemSelected { get { return t.IsLight ? ColorTranslator.FromHtml("#F4F4F5") : ColorTranslator.FromHtml("#2E2E33"); } }
-            public override Color MenuItemBorder { get { return Color.Transparent; } }
-            public override Color SeparatorDark { get { return t.Sep; } }
-            public override Color SeparatorLight { get { return t.Sep; } }
-            public override Color ImageMarginGradientBegin { get { return t.Bar; } }
-            public override Color ImageMarginGradientMiddle { get { return t.Bar; } }
-            public override Color ImageMarginGradientEnd { get { return t.Bar; } }
         }
     }
 }

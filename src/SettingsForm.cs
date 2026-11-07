@@ -592,23 +592,87 @@ namespace NexusPen
             Settings c = Cfg;
             float y = Heading(contentTop, L.T("Pen en kleuren"), null);
             y = Segments(y, L.T("Kleuren"), L.T("Felle kleuren vallen op, zachte zijn rustiger voor de ogen"), new string[] { L.T("Fel"), L.T("Zacht") }, delegate { return ov.PaletteIndex; }, delegate(int i) { ov.SetPalette(i); });
-            float sx = contentX + 10 * S;
-            for (int i = 0; i < 10; i++)
+            // je eigen kleurenlijst: klik = kiezen, dan met de knoppen eronder verplaatsen of weghalen
+            float sx = contentX + 10 * S, cell = 40 * S;
+            int perRow = Math.Max(8, (int)((contentW - 20 * S) / cell));
+            Color[] cols = ov.Colors;
+            for (int i = 0; i < cols.Length; i++)
             {
                 int idx = i;
-                Add(new RectangleF(sx + i * 40 * S, y + 6 * S, 34 * S, 34 * S), L.T(Palette.Labels[ov.PaletteIndex][idx]), delegate { ov.ChooseColorQuietly(idx); Invalidate(); }, delegate(Graphics g, Item it, bool h)
+                Color col = cols[i];
+                Add(new RectangleF(sx + (i % perRow) * cell, y + 6 * S + (i / perRow) * cell, 34 * S, 34 * S), Palette.NameOf(ov.PaletteIndex, col), delegate { ov.ChooseColorQuietly(idx); Invalidate(); }, delegate(Graphics g, Item it, bool h)
                 {
-                    Color col = Palette.Sets[ov.PaletteIndex][idx];
                     if (ov.ColorIndex == idx) using (SolidBrush b = new SolidBrush(T.Accent)) g.FillEllipse(b, it.R);
                     using (SolidBrush b = new SolidBrush(col)) g.FillEllipse(b, RectangleF.Inflate(it.R, -4 * S, -4 * S));
                     using (Pen p = new Pen(Color.FromArgb(90, 128, 128, 128), 1)) g.DrawEllipse(p, RectangleF.Inflate(it.R, -4 * S, -4 * S));
                 });
             }
-            y += 54 * S;
+            y += ((cols.Length + perRow - 1) / perRow) * cell + 12 * S;
+            float bx = contentX + 10 * S;
+            bx += Button(bx, y, L.T("Eerder"), "links", delegate { MoveColor(-1); }, false) + 8 * S;
+            bx += Button(bx, y, L.T("Later"), "rechts", delegate { MoveColor(1); }, false) + 8 * S;
+            bx += Button(bx, y, L.T("Weghalen"), "prullenbak", delegate { RemoveColor(); }, false) + 8 * S;
+            bx += Button(bx, y, L.T("Kleur toevoegen"), "plus", delegate { AddColor(); }, false) + 8 * S;
+            Button(bx, y, L.T("Standaard"), "terugzetten", delegate { ResetColors(); }, false);
+            y += 48 * S;
             y = Toggle(y, L.T("Krijtstreep"), L.T("Lijnen van de pen zien eruit als krijt op een bord"), delegate { return c.Chalk; }, delegate(bool v) { c.Chalk = v; });
             y = Toggle(y, L.T("Vervagen"), L.T("Wat je met pen of markeerstift tekent, verdwijnt vanzelf. Handig om iets snel aan te wijzen"), delegate { return c.Fade; }, delegate(bool v) { c.Fade = v; });
             y = Segments(y, L.T("Hoe lang blijft het staan?"), null, new string[] { "3 s", "5 s", "7 s", "12 s" }, delegate { return Array.IndexOf(Settings.FadeChoices, c.FadeSeconds); }, delegate(int i) { c.FadeSeconds = Settings.FadeChoices[i]; });
-            y = Para(y + 12 * S, L.T("De laserpen verdwijnt altijd vanzelf na anderhalve seconde. De dikte verander je met het muiswiel, door te knijpen op het touchpad of met het schuifje bij de kleuren."), 50 * S);
+            y = Segments(y, L.T("Laserpen"), L.T("Hoe lang blijft de laser zichtbaar?"), new string[] { L.T("Snel weg"), L.T("Langzaam"), L.T("Blijft staan") }, delegate { return c.LaserMode; }, delegate(int i) { c.LaserMode = i; });
+        }
+
+        // ---- je eigen kleurenlijst aanpassen (voor de set die nu aan staat: fel of zacht)
+        List<Color> OwnColors() { return new List<Color>(ov.Colors); }
+
+        void SaveColors(List<Color> list, int select)
+        {
+            string text = Palette.ToText(list);
+            if (text == Palette.ToText(Palette.Sets[ov.PaletteIndex])) text = "";   // weer gelijk aan de standaard
+            if (ov.PaletteIndex == 0) Cfg.ColorsFel = text; else Cfg.ColorsZacht = text;
+            ov.ChooseColorQuietly(Math.Max(0, Math.Min(list.Count - 1, select)));
+            Changed();
+            BuildItems(); Invalidate();
+        }
+
+        void MoveColor(int dir)
+        {
+            List<Color> list = OwnColors();
+            int i = Math.Max(0, Math.Min(list.Count - 1, ov.ColorIndex)), j = i + dir;
+            if (j < 0 || j >= list.Count) return;
+            Color t = list[i]; list[i] = list[j]; list[j] = t;
+            SaveColors(list, j);
+        }
+
+        void RemoveColor()
+        {
+            List<Color> list = OwnColors();
+            if (list.Count <= 1) { Notice(L.T("Er moet minstens een kleur blijven.")); return; }
+            int i = Math.Max(0, Math.Min(list.Count - 1, ov.ColorIndex));
+            list.RemoveAt(i);
+            SaveColors(list, i);
+        }
+
+        void AddColor()
+        {
+            List<Color> list = OwnColors();
+            if (list.Count >= Palette.MaxColors) { Notice(L.F("Hoogstens {0} kleuren.", Palette.MaxColors)); return; }
+            using (ColorDialog cd = new ColorDialog())
+            {
+                cd.FullOpen = true; cd.Color = ov.CurrentColor;
+                if (cd.ShowDialog(this) != DialogResult.OK) return;
+                Color c = Color.FromArgb(255, cd.Color);
+                foreach (Color k in list) if (k.ToArgb() == c.ToArgb()) { Notice(L.T("Deze kleur staat er al.")); return; }
+                list.Add(c);
+                SaveColors(list, list.Count - 1);
+            }
+        }
+
+        void ResetColors()
+        {
+            if (ov.PaletteIndex == 0) Cfg.ColorsFel = ""; else Cfg.ColorsZacht = "";
+            ov.ChooseColorQuietly(2);
+            Changed();
+            BuildItems(); Invalidate();
         }
 
         // ---- Tekst

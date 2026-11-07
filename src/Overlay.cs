@@ -85,7 +85,9 @@ namespace NexusPen
         DateTime changedAt = DateTime.MinValue, lastErrorBalloon = DateTime.MinValue;
         int tickCount;
 
-        public Color CurrentColor { get { return Palette.Sets[PaletteIndex][ColorIndex]; } }
+        public Color[] Colors { get { return Palette.Get(Cfg, PaletteIndex); } }
+        public Color CurrentColor { get { Color[] cs = Colors; return cs[Math.Max(0, Math.Min(cs.Length - 1, ColorIndex))]; } }
+        public int ColorCount { get { return Colors.Length; } }
         public Theme Theme { get { return Theme.Get(Cfg); } }
         public Toolbar Bar { get { return toolbar; } }
         public bool HasSelection { get { return selected != null; } }
@@ -389,7 +391,7 @@ namespace NexusPen
             if (lasers.Count > 0 || fading.Count > 0)
             {
                 DateTime now = DateTime.Now;
-                lasers.RemoveAll(delegate(Stroke s) { return (now - s.Born).TotalMilliseconds > 1500; });
+                lasers.RemoveAll(delegate(Stroke s) { return (now - s.Born).TotalMilliseconds > LaserHold(s) + LaserFadeMs; });
                 int before = fading.Count;
                 double life = Cfg.FadeSeconds * 1000.0 + 1000;
                 fading.RemoveAll(delegate(Stroke s) { return (now - s.Born).TotalMilliseconds > life; });
@@ -638,7 +640,23 @@ namespace NexusPen
         {
             double age = (now - s.Born).TotalMilliseconds;
             if (age < 400) return true;
-            return laser ? age > 700 : age > Cfg.FadeSeconds * 1000.0;
+            return laser ? age > LaserHold(s) : age > Cfg.FadeSeconds * 1000.0;
+        }
+
+        // Hoe lang blijft een laserlijn staan voor hij verdwijnt (instelbaar: snel, langzaam of blijven staan)
+        double LaserHold(Stroke s)
+        {
+            if (s.FadeNow) return 0;
+            return Cfg.LaserMode == 1 ? 2500 : Cfg.LaserMode == 2 ? 1e12 : 700;
+        }
+        double LaserFadeMs { get { return Cfg.LaserMode == 1 ? 1000 : 800; } }
+
+        // Laser die bleef staan: nu laten verdwijnen (bij een nieuwe laserlijn, Esc of een ander gereedschap)
+        void FadeLasersNow()
+        {
+            DateTime now = DateTime.Now;
+            foreach (Stroke s in lasers) if (!s.FadeNow) { s.FadeNow = true; s.Born = now; }
+            if (lasers.Count > 0) dirty = true;
         }
 
         void RenderFrame()
@@ -683,8 +701,8 @@ namespace NexusPen
                     DateTime now = DateTime.Now;
                     foreach (Stroke s in lasers)
                     {
-                        double age = (now - s.Born).TotalMilliseconds;
-                        float fade = age < 700 ? 1f : (float)Math.Max(0, 1 - (age - 700) / 800.0);
+                        double age = (now - s.Born).TotalMilliseconds, hold = LaserHold(s);
+                        float fade = age < hold ? 1f : (float)Math.Max(0, 1 - (age - hold) / LaserFadeMs);
                         SafeDraw(g, s, fade);
                     }
                     foreach (Stroke s in fading)
@@ -944,7 +962,14 @@ namespace NexusPen
                             }
                             catch (Exception ex) { Log.Error("Zelftest lettertypes", ex); }
                             break;
-                        case 1: toolbar.OpenForTest("kleur"); break;
+                        case 1:
+                            {
+                                MenuPopup mm = new MenuPopup(this);
+                                mm.AddCheck(L.T("Rond"), true, null); mm.AddCheck(L.T("Rechthoek (om te lezen)"), false, delegate { });
+                                mm.AddSeparator(); mm.Add(L.T("Verbergen uit de balk"), delegate { }); mm.Add(L.T("Werkbalk aanpassen..."), delegate { });
+                                mm.ShowAt(new Point(400, 300)); snap(mm, "02-menu"); mm.Close();
+                            }
+                            toolbar.OpenForTest("kleur"); break;
                         case 2: toolbar.SnapPopupsForTest(snap, "02-kleur"); toolbar.OpenForTest("stempel"); break;
                         case 3: toolbar.SnapPopupsForTest(snap, "03-stempel"); toolbar.OpenForTest("bord"); break;
                         case 4: toolbar.SnapPopupsForTest(snap, "04-bord"); toolbar.ClosePopups(); Cfg.BoardBg = 1; SetBoard(Board.White); break;
@@ -984,7 +1009,7 @@ namespace NexusPen
                                 for (int i = 1; i <= 120; i++) { double a = i / 120.0 * Math.PI * 3; SimMove(Mouse(MouseButtons.Left, new PointF(c0.X - 300 + i * 4, c0.Y - 120 + (float)Math.Sin(a) * 90))); }
                                 for (int i = 0; i <= 120; i++) SimMove(Mouse(MouseButtons.Left, new PointF(c0.X + 180 - i * 4, c0.Y - 120 + (float)Math.Cos(i / 20.0) * 60)));
                                 SimUp(Mouse(MouseButtons.Left, new PointF(c0.X, c0.Y)));
-                                SetColor(0); SetTool(Tool.Laser); SetWidth(5);
+                                SetColor(2); SetTool(Tool.Laser); SetWidth(5);
                                 SimDown(Mouse(MouseButtons.Left, new PointF(c0.X - 300, c0.Y + 120)));
                                 for (int i = 1; i <= 150; i++) { double a = i / 150.0 * Math.PI * 4; SimMove(Mouse(MouseButtons.Left, new PointF(c0.X - 300 + i * 4, c0.Y + 120 + (float)Math.Sin(a) * 70))); }
                                 for (int i = 0; i <= 100; i++) SimMove(Mouse(MouseButtons.Left, new PointF(c0.X + 300 - i * 5, c0.Y + 120 + (float)Math.Cos(i / 15.0) * 50)));
@@ -1187,7 +1212,7 @@ namespace NexusPen
         {
             try
             {
-                SetColor(8);
+                SetColor(0);   // zwart
                 SetTool(Tool.Text);
                 PointF c = TestPoint(0, 1);
                 SimDown(Mouse(MouseButtons.Left, new PointF(c.X - 200, c.Y)));
@@ -1390,7 +1415,7 @@ namespace NexusPen
             int ex = W.GetWindowLong(Handle, W.GWL_EXSTYLE);
             if (on) ex &= ~W.WS_EX_TRANSPARENT; else ex |= W.WS_EX_TRANSPARENT;
             W.SetWindowLong(Handle, W.GWL_EXSTYLE, ex);
-            if (!on) { current = null; erasing = false; CloseTextInput(true); Deselect(); Usage.ToolChanged("Mouse"); }
+            if (!on) { current = null; erasing = false; CloseTextInput(true); Deselect(); FadeLasersNow(); Usage.ToolChanged("Mouse"); }
             // Met de muis werk je op je gewone scherm: het bord gaat weg. Het komt pas terug als je zelf weer een bord kiest.
             if (!on && BoardMode != Board.None && !keepBoardOnce) SetBoard(Board.None, false);
             Rebuild();
@@ -1406,6 +1431,7 @@ namespace NexusPen
             if (typing != null) CloseTextInput(true);
             if (t == Tool.Mouse) { if (DrawMode) SetDrawMode(false); RefreshUi(); return; }
             if (t != Tool.Select) Deselect();
+            if (t != Tool.Laser) FadeLasersNow();
             bool wasFocus = CurrentTool == Tool.Focus;
             CurrentTool = t;
             if (t != Tool.Focus && t != Tool.Select) LastDrawTool = t;
@@ -1430,8 +1456,8 @@ namespace NexusPen
         // Kleur kiezen pakt weer een tekengereedschap als je aan het gummen of selecteren was
         public void SetColor(int i)
         {
-            ColorIndex = Math.Max(0, Math.Min(9, i));
-            Usage.Log("kleur", Palette.Labels[PaletteIndex][ColorIndex], "");
+            ColorIndex = Math.Max(0, Math.Min(ColorCount - 1, i));
+            Usage.Log("kleur", Palette.NameOf(PaletteIndex, CurrentColor), "");
             if (selected != null) { RecolorSelected(CurrentColor); return; }
             // alleen de kleur: geen ander gereedschap en geen bord erbij (dat kies je zelf)
             Cfg.ColorIndex = ColorIndex;
@@ -1462,7 +1488,7 @@ namespace NexusPen
         // Kleur kiezen vanuit Instellingen: alleen onthouden, niet meteen gaan tekenen
         public void ChooseColorQuietly(int i)
         {
-            ColorIndex = Math.Max(0, Math.Min(9, i));
+            ColorIndex = Math.Max(0, Math.Min(ColorCount - 1, i));
             Cfg.ColorIndex = ColorIndex;
             RefreshUi();
         }
@@ -2060,6 +2086,7 @@ namespace NexusPen
                 return;
             }
             if (current != null) pendingDirty = U(pendingDirty, StrokeBounds(current));   // oude lijn zonder loslaten: netjes weghalen
+            if (CurrentTool == Tool.Laser) FadeLasersNow();   // een nieuwe laserlijn: de vorige (die bleef staan) gaat weg
             current = new Stroke();
             current.Tool = CurrentTool;
             current.Color = CurrentColor;

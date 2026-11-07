@@ -27,7 +27,9 @@ namespace NexusPen
         public string BarLayout = "";          // leeg = standaardvolgorde
         public int ShortenAt = 0;               // 0 = niet ingekort, anders het aantal knoppen voor het menu met het getal
         // tekenen
-        public int ColorIndex = 0, PaletteIndex = 0;
+        public int ColorIndex = 2, PaletteIndex = 0;   // 2 = rood
+        public string ColorsFel = "", ColorsZacht = "";   // eigen kleurenlijst (#RRGGBB,...); leeg = de 16 standaardkleuren
+        public bool PaletteV2 = true;                     // false = bewaard met de oude 10 kleuren (tot 1.2.9)
         public float Width = 4;
         public Tool Tool = Tool.Pen;
         public bool WheelWidth = true, PerToolWidth = true, Chalk, Fade;
@@ -38,6 +40,7 @@ namespace NexusPen
         public float StampPx = 0;               // eigen stempelgrootte (muiswiel); 0 = S, M of L
         public int BoardScale = 1;              // (oud, niet meer gebruikt)
         public float BoardZoom = 1;             // lijnen en ruitjes: van 0,5 (veel kleine regels) tot 6 (een grote regel)
+        public int LaserMode = 0;               // laser: 0 snel weg, 1 langzaam, 2 blijft staan tot een nieuwe lijn of Esc
         public int ActiveStyle = 0;             // gekozen knop: 0 rustig (ingedrukt), 1 in de accentkleur
         public bool ChalkChecked;               // eenmalige controle bij het bijwerken naar 1.2.6
         // tekst
@@ -132,11 +135,12 @@ namespace NexusPen
         public static Settings Load(string path)
         {
             Settings s = new Settings();
-            bool isOld = false;
+            bool isOld = false, hasV2 = false, existed = false;
             try
             {
                 if (File.Exists(path))
                 {
+                    existed = true;
                     Dictionary<string, System.Reflection.FieldInfo> byName = new Dictionary<string, System.Reflection.FieldInfo>();
                     foreach (System.Reflection.FieldInfo f in Fields) byName[f.Name] = f;
                     foreach (string line in File.ReadAllLines(path))
@@ -146,6 +150,7 @@ namespace NexusPen
                         string k = line.Substring(0, i).Trim(), v = line.Substring(i + 1).Trim();
                         string mapped;
                         if (OldNames.TryGetValue(k, out mapped)) { k = mapped; isOld = true; }
+                        if (k == "PaletteV2") hasV2 = true;
                         System.Reflection.FieldInfo f;
                         if (byName.TryGetValue(k, out f)) Read(f, v, s);
                     }
@@ -153,6 +158,8 @@ namespace NexusPen
             }
             catch { }
             if (isOld && s.FontName == "") s.FontName = "Andika";
+            // van 10 naar 16 kleuren: je gekozen kleur blijft dezelfde kleur
+            if (existed && !hasV2) { if (s.ColorIndex >= 0 && s.ColorIndex < Palette.OldToNew.Length) s.ColorIndex = Palette.OldToNew[s.ColorIndex]; s.PaletteV2 = true; }
             s.Clamp();
             return s;
         }
@@ -163,13 +170,15 @@ namespace NexusPen
             SizeIndex = Math.Max(0, Math.Min(2, SizeIndex));
             OpacityIndex = Math.Max(0, Math.Min(2, OpacityIndex));
             PaletteIndex = Math.Max(0, Math.Min(Palette.Sets.Length - 1, PaletteIndex));
-            ColorIndex = Math.Max(0, Math.Min(9, ColorIndex));
+            ColorIndex = Math.Max(0, Math.Min(Palette.MaxColors - 1, ColorIndex));
+            if (ColorsFel == null) ColorsFel = ""; if (ColorsZacht == null) ColorsZacht = "";
             if (float.IsNaN(Width) || float.IsInfinity(Width)) Width = 4;
             if (float.IsNaN(TextSize) || float.IsInfinity(TextSize)) TextSize = 36;
             if (!Enum.IsDefined(typeof(Tool), Tool)) Tool = Tool.Pen;
             Width = Math.Max(1, Math.Min(MaxWidth, Width));
             FocusShape = Math.Max(0, Math.Min(1, FocusShape));
             ActiveStyle = Math.Max(0, Math.Min(1, ActiveStyle));
+            LaserMode = Math.Max(0, Math.Min(2, LaserMode));
             if (FadeSeconds != 3 && FadeSeconds != 5 && FadeSeconds != 7 && FadeSeconds != 12) FadeSeconds = 5;
             if (float.IsNaN(StampPx) || StampPx < 0) StampPx = 0;
             StampPx = Math.Min(200, StampPx);

@@ -27,6 +27,7 @@ namespace NexusPen
         public string Text;
         public float FontSize;
         public DateTime Born;
+        public bool FadeNow;   // laser die bleef staan: nu laten verdwijnen (niet bewaard)
         public string FontName;      // lettertype van een tekst (leeg = standaard)
         public bool Outline;         // tekst met rand
         public int OutlineWidth = 1; // 0 dun, 1 middel, 2 dik

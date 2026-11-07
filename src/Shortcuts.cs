@@ -86,7 +86,7 @@ namespace NexusPen
         public static string ColorCombo(int index)
         {
             int mode = Cfg == null ? 0 : Cfg.ShortcutMode;
-            if (mode == 2) return "";
+            if (mode == 2 || index < 0 || index > 9) return "";   // alleen de eerste tien kleuren hebben een toets
             string d = ((index + 1) % 10).ToString();
             return mode == 0 ? "Ctrl+Shift+" + d : d;
         }

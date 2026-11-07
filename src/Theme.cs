@@ -79,17 +79,66 @@ namespace NexusPen
     }
 
     // ------------------------------------------------------------------ Kleuren: fel en zacht
+    // 16 standaardkleuren per set, van meest naar minst gebruikt. In Instellingen kun je kleuren weghalen,
+    // toevoegen en in je eigen volgorde zetten; dat wordt per set bewaard als een rij #RRGGBB-codes.
     static class Palette
     {
         public static readonly string[] Names = { "Fel", "Zacht" }; // vertaal
         public static readonly Color[][] Sets = {
-            new Color[] { C("#FF1F3D"), C("#FF7A00"), C("#FFD400"), C("#00C853"), C("#00B8FF"), C("#2962FF"), C("#AA00FF"), C("#FF2D95"), C("#111111"), C("#FFFFFF") },
-            new Color[] { C("#F28B82"), C("#F6B26B"), C("#FFE08A"), C("#A8D5A2"), C("#9FD3F2"), C("#8AB4F8"), C("#C3A6F0"), C("#F7A8C4"), C("#5F6368"), C("#F4F1E8") }
+            new Color[] { C("#111111"), C("#2962FF"), C("#FF1F3D"), C("#00C853"), C("#FFD400"), C("#FF7A00"), C("#AA00FF"), C("#FF2D95"),
+                          C("#8D5524"), C("#8E8E93"), C("#FFFFFF"), C("#00B8FF"), C("#00BFA5"), C("#1B5E20"), C("#0D2C6C"), C("#8E1B3A") },
+            new Color[] { C("#5F6368"), C("#8AB4F8"), C("#F28B82"), C("#A8D5A2"), C("#FFE08A"), C("#F6B26B"), C("#C3A6F0"), C("#F7A8C4"),
+                          C("#C8A27A"), C("#BDBDBD"), C("#F4F1E8"), C("#9FD3F2"), C("#8FD9CF"), C("#6B9E6E"), C("#6C86B8"), C("#C17A8A") }
         };
         public static readonly string[][] Labels = {
-            new string[] { "Rood", "Oranje", "Geel", "Groen", "Lichtblauw", "Blauw", "Paars", "Roze", "Zwart", "Wit" }, // vertaal
-            new string[] { "Zacht rood", "Zacht oranje", "Zacht geel", "Zacht groen", "Zacht lichtblauw", "Zacht blauw", "Zacht paars", "Zacht roze", "Grijs", "Krijtwit" } // vertaal
+            new string[] { "Zwart", "Blauw", "Rood", "Groen", "Geel", "Oranje", "Paars", "Roze", "Bruin", "Grijs", "Wit", "Lichtblauw", "Turquoise", "Donkergroen", "Donkerblauw", "Bordeaux" }, // vertaal
+            new string[] { "Donkergrijs", "Zacht blauw", "Zacht rood", "Zacht groen", "Zacht geel", "Zacht oranje", "Zacht paars", "Zacht roze", "Zacht bruin", "Lichtgrijs", "Krijtwit", "Zacht lichtblauw", "Zacht turquoise", "Zacht donkergroen", "Zacht donkerblauw", "Zacht bordeaux" } // vertaal
         };
+        public const int MaxColors = 24;
+
+        // De oude volgorde (tot 1.2.9) naar de nieuwe: rood, oranje, geel, groen, lichtblauw, blauw, paars, roze, zwart, wit
+        public static readonly int[] OldToNew = { 2, 5, 4, 3, 11, 1, 6, 7, 0, 10 };
+
         static Color C(string h) { return ColorTranslator.FromHtml(h); }
+
+        static string cacheKey; static Color[] cacheColors;
+
+        // De kleuren die je nu gebruikt in deze set (eigen lijst of de standaard)
+        public static Color[] Get(Settings s, int set)
+        {
+            set = Math.Max(0, Math.Min(Sets.Length - 1, set));
+            string own = s == null ? "" : set == 0 ? s.ColorsFel : s.ColorsZacht;
+            if (string.IsNullOrEmpty(own)) return Sets[set];
+            string key = set + "|" + own;
+            if (key == cacheKey && cacheColors != null) return cacheColors;
+            List<Color> list = new List<Color>();
+            foreach (string part in own.Split(','))
+            {
+                string h = part.Trim();
+                if (h.Length != 7 || h[0] != '#') continue;
+                int v;
+                if (!int.TryParse(h.Substring(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out v)) continue;
+                list.Add(Color.FromArgb(255, (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF));
+                if (list.Count >= MaxColors) break;
+            }
+            if (list.Count == 0) return Sets[set];
+            cacheKey = key; cacheColors = list.ToArray();
+            return cacheColors;
+        }
+
+        public static string ToText(IList<Color> colors)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (Color c in colors) { if (sb.Length > 0) sb.Append(','); sb.Append('#').Append(c.R.ToString("X2")).Append(c.G.ToString("X2")).Append(c.B.ToString("X2")); }
+            return sb.ToString();
+        }
+
+        // Naam van een kleur: de standaardnaam als het een standaardkleur is, anders "Eigen kleur"
+        public static string NameOf(int set, Color c)
+        {
+            set = Math.Max(0, Math.Min(Sets.Length - 1, set));
+            for (int i = 0; i < Sets[set].Length; i++) if (Sets[set][i].ToArgb() == c.ToArgb()) return L.T(Labels[set][i]);
+            return L.T("Eigen kleur");
+        }
     }
 }
