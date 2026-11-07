@@ -1233,7 +1233,7 @@ namespace NexusPen
             float y = Heading(contentTop, L.T("Wat doet elke knop"), null);
             string[] keys = Toolbar.Catalog;
             int rows = (keys.Length + 1) / 2;
-            float colW = (contentW - 24 * S) / 2, rowH = 56 * S;
+            float colW = (contentW - 24 * S) / 2, rowH = 66 * S;   // ruimte voor drie regels uitleg
             Mark(y + rows * rowH + 10 * S);
             for (int i = 0; i < keys.Length; i++)
             {
@@ -1254,7 +1254,7 @@ namespace NexusPen
                         using (SolidBrush b = new SolidBrush(ov.CurrentColor)) g.FillEllipse(b, x + 2 * S, yy + 4 * S, 16 * S, 16 * S);
                     else Icons.Draw(g, Toolbar.IconOf(k), new RectangleF(x, yy + 2 * S, 20 * S, 20 * S), 18 * S, t.Icon, 2f);
                     Txt(g, name, new RectangleF(x + 32 * S, yy, colW - 32 * S, 20 * S), t.Text, 13, true, StringAlignment.Near, false);
-                    if (tipText.Length > 0) Txt(g, tipText, new RectangleF(x + 32 * S, yy + 20 * S, colW - 32 * S, rowH - 22 * S), t.Muted, 12, false, StringAlignment.Near, true);
+                    if (tipText.Length > 0) Txt(g, tipText, new RectangleF(x + 32 * S, yy + 20 * S, colW - 32 * S, rowH - 20 * S), t.Muted, 12, false, StringAlignment.Near, true);
                 });
             }
         }
@@ -1412,6 +1412,14 @@ namespace NexusPen
             foreach (Action<Graphics> p in painters) p(g);
             for (int i = fixedItems; i < items.Count; i++) items[i].Paint(g, items[i], items[i] == hover && !dragActive);
             if (dragActive) PaintDrag(g);
+            // gescrold: bovenin een vaste strook met de naam van de pagina, dan schuift er niets onder het kruisje door
+            if (scroll > 1)
+            {
+                float bandH = 60 * S;
+                using (SolidBrush b = new SolidBrush(t.Bar)) g.FillRectangle(b, navW + 1, 0, W0 - navW - 1, bandH);
+                using (SolidBrush b = new SolidBrush(t.Sep)) g.FillRectangle(b, navW + 1, bandH, W0 - navW - 1, Math.Max(1, (float)Math.Round(S)));
+                Txt(g, L.T(PageNames[page]), new RectangleF(navW + 30 * S, 0, W0 - navW - 110 * S, bandH), t.Text, 16, true, StringAlignment.Near, false);
+            }
             g.Restore(gs);
             for (int i = 0; i < fixedItems && i < items.Count; i++) items[i].Paint(g, items[i], items[i] == hover && !dragActive);
             // dun schuifbalkje rechts als de pagina langer is dan het venster
@@ -1470,6 +1478,7 @@ namespace NexusPen
         {
             for (int i = Math.Min(fixedItems, items.Count) - 1; i >= 0; i--) if (items[i].R.Contains(p)) return items[i];
             if (p.X <= 236 * S) return null;
+            if (scroll > 1 && p.Y < 60 * S) return null;   // onder de vaste kop: niets klikbaar
             for (int i = items.Count - 1; i >= fixedItems; i--) if (items[i].R.Contains(p)) return items[i];
             return null;
         }

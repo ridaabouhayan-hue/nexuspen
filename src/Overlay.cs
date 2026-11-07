@@ -1135,8 +1135,8 @@ namespace NexusPen
                                 if (pageStep == pagesToShow.Length) { L.Set("en"); settingsForm.ShowPage("Algemeen"); settingsForm.Refresh(); snap(settingsForm, "11-english"); snap(toolbar, "12-werkbalk-english"); L.Set("nl");
                                     // licht thema: zijn de letters rechts ook scherp?
                                     int keepTheme = Cfg.ThemeIndex; Cfg.ThemeIndex = 1; ApplySettings(); settingsForm.Rebuild(); settingsForm.ShowPage("Uiterlijk"); settingsForm.Refresh(); snap(settingsForm, "11-licht-uiterlijk");
-                                    settingsForm.ShowPage("Knoppen"); settingsForm.ScrollToEnd(); settingsForm.Refresh(); snap(settingsForm, "11-knoppen-gescrold");
-                                    Cfg.ThemeIndex = keepTheme; ApplySettings(); }
+                                    Cfg.ThemeIndex = keepTheme; ApplySettings();
+                                    settingsForm.ShowPage("Knoppen"); settingsForm.ScrollToEnd(); settingsForm.Refresh(); snap(settingsForm, "11-knoppen-gescrold"); }
                                 break;
                             }
                             t.Stop(); Close(); break;
