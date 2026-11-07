@@ -415,3 +415,5 @@ De standaardknoppen in de standaardvolgorde | The default buttons in the default
 Alle instellingen | All settings | Tous les paramètres | Todos los ajustes
 Thema, kleuren, sneltoetsen en de rest. Je tekeningen blijven staan. | Theme, colours, shortcuts and the rest. Your drawings stay. | Thème, couleurs, raccourcis et le reste. Vos dessins restent. | Tema, colores, atajos y el resto. Tus dibujos se quedan.
 Alles terugzetten | Reset everything | Tout réinitialiser | Restablecer todo
+Knoppen terugzetten | Reset buttons | Réinitialiser les boutons | Restablecer botones
+Bezig... | Working... | En cours... | En curso...

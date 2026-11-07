@@ -173,9 +173,31 @@ namespace NexusPen
         {
             base.OnMouseWheel(e);
             if (dragActive || pressed != null) return;
+            ScrollTo(scroll - e.Delta / 120f * 56 * S);
+        }
+
+        // Naar een plek scrollen; daarna weer weten waar de muis boven staat (en de oude tip weg)
+        void ScrollTo(float v)
+        {
             float before = scroll;
-            scroll = Math.Max(0, Math.Min(MaxScroll, scroll - e.Delta / 120f * 56 * S));
-            if (Math.Abs(scroll - before) > 0.5f) { BuildItems(); Invalidate(); }
+            scroll = Math.Max(0, Math.Min(MaxScroll, v));
+            if (Math.Abs(scroll - before) < 0.5f) return;
+            BuildItems();
+            tip.Hide(this);
+            hover = ItemAt(PointToClient(Control.MousePosition));
+            Invalidate();
+        }
+
+        // ook zonder muiswiel: slepen op een lege plek (vinger of pen), het schuifbalkje slepen, of de toetsen
+        bool panning, barDragging;
+        float panFromY, panFromScroll;
+
+        RectangleF ScrollBarRect()
+        {
+            float H0 = ClientSize.Height, ms = MaxScroll;
+            if (ms <= 0) return RectangleF.Empty;
+            float total = H0 + ms, barH = Math.Max(40 * S, H0 * H0 / total), barY = (H0 - barH) * (scroll / ms);
+            return new RectangleF(ClientSize.Width - 12 * S, barY, 12 * S, barH);
         }
 
         void RoundFill(Graphics g, RectangleF r, Color c, float rad)
@@ -633,6 +655,7 @@ namespace NexusPen
 
         void DropKey(Point p)
         {
+            if (scroll > 1 && p.Y < 60 * S) return;   // losgelaten op de vaste kop: niets doen
             List<string> layout = Toolbar.Layout(Cfg);
             int ins = InsertIndex(p);
             if (dragFrom >= 0)
@@ -734,6 +757,7 @@ namespace NexusPen
 
         void DropColor(Point p)
         {
+            if (scroll > 1 && p.Y < 60 * S) return;   // losgelaten op de vaste kop: niets doen
             List<Color> list = OwnColors();
             if (dragFrom < 0 || dragFrom >= list.Count) return;
             int ins = ColorInsertIndex(p);
@@ -1010,6 +1034,20 @@ namespace NexusPen
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
             if (keyData == Keys.Escape && recording == null) { Close(); return true; }
+            // scrollen met de toetsen (niet tijdens het opnemen van een sneltoets)
+            if (recording == null && MaxScroll > 0)
+            {
+                float page = ClientSize.Height - 100 * S;
+                switch (keyData)
+                {
+                    case Keys.PageDown: ScrollTo(scroll + page); return true;
+                    case Keys.PageUp: ScrollTo(scroll - page); return true;
+                    case Keys.Down: ScrollTo(scroll + 56 * S); return true;
+                    case Keys.Up: ScrollTo(scroll - 56 * S); return true;
+                    case Keys.Home: ScrollTo(0); return true;
+                    case Keys.End: ScrollTo(MaxScroll); return true;
+                }
+            }
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
@@ -1288,6 +1326,10 @@ namespace NexusPen
             else if (updState == 2) { title = L.T("Je hebt de nieuwste versie"); sub = L.F("NexusPen {0}, gekeken om {1}", Program.Version, updCheckedAt.ToString("HH:mm")); icon = "vink"; good = true; }
             else if (updState == 3) { title = L.T("Kijken lukte niet"); sub = L.T("Geen internet? Probeer het straks nog eens."); icon = "info"; warn = true; }
             else { title = "NexusPen " + Program.Version; sub = L.T("Kijk of er een nieuwe versie is."); icon = "info"; }
+            bool busy = ov.Updating;
+            string bl = busy ? L.T("Bezig...") : pu != null ? L.T("Nu bijwerken") : L.T("Nu kijken");
+            float bw = Measure(bl, 13, true) + 50 * S;
+            float bwCard = bw;
             Later(delegate(Graphics g)
             {
                 Theme t = T;
@@ -1298,16 +1340,15 @@ namespace NexusPen
                 Color dc = good ? ColorTranslator.FromHtml("#16A34A") : pu != null ? t.Accent : warn ? ColorTranslator.FromHtml("#DC2626") : Field;
                 using (SolidBrush b = new SolidBrush(dc)) g.FillEllipse(b, dot);
                 Icons.Draw(g, icon, dot, 20 * S, good || pu != null || warn ? Color.White : t.Icon, 2.4f);
-                float tx = dot.Right + 16 * S, tw = card.Right - tx - 190 * S;
+                float tx = dot.Right + 16 * S, tw = Math.Max(60 * S, card.Right - 20 * S - bwCard - 12 * S - tx);
                 Txt(g, title, new RectangleF(tx, card.Y + 24 * S, tw, 24 * S), t.Text, 16, true, StringAlignment.Near, false);
                 Txt(g, sub, new RectangleF(tx, card.Y + 50 * S, tw, 22 * S), t.Muted, 12, false, StringAlignment.Near, false);
             });
             // knop rechts in de kaart
-            string bl = pu != null ? L.T("Nu bijwerken") : L.T("Nu kijken");
-            float bw = Measure(bl, 13, true) + 50 * S;
             Item b0 = Add(new RectangleF(card.Right - bw - 20 * S, card.Y + (cardH - 38 * S) / 2, bw, 38 * S), null, delegate
             {
-                if (ov.PendingUpdate != null) ov.InstallUpdate();
+                if (ov.Updating) return;
+                if (ov.PendingUpdate != null) { ov.InstallUpdate(); BuildItems(); Invalidate(); }
                 else if (updState != 1) CheckNow();
             }, delegate(Graphics g, Item it, bool h)
             {
@@ -1322,7 +1363,9 @@ namespace NexusPen
             y = Toggle(y, L.T("Melding als er een nieuwe versie is"), L.T("NexusPen kijkt bij het starten even bij GitHub. Er gaat niets van jou mee."), delegate { return c.UpdateCheck; }, delegate(bool v) { c.UpdateCheck = v; });
             Button(contentX, y + 12 * S, L.T("Wat is er nieuw?"), "info", delegate
             {
-                try { Process.Start(Updates.Page); } catch (Exception ex) { Log.Error("Downloadpagina openen", ex); }
+                Updates.Info cur = ov.PendingUpdate;
+                string u = cur != null && cur.PageUrl != null && cur.PageUrl.StartsWith("https://github.com/") ? cur.PageUrl : Updates.Page;
+                try { Process.Start(u); } catch (Exception ex) { Log.Error("Downloadpagina openen", ex); }
             }, false);
         }
 
@@ -1363,7 +1406,7 @@ namespace NexusPen
             // terugzetten: hier achteraan, niet op een pagina die je vaak gebruikt
             Settings c = Cfg;
             y = Section(y + 10 * S, L.T("Terugzetten"));
-            y = ResetRow(y, L.T("Alleen de werkbalk"), L.T("De standaardknoppen in de standaardvolgorde"), L.T("Werkbalk terugzetten"), delegate
+            y = ResetRow(y, L.T("Alleen de werkbalk"), L.T("De standaardknoppen in de standaardvolgorde"), L.T("Knoppen terugzetten"), delegate
             {
                 if (MessageBox.Show(this, L.T("De knoppen in de balk terugzetten naar de standaard? Je eigen volgorde en verborgen knoppen gaan dan verloren."), "NexusPen", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
                 c.BarLayout = ""; c.ShortenAt = 0; Changed(); BuildItems(); Notice(L.T("De werkbalk heeft weer de standaardknoppen."));
@@ -1406,29 +1449,31 @@ namespace NexusPen
             Txt(g, L.T("Instellingen"), new RectangleF(58 * S, 16 * S, navW - 64 * S, 32 * S), t.Text, 16, true, StringAlignment.Near, false);
             using (SolidBrush b = new SolidBrush(t.Sep)) foreach (float sy in navSeps) g.FillRectangle(b, 24 * S, (float)Math.Round(sy), navW - 48 * S, Math.Max(1, (float)Math.Round(S)));
             // de pagina zelf (kan scrollen): alleen binnen het vak rechts van de zijbalk
-            RectangleF view = new RectangleF(navW + 1, 0, W0 - navW - 1, H0);
+            float edge = dwmCorners ? 0 : Math.Max(1, (float)Math.Round((t.Thick ? 2 : 1) * S));
+            RectangleF view = new RectangleF(navW + 1, edge, W0 - navW - 1 - edge, H0 - edge * 2);
             GraphicsState gs = g.Save();
             g.SetClip(view);
             foreach (Action<Graphics> p in painters) p(g);
             for (int i = fixedItems; i < items.Count; i++) items[i].Paint(g, items[i], items[i] == hover && !dragActive);
-            if (dragActive) PaintDrag(g);
             // gescrold: bovenin een vaste strook met de naam van de pagina, dan schuift er niets onder het kruisje door
             if (scroll > 1)
             {
                 float bandH = 60 * S;
-                using (SolidBrush b = new SolidBrush(t.Bar)) g.FillRectangle(b, navW + 1, 0, W0 - navW - 1, bandH);
+                using (SolidBrush b = new SolidBrush(t.Bar)) g.FillRectangle(b, view.X, view.Y, view.Width, bandH - view.Y);
                 using (SolidBrush b = new SolidBrush(t.Sep)) g.FillRectangle(b, navW + 1, bandH, W0 - navW - 1, Math.Max(1, (float)Math.Round(S)));
                 Txt(g, L.T(PageNames[page]), new RectangleF(navW + 30 * S, 0, W0 - navW - 110 * S, bandH), t.Text, 16, true, StringAlignment.Near, false);
             }
             g.Restore(gs);
             for (int i = 0; i < fixedItems && i < items.Count; i++) items[i].Paint(g, items[i], items[i] == hover && !dragActive);
             // dun schuifbalkje rechts als de pagina langer is dan het venster
-            float ms = MaxScroll;
-            if (ms > 0)
+            RectangleF sb = ScrollBarRect();
+            if (!sb.IsEmpty)
             {
-                float total = H0 + ms, barH = Math.Max(40 * S, H0 * H0 / total), barY = (H0 - barH) * (scroll / ms);
-                RoundFill(g, new RectangleF(W0 - 7 * S, barY + 4 * S, 4 * S, barH - 8 * S), T.IsLight ? Color.FromArgb(70, 0, 0, 0) : Color.FromArgb(70, 255, 255, 255), 2);
+                bool big = barDragging || sb.Contains(PointToClient(Control.MousePosition));
+                float bw = big ? 6 * S : 4 * S;
+                RoundFill(g, new RectangleF(W0 - 4 * S - bw, sb.Y + 4 * S, bw, sb.Height - 8 * S), T.IsLight ? Color.FromArgb(big ? 110 : 70, 0, 0, 0) : Color.FromArgb(big ? 110 : 70, 255, 255, 255), 3);
             }
+            if (dragActive) PaintDrag(g);   // het gesleepte knopje bovenop alles (ook boven de vaste kop)
             if (notice != null && (DateTime.Now - noticeAt).TotalMilliseconds < 3000)
             {
                 float nw = Measure(notice, 13, true) + 40 * S;
@@ -1520,6 +1565,20 @@ namespace NexusPen
                 return;
             }
             if (it != null) { if (it.Click != null) it.Click(); if (!IsDisposed) Invalidate(); return; }
+            RectangleF sbr = ScrollBarRect();
+            if (!sbr.IsEmpty && e.X >= ClientSize.Width - 14 * S)
+            {
+                // schuifbalkje vastpakken (of ernaast klikken: daarheen springen)
+                if (!sbr.Contains(e.Location)) ScrollTo(scroll + (e.Y < sbr.Y ? -1 : 1) * (ClientSize.Height - 80 * S));
+                barDragging = true; panFromY = e.Y; panFromScroll = scroll; Capture = true; Invalidate();
+                return;
+            }
+            if (MaxScroll > 0 && e.X > 236 * S && e.Y >= 60 * S)
+            {
+                // op een lege plek slepen = scrollen (handig met een vinger of pen)
+                panning = true; panFromY = e.Y; panFromScroll = scroll; Capture = true;
+                return;
+            }
             if (e.X > 236 * S && e.Y < 60 * S || e.X < 236 * S && e.Y < 56 * S)
             {
                 W.ReleaseCapture();
@@ -1530,6 +1589,14 @@ namespace NexusPen
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
+            if (panning) { ScrollTo(panFromScroll - (e.Y - panFromY)); return; }
+            if (barDragging)
+            {
+                RectangleF sb = ScrollBarRect();
+                float room = Math.Max(1, ClientSize.Height - sb.Height);
+                ScrollTo(panFromScroll + (e.Y - panFromY) * MaxScroll / room);
+                return;
+            }
             if (pressed != null)
             {
                 if (!dragActive && (Math.Abs(e.X - pressAt.X) > 4 || Math.Abs(e.Y - pressAt.Y) > 4)) dragActive = true;
@@ -1549,6 +1616,7 @@ namespace NexusPen
         protected override void OnMouseUp(MouseEventArgs e)
         {
             base.OnMouseUp(e);
+            if (panning || barDragging) { panning = barDragging = false; Capture = false; Invalidate(); return; }
             if (pressed == null) return;
             bool was = dragActive;
             Item wasItem = pressed;
@@ -1565,6 +1633,7 @@ namespace NexusPen
         {
             base.OnMouseCaptureChanged(e);
             if (!Capture && pressed != null) { pressed = null; dragActive = false; Invalidate(); }
+            if (!Capture && (panning || barDragging)) { panning = barDragging = false; Invalidate(); }
         }
 
         protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hover = null; Invalidate(); }

@@ -45,7 +45,8 @@ namespace NexusPen
                         body = new string(buf, 0, n);
                     }
                     Info info = Parse(body);
-                    if (info != null && IsNewer(info.Version, Program.Version)) found(info);
+                    if (info == null) { if (failed != null) failed(); }   // een raar antwoord: dan weten we het niet
+                    else if (IsNewer(info.Version, Program.Version)) found(info);
                     else if (nothing != null) nothing();
                 }
                 catch (WebException) { if (failed != null) failed(); }      // geen internet: bij de automatische check niets melden

@@ -855,6 +855,7 @@ namespace NexusPen
         // ---------- bijwerken met een klik
         public Updates.Info PendingUpdate;
         bool updating, justUpdated, updateFailed, balloonIsUpdate;
+        public bool Updating { get { return updating; } }
 
         void UpdateFound(Updates.Info info, bool fromSettings)
         {
