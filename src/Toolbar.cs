@@ -926,6 +926,9 @@ namespace NexusPen
             }
         }
 
+        // het bordvenster laat het zoompercentage zien: bijwerken als je met de toetsen zoomt
+        public void RefreshBoardPopup() { if (IsOpen(boardPopup)) boardPopup.Rebuild(); }
+
         public void ClosePopups()
         {
             StopHoverOpen();

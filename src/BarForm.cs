@@ -24,6 +24,8 @@ namespace NexusPen
         public Func<bool> Active, Lit;
         public Action<Graphics, Item, bool> Paint;   // eigen tekenwerk (kleurbolletje, logo, schuifje)
         public bool Muted;
+        public string Name;               // korte naam, in kleine venstertjes onderaan te zien als je erover gaat
+        public Func<bool> On;             // staat deze keuze aan (voor die naam als je nergens over gaat)
     }
 
     class BarForm : Form

@@ -1730,6 +1730,8 @@ namespace NexusPen
 
         // Lijnen en ruitjes groter of kleiner (om in te zoomen)
         // In- of uitzoomen op het bord: dir +1 groter, -1 kleiner (in stapjes van 20%)
+        int zoomWheelAcc;
+
         public void ZoomBoard(int dir)
         {
             float z = dir == 0 ? Cfg.BoardZoom : Cfg.BoardZoom * (dir > 0 ? 1.2f : 1 / 1.2f);
@@ -2390,6 +2392,14 @@ namespace NexusPen
         {
             base.OnMouseWheel(e);
             if (!DrawMode) return;
+            // Ctrl+muiswiel op een bord: in- en uitzoomen (gewoon draaien blijft de dikte)
+            if (BoardMode != Board.None && (Control.ModifierKeys & Keys.Control) != 0 && (Control.ModifierKeys & Keys.Shift) == 0)
+            {
+                if (Math.Sign(e.Delta) != Math.Sign(zoomWheelAcc)) zoomWheelAcc = 0;
+                zoomWheelAcc += e.Delta;
+                if (Math.Abs(zoomWheelAcc) >= 120) { ZoomBoard(zoomWheelAcc > 0 ? 1 : -1); zoomWheelAcc = 0; if (toolbar != null) toolbar.RefreshBoardPopup(); }
+                return;
+            }
             Wheel(e.Delta);
         }
 
@@ -2621,6 +2631,21 @@ namespace NexusPen
         {
             base.OnKeyDown(e);
             if (TypingKey(e)) return;
+            // op een bord: Ctrl+plus en Ctrl+min zoomen in en uit, Ctrl+0 terug naar 100%
+            if (BoardMode != Board.None && e.Control && !e.Shift && !e.Alt)
+            {
+                Keys k = e.KeyCode;
+                int dir = (k == Keys.Oemplus || k == Keys.Add) ? 1 : (k == Keys.OemMinus || k == Keys.Subtract) ? -1 : (k == Keys.D0 || k == Keys.NumPad0) ? 0 : 99;
+                if (dir != 99)
+                {
+                    if (dir == 0) Cfg.BoardZoom = 1;
+                    ZoomBoard(dir);
+                    if (toolbar != null) toolbar.RefreshBoardPopup();
+                    Usage.Log("bord", "zoom", "sneltoets");
+                    e.Handled = true; e.SuppressKeyPress = true;
+                    return;
+                }
+            }
             if (selected != null && !dragging && !e.Control && !e.Alt)
             {
                 float step = e.Shift ? 10 : 1;
@@ -2779,7 +2804,22 @@ namespace NexusPen
 
         // ---------- schermafbeelding
         bool screenshotBusy;
-        public static string ScreenshotDir { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "NexusPen"); } }
+        public static string DefaultScreenshotDir { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "NexusPen"); } }
+
+        // Je eigen map (Instellingen > Opslaan), anders Afbeeldingen\NexusPen. Bestaat je map niet meer, dan de gewone.
+        public static string ScreenshotDir
+        {
+            get
+            {
+                try
+                {
+                    string own = Instance != null ? Instance.Cfg.ShotFolder : "";
+                    if (!string.IsNullOrEmpty(own) && Path.IsPathRooted(own) && Directory.Exists(own)) return own;
+                }
+                catch { }
+                return DefaultScreenshotDir;
+            }
+        }
 
         public void Screenshot()
         {

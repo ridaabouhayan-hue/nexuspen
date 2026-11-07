@@ -43,6 +43,7 @@ namespace NexusPen
         public float LoupeZoom = 2f;            // vergrootglas: 1,5 tot 6 keer
         public int LoupeShape = 0;              // 0 rechthoek (om te lezen), 1 rond
         public bool Buttons130;                 // eenmalig: timer en vergrootglas in een eigen balk zetten (vanaf 1.3.0)
+        public string ShotFolder = "";          // eigen map voor schermafbeeldingen; leeg = Afbeeldingen\NexusPen
         public int LaserMode = 0;               // laser: 0 snel weg, 1 langzaam, 2 blijft staan tot een nieuwe lijn of Esc
         public int ActiveStyle = 0;             // gekozen knop: 0 rustig (ingedrukt), 1 in de accentkleur
         public bool ChalkChecked;               // eenmalige controle bij het bijwerken naar 1.2.6
@@ -174,6 +175,7 @@ namespace NexusPen
             OpacityIndex = Math.Max(0, Math.Min(2, OpacityIndex));
             PaletteIndex = Math.Max(0, Math.Min(Palette.Sets.Length - 1, PaletteIndex));
             ColorIndex = Math.Max(0, Math.Min(Palette.MaxColors - 1, ColorIndex));
+            if (ShotFolder == null) ShotFolder = "";
             if (ColorsFel == null) ColorsFel = ""; if (ColorsZacht == null) ColorsZacht = "";
             if (float.IsNaN(Width) || float.IsInfinity(Width)) Width = 4;
             if (float.IsNaN(TextSize) || float.IsInfinity(TextSize)) TextSize = 36;

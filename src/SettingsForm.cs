@@ -482,7 +482,7 @@ namespace NexusPen
         void BuildBar()
         {
             Settings c = Cfg;
-            float y = Heading(contentTop, L.T("Werkbalk"), L.T("Sleep knoppen tussen je balk en de bak eronder. Binnen de balk sleep je ze naar een andere plek."));
+            float y = Heading(contentTop, L.T("Werkbalk"), L.T("Slepen = verplaatsen. Kruisje = weghalen. Plusje = erbij."));
             List<string> layout = Toolbar.Layout(c);
             float cell = 46 * S, sepW = 16 * S;
             y = Section(y, L.T("Jouw balk"));
@@ -503,7 +503,11 @@ namespace NexusPen
             for (int i = 0; i < layout.Count; i++)
             {
                 int idx = i; string k = layout[i];
-                Item it = Add(slots[i], Toolbar.NameOf(k), null, delegate(Graphics g, Item item, bool hv) { PaintKey(g, item.R, k, hv, dragActive && dragFrom == idx); });
+                Item it = Add(slots[i], Toolbar.NameOf(k), null, delegate(Graphics g, Item item, bool hv)
+                {
+                    PaintKey(g, item.R, k, hv, dragActive && dragFrom == idx);
+                    if (hv && !dragActive && k != "instellingen") PaintBadge(g, item.R, "kruis");
+                });
                 it.Key = "bar:" + idx + ":" + k;
             }
             y += barArea.Height + 18 * S;
@@ -518,7 +522,11 @@ namespace NexusPen
                 if (tx + 74 * S > maxX) { tx = contentX + 12 * S; ty += rowH; trows++; }
                 string kk = k;
                 RectangleF r = new RectangleF(tx + 14 * S, ty, cell, cell);
-                Item it = Add(r, Toolbar.NameOf(k), null, delegate(Graphics g, Item item, bool hv) { PaintKey(g, item.R, kk, hv, false); });
+                Item it = Add(r, Toolbar.NameOf(k), null, delegate(Graphics g, Item item, bool hv)
+                {
+                    PaintKey(g, item.R, kk, hv, false);
+                    if (hv && !dragActive) PaintBadge(g, item.R, "plus");
+                });
                 it.Key = "tray:" + k;
                 tx += 74 * S;
             }
@@ -533,8 +541,44 @@ namespace NexusPen
                 using (GraphicsPath gp = Svg.RoundRect(ta, 12 * S)) g.DrawPath(p, gp);
             });
             y += trayArea.Height + 16 * S;
-            y = Para(y, L.T("Erbij zetten: sleep een knop uit de bak omhoog. Weghalen: sleep hem naar beneden, of rechtsklik in de balk en kies Verbergen."), 40 * S);
             y = Segments(y + 4 * S, L.T("Stand"), null, new string[] { L.T("Liggend"), L.T("Staand") }, delegate { return c.Vertical ? 1 : 0; }, delegate(int i) { c.Vertical = i == 1; });
+        }
+
+        // klein rondje rechtsboven op een knop: kruisje (weghalen) of plusje (erbij)
+        RectangleF KeyBadge(RectangleF r) { float d = 18 * S; return new RectangleF(r.Right - d + 5 * S, r.Y - 5 * S, d, d); }
+
+        void PaintBadge(Graphics g, RectangleF r, string icon)
+        {
+            RectangleF b = KeyBadge(r);
+            Color bg = icon == "plus" ? T.Accent : (T.IsLight ? Color.FromArgb(240, 60, 60, 66) : Color.FromArgb(240, 228, 228, 231));
+            Color fg = icon == "plus" ? T.OnAccent : (T.IsLight ? Color.White : ColorTranslator.FromHtml("#18181B"));
+            using (SolidBrush br = new SolidBrush(bg)) g.FillEllipse(br, b);
+            Icons.Draw(g, icon, b, 11 * S, fg, 2.4f);
+        }
+
+        // Een knop uit de bak met een klik achteraan in je balk zetten (voor Instellingen)
+        void AddKeyToBar(string k)
+        {
+            List<string> layout = Toolbar.Layout(Cfg);
+            int at = layout.IndexOf("instellingen");
+            if (k == "|") { if (at < 0) layout.Add("|"); else layout.Insert(at, "|"); }
+            else if (!layout.Contains(k)) { if (at < 0) layout.Add(k); else layout.Insert(at, k); }
+            Cfg.BarLayout = Toolbar.LayoutString(layout);
+            Usage.Log("instelling", "erbij", k);
+            Changed(); BuildItems(); Invalidate();
+        }
+
+        void RemoveKeyFromBar(int idx)
+        {
+            List<string> layout = Toolbar.Layout(Cfg);
+            if (idx < 0 || idx >= layout.Count || layout[idx] == "instellingen") return;
+            Usage.Log("instelling", "verberg", layout[idx]);
+            layout.RemoveAt(idx);
+            List<string> clean = new List<string>();
+            foreach (string k in layout) { if (k == "|" && (clean.Count == 0 || clean[clean.Count - 1] == "|")) continue; clean.Add(k); }
+            while (clean.Count > 0 && clean[clean.Count - 1] == "|") clean.RemoveAt(clean.Count - 1);
+            Cfg.BarLayout = Toolbar.LayoutString(clean);
+            Changed(); BuildItems(); Invalidate();
         }
 
         void PaintKey(Graphics g, RectangleF r, string k, bool hv, bool ghost)
@@ -598,26 +642,50 @@ namespace NexusPen
             // je eigen kleurenlijst: klik = kiezen, dan met de knoppen eronder verplaatsen of weghalen
             float sx = contentX + 10 * S, cell = 40 * S;
             int perRow = Math.Max(8, (int)((contentW - 20 * S) / cell));
+            // klik = kiezen, slepen = verplaatsen, kruisje (als je erop staat) = weghalen, plusje = erbij
             Color[] cols = ov.Colors;
+            colorSlots.Clear();
+            int total = cols.Length + 2;   // plus de knoppen "erbij" en "standaard"
             for (int i = 0; i < cols.Length; i++)
             {
                 int idx = i;
                 Color col = cols[i];
-                Add(new RectangleF(sx + (i % perRow) * cell, y + 6 * S + (i / perRow) * cell, 34 * S, 34 * S), Palette.NameOf(ov.PaletteIndex, col), delegate { ov.ChooseColorQuietly(idx); Invalidate(); }, delegate(Graphics g, Item it, bool h)
+                RectangleF r = new RectangleF(sx + (i % perRow) * cell, y + 6 * S + (i / perRow) * cell, 34 * S, 34 * S);
+                colorSlots.Add(r);
+                Item sw = Add(r, Palette.NameOf(ov.PaletteIndex, col), delegate { ov.ChooseColorQuietly(idx); Invalidate(); }, delegate(Graphics g, Item it, bool h)
                 {
+                    if (dragActive && dragKey == "col" && dragFrom == idx) { using (Pen p = new Pen(T.Muted, 1.2f * S) { DashPattern = new float[] { 2, 2 } }) g.DrawEllipse(p, RectangleF.Inflate(it.R, -4 * S, -4 * S)); return; }
                     if (ov.ColorIndex == idx) using (SolidBrush b = new SolidBrush(T.Accent)) g.FillEllipse(b, it.R);
                     using (SolidBrush b = new SolidBrush(col)) g.FillEllipse(b, RectangleF.Inflate(it.R, -4 * S, -4 * S));
                     using (Pen p = new Pen(Color.FromArgb(90, 128, 128, 128), 1)) g.DrawEllipse(p, RectangleF.Inflate(it.R, -4 * S, -4 * S));
+                    if (h && !dragActive && cols.Length > 1)
+                    {
+                        // klein kruisje rechtsboven: weghalen
+                        RectangleF x = ColorBadge(it.R);
+                        using (SolidBrush b = new SolidBrush(T.IsLight ? Color.FromArgb(240, 60, 60, 66) : Color.FromArgb(240, 228, 228, 231))) g.FillEllipse(b, x);
+                        Icons.Draw(g, "kruis", x, 10 * S, T.IsLight ? Color.White : ColorTranslator.FromHtml("#18181B"), 2.4f);
+                    }
                 });
+                sw.Key = "col:" + i;
             }
-            y += ((cols.Length + perRow - 1) / perRow) * cell + 12 * S;
-            float bx = contentX + 10 * S;
-            bx += Button(bx, y, L.T("Eerder"), "links", delegate { MoveColor(-1); }, false) + 8 * S;
-            bx += Button(bx, y, L.T("Later"), "rechts", delegate { MoveColor(1); }, false) + 8 * S;
-            bx += Button(bx, y, L.T("Weghalen"), "prullenbak", delegate { RemoveColor(); }, false) + 8 * S;
-            bx += Button(bx, y, L.T("Kleur toevoegen"), "plus", delegate { AddColor(); }, false) + 8 * S;
-            Button(bx, y, L.T("Standaard"), "terugzetten", delegate { ResetColors(); }, false);
-            y += 48 * S;
+            int n = cols.Length;
+            RectangleF addR = new RectangleF(sx + (n % perRow) * cell, y + 6 * S + (n / perRow) * cell, 34 * S, 34 * S);
+            Add(addR, L.T("Kleur toevoegen"), delegate { AddColor(); }, delegate(Graphics g, Item it, bool h)
+            {
+                RectangleF c0 = RectangleF.Inflate(it.R, -4 * S, -4 * S);
+                if (h) using (SolidBrush b = new SolidBrush(T.Hover)) g.FillEllipse(b, c0);
+                using (Pen p = new Pen(T.Muted, 1.2f * S) { DashPattern = new float[] { 2, 2 } }) g.DrawEllipse(p, c0);
+                Icons.Draw(g, "plus", c0, 14 * S, T.Muted, 2.2f);
+            });
+            n++;
+            RectangleF resetR = new RectangleF(sx + (n % perRow) * cell, y + 6 * S + (n / perRow) * cell, 34 * S, 34 * S);
+            Add(resetR, L.T("Standaardkleuren terugzetten"), delegate { ResetColors(); }, delegate(Graphics g, Item it, bool h)
+            {
+                RectangleF c0 = RectangleF.Inflate(it.R, -4 * S, -4 * S);
+                if (h) using (SolidBrush b = new SolidBrush(T.Hover)) g.FillEllipse(b, c0);
+                Icons.Draw(g, "terugzetten", c0, 14 * S, T.Muted, 2f);
+            });
+            y += ((total + perRow - 1) / perRow) * cell + 14 * S;
             y = Toggle(y, L.T("Krijtstreep"), L.T("Lijnen van de pen zien eruit als krijt op een bord"), delegate { return c.Chalk; }, delegate(bool v) { c.Chalk = v; });
             y = Toggle(y, L.T("Vervagen"), L.T("Wat je met pen of markeerstift tekent, verdwijnt vanzelf. Handig om iets snel aan te wijzen"), delegate { return c.Fade; }, delegate(bool v) { c.Fade = v; });
             y = Segments(y, L.T("Hoe lang blijft het staan?"), null, new string[] { "3 s", "5 s", "7 s", "12 s" }, delegate { return Array.IndexOf(Settings.FadeChoices, c.FadeSeconds); }, delegate(int i) { c.FadeSeconds = Settings.FadeChoices[i]; });
@@ -625,6 +693,41 @@ namespace NexusPen
         }
 
         // ---- je eigen kleurenlijst aanpassen (voor de set die nu aan staat: fel of zacht)
+        List<RectangleF> colorSlots = new List<RectangleF>();
+        RectangleF ColorBadge(RectangleF r) { float d = 15 * S; return new RectangleF(r.Right - d + 2 * S, r.Y - 2 * S, d, d); }
+
+        // Waar komt een gesleepte kleur terecht? (de plek waar je hem loslaat)
+        int ColorInsertIndex(Point p)
+        {
+            for (int i = 0; i < colorSlots.Count; i++)
+            {
+                RectangleF r = colorSlots[i];
+                if (p.Y >= r.Y - 6 * S && p.Y <= r.Bottom + 6 * S && p.X < r.X + r.Width / 2) return i;
+            }
+            for (int i = colorSlots.Count - 1; i >= 0; i--) if (p.Y >= colorSlots[i].Y - 6 * S) return i + 1;
+            return 0;
+        }
+
+        void DropColor(Point p)
+        {
+            List<Color> list = OwnColors();
+            if (dragFrom < 0 || dragFrom >= list.Count) return;
+            int ins = ColorInsertIndex(p);
+            Color c = list[dragFrom];
+            list.RemoveAt(dragFrom);
+            if (ins > dragFrom) ins--;
+            ins = Math.Max(0, Math.Min(list.Count, ins));
+            list.Insert(ins, c);
+            SaveColors(list, ins);
+        }
+
+        void RemoveColorAt(int i)
+        {
+            List<Color> list = OwnColors();
+            if (list.Count <= 1 || i < 0 || i >= list.Count) return;
+            list.RemoveAt(i);
+            SaveColors(list, Math.Min(ov.ColorIndex > i ? ov.ColorIndex - 1 : ov.ColorIndex, list.Count - 1));
+        }
         List<Color> OwnColors() { return new List<Color>(ov.Colors); }
 
         void SaveColors(List<Color> list, int select)
@@ -635,24 +738,6 @@ namespace NexusPen
             ov.ChooseColorQuietly(Math.Max(0, Math.Min(list.Count - 1, select)));
             Changed();
             BuildItems(); Invalidate();
-        }
-
-        void MoveColor(int dir)
-        {
-            List<Color> list = OwnColors();
-            int i = Math.Max(0, Math.Min(list.Count - 1, ov.ColorIndex)), j = i + dir;
-            if (j < 0 || j >= list.Count) return;
-            Color t = list[i]; list[i] = list[j]; list[j] = t;
-            SaveColors(list, j);
-        }
-
-        void RemoveColor()
-        {
-            List<Color> list = OwnColors();
-            if (list.Count <= 1) { Notice(L.T("Er moet minstens een kleur blijven.")); return; }
-            int i = Math.Max(0, Math.Min(list.Count - 1, ov.ColorIndex));
-            list.RemoveAt(i);
-            SaveColors(list, i);
         }
 
         void AddColor()
@@ -744,11 +829,11 @@ namespace NexusPen
         {
             Settings c = Cfg;
             float y = Heading(contentTop, L.T("Stempels"), L.T("Klik op de stempelknop in de balk en daarna waar je hem wilt hebben."));
-            string[] names = { L.T("Vinkje"), L.T("Kruis"), L.T("Ster"), L.T("Vraagteken"), L.T("Nummer") }; // vertaal
-            float cw = (contentW - 40 * S) / 5, ch = 96 * S;
-            for (int i = 0; i < 5; i++)
+            int nk = Render.StampOrder.Length;
+            float cw = (contentW - 10 * S * (nk - 1)) / nk, ch = 96 * S;
+            for (int i = 0; i < nk; i++)
             {
-                int idx = i;
+                int idx = Render.StampOrder[i];
                 RectangleF r = new RectangleF(contentX + i * (cw + 10 * S), y, cw, ch);
                 Add(r, null, delegate { c.StampKind = idx; Changed(); }, delegate(Graphics g, Item it, bool h)
                 {
@@ -761,29 +846,38 @@ namespace NexusPen
                     s.Text = kind == "nummer" ? "#" + c.StampNext : kind; s.Color = Render.StampColor(kind);
                     s.Pts.Add(new PointF(it.R.X + it.R.Width / 2, it.R.Y + 38 * S));
                     Render.Setup(g); Render.Draw(g, s, 1);
-                    Txt(g, names[idx], new RectangleF(it.R.X, it.R.Bottom - 28 * S, it.R.Width, 20 * S), t.Text, 13, true, StringAlignment.Center, false);
+                    Txt(g, L.T(Render.StampName(kind)), new RectangleF(it.R.X, it.R.Bottom - 28 * S, it.R.Width, 20 * S), t.Text, 13, true, StringAlignment.Center, false);
                 });
             }
             y += ch + 16 * S;
             y = Segments(y, L.T("Grootte"), null, new string[] { "S", "M", "L" }, delegate { return c.StampPx > 0 ? -1 : c.StampSize; }, delegate(int i) { c.StampSize = i; c.StampPx = 0; });
-            y = Segments(y, L.T("Volgende nummer"), L.T("Het nummer telt vanzelf op"), new string[] { c.StampNext.ToString(), L.T("Weer bij 1 beginnen") },
-                delegate { return 0; }, delegate(int i) { if (i == 1) { c.StampNext = 1; BuildItems(); } });
+            // volgende nummer: het getal zelf, en een knopje om weer bij 1 te beginnen
+            float ny = y;
+            Later(delegate(Graphics g)
+            {
+                Txt(g, L.T("Volgende nummer"), new RectangleF(contentX + 10 * S, ny + 16 * S, contentW - 140 * S, 20 * S), T.Text, 14, true, StringAlignment.Near, false);
+                RectangleF nb = new RectangleF(contentX + contentW - 96 * S, ny + 10 * S, 34 * S, 34 * S);
+                using (SolidBrush b = new SolidBrush(T.IsLight ? Color.Black : Color.White)) g.FillEllipse(b, nb);
+                Txt(g, c.StampNext.ToString(), nb, T.IsLight ? Color.White : Color.Black, 13, true, StringAlignment.Center, false);
+                using (SolidBrush b = new SolidBrush(T.Sep)) g.FillRectangle(b, contentX, ny + 54 * S, contentW, 1 * S);
+            });
+            Add(new RectangleF(contentX + contentW - 52 * S, ny + 10 * S, 34 * S, 34 * S), L.T("Weer bij 1 beginnen"), delegate { c.StampNext = 1; Changed(); BuildItems(); }, delegate(Graphics g, Item it, bool h)
+            {
+                RoundFill(g, it.R, h ? Raised : Field, 9);
+                Icons.Draw(g, "terugzetten", it.R, 16 * S, T.Icon, 2f);
+            });
+            y += 56 * S;
         }
 
         // ---- Bord
         void BuildBoard()
         {
             Settings c = Cfg;
-            float y = Heading(contentTop, L.T("Bord en achtergrond"), L.T("Een leeg bord over je hele scherm, met lijnen als je wilt en meerdere pagina's."));
+            float y = Heading(contentTop, L.T("Bord en achtergrond"), L.T("Zoomen op het bord: Ctrl+plus, Ctrl+min, Ctrl+0 of Ctrl+muiswiel."));
             y = Segments(y, L.T("Achtergrond"), null, new string[] { L.T("Leeg"), L.T("Schrijflijnen"), L.T("Ruitjes"), L.T("Lijntjes") }, delegate { return c.BoardBg; }, delegate(int i) { c.BoardBg = i; });
             float[] zs = { 0.6f, 1f, 2f, 4f };
-            y = Segments(y, L.T("Grootte van lijnen en ruitjes"), L.T("Fijner: met min en plus in het Bord-venster zoom je zelf in of uit"), new string[] { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") },
+            y = Segments(y, L.T("Grootte van lijnen en ruitjes"), null, new string[] { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") },
                 delegate { int b = -1; for (int i = 0; i < zs.Length; i++) if (Math.Abs(zs[i] - c.BoardZoom) < 0.05f) b = i; return b; }, delegate(int i) { c.BoardZoom = zs[i]; });
-            y = Para(y + 12 * S, L.F("Je bord heeft nu {0} pagina's. Met de knop Bord in de werkbalk ga je naar de vorige of volgende pagina, of maak je een nieuwe.", ov.PageCount), 44 * S);
-            float bx = contentX;
-            bx += Button(bx, y + 6 * S, L.T("Whiteboard openen"), "bord", delegate { Close(); ov.SetBoard(Board.White); }, true) + 10 * S;
-            bx += Button(bx, y + 6 * S, L.T("Krijtbord openen"), "bord", delegate { Close(); ov.SetBoard(Board.Black); }, false) + 10 * S;
-            Button(bx, y + 6 * S, L.T("Zwart bord openen"), "bord", delegate { Close(); ov.SetBoard(Board.Dark); }, false);
         }
 
         void BuildSoon()
@@ -826,9 +920,8 @@ namespace NexusPen
         {
             if (!id.StartsWith("global:"))
             {
-                // klikvak voor "Uit", over het woordje heen (later toegevoegd = gaat voor de hele regel)
-                float aw0 = Measure(L.T("Wijzigen"), 12, true), ow0 = Measure(L.T("Uit"), 12, true);
-                RectangleF offR = new RectangleF(x + w - 10 * S - aw0 - 12 * S - ow0 - 6 * S, y, ow0 + 12 * S, 38 * S);
+                // klikvak voor het prullenbakje (uitzetten), over het icoontje heen (later toegevoegd = gaat voor de hele regel)
+                RectangleF offR = new RectangleF(x + w - 10 * S - 18 * S - 10 * S - 24 * S, y + 7 * S, 24 * S, 24 * S);
                 string rid = id;
                 laterItems.Add(delegate
                 {
@@ -837,10 +930,10 @@ namespace NexusPen
                         // tijdens het opnemen staat hier "Annuleren": dan alleen stoppen met opnemen
                         if (recording == rid) { recording = null; Invalidate(); return; }
                         recording = null; Shortcuts.SetOverride(rid, ""); Changed(); Invalidate();
-                    }, delegate(Graphics g, Item it, bool h) { });
+                    }, delegate(Graphics g, Item it, bool h) { if (h && recording != rid && !string.IsNullOrEmpty(combo())) RoundFill(g, it.R, T.Hover, 6); });
                 });
             }
-            Add(new RectangleF(x, y, w, 38 * S), L.T("Klik op Wijzigen en druk je toetsen in. Backspace = geen sneltoets"), delegate { recording = recording == id ? null : id; Invalidate(); }, delegate(Graphics g, Item it, bool h)
+            Add(new RectangleF(x, y, w, 38 * S), L.T("Klik en druk je toetsen in. Backspace = geen sneltoets"), delegate { recording = recording == id ? null : id; Invalidate(); }, delegate(Graphics g, Item it, bool h)
             {
                 Theme t = T;
                 bool rec = recording == id;
@@ -848,17 +941,14 @@ namespace NexusPen
                 Icons.Draw(g, icon, new RectangleF(it.R.X + 8 * S, it.R.Y, 22 * S, it.R.Height), 17 * S, t.Icon, 2f);
                 float right = it.R.Right - 10 * S;
                 float labelX = it.R.X + 38 * S;
-                string act = rec ? L.T("Annuleren") : L.T("Wijzigen");
-                float aw = Measure(act, 12, true);
-                Txt(g, act, new RectangleF(right - aw, it.R.Y, aw + 2 * S, it.R.Height), t.Muted, 12, true, StringAlignment.Far, false);
-                right -= aw + 12 * S;
+                // potloodje = wijzigen (tijdens het opnemen: kruisje = annuleren), prullenbakje = uitzetten
+                Icons.Draw(g, rec ? "kruis" : "pen", new RectangleF(right - 18 * S, it.R.Y, 18 * S, it.R.Height), 15 * S, h || rec ? t.Icon : t.Muted, 2f);
+                right -= 18 * S + 10 * S;
                 if (!id.StartsWith("global:") && !rec)
                 {
-                    // "Uit": deze ene sneltoets uitzetten (het knopje zelf staat hieronder als apart vakje)
-                    string off = L.T("Uit");
-                    float ow = Measure(off, 12, true);
-                    Txt(g, off, new RectangleF(right - ow, it.R.Y, ow + 2 * S, it.R.Height), string.IsNullOrEmpty(combo()) ? Color.FromArgb(90, t.Muted) : t.Muted, 12, true, StringAlignment.Far, false, Card);
-                    right -= ow + 14 * S;
+                    bool none = string.IsNullOrEmpty(combo());
+                    Icons.Draw(g, "prullenbak", new RectangleF(right - 24 * S, it.R.Y, 24 * S, it.R.Height), 15 * S, none ? Color.FromArgb(70, t.Muted) : t.Muted, 2f);
+                    right -= 24 * S + 10 * S;
                 }
                 if (rec)
                 {
@@ -934,16 +1024,94 @@ namespace NexusPen
         // ---- Opslaan
         void BuildSave()
         {
-            float y = Heading(contentTop, L.T("Opslaan"), null);
-            y = Para(y, L.T("NexusPen bewaart je tekening automatisch, zodat je niets kwijtraakt als er iets misgaat. Druk je op Opslaan (op de werkbalk of Ctrl+S), dan staat je tekening er de volgende keer dat je NexusPen opent gewoon weer. Leeg beginnen: druk op Delete (alles wissen) en daarna nog een keer op Opslaan."), 84 * S);
+            Settings c = Cfg;
+            float y = Heading(contentTop, L.T("Opslaan"), L.T("Alles wordt vanzelf bewaard. Met Opslaan staat je tekening er de volgende keer weer."));
             float bx = contentX;
             bx += Button(bx, y + 6 * S, L.T("Nu opslaan"), "opslaan", delegate { if (ov.SaveExplicit()) Notice(L.T("Opgeslagen. Je tekening en instellingen staan er de volgende keer weer.")); }, true) + 10 * S;
             Button(bx, y + 6 * S, L.T("Vorige tekening terughalen"), "undo", delegate { ov.RestorePrevious(); Notice(L.T("Klaar. Kijk op je scherm.")); }, false);
-            y += 70 * S;
-            y = Section(y, L.T("Mappen"));
+            y += 62 * S;
+            // map voor schermafbeeldingen: zelf kiezen
+            y = Section(y, L.T("Schermafbeeldingen"));
+            string dir = Overlay.ScreenshotDir;
+            float ry = y;
+            Add(new RectangleF(contentX, ry, contentW - 96 * S, 40 * S), L.T("Map openen"), delegate { OpenFolder(Overlay.ScreenshotDir); }, delegate(Graphics g, Item it, bool h)
+            {
+                RoundFill(g, it.R, h ? Raised : Card, 9);
+                Icons.Draw(g, "map", new RectangleF(it.R.X + 8 * S, it.R.Y, 24 * S, it.R.Height), 16 * S, T.Icon, 2f);
+                Txt(g, dir, new RectangleF(it.R.X + 38 * S, it.R.Y, it.R.Width - 46 * S, it.R.Height), T.Text, 12, false, StringAlignment.Near, false);
+            });
+            Add(new RectangleF(contentX + contentW - 88 * S, ry, 40 * S, 40 * S), L.T("Andere map kiezen"), delegate { ChooseShotFolder(); }, delegate(Graphics g, Item it, bool h)
+            {
+                RoundFill(g, it.R, h ? Raised : Field, 9);
+                Icons.Draw(g, "pen", it.R, 16 * S, T.Icon, 2f);
+            });
+            Add(new RectangleF(contentX + contentW - 42 * S, ry, 40 * S, 40 * S), L.T("Terug naar Afbeeldingen\\NexusPen"), delegate { c.ShotFolder = ""; Changed(); BuildItems(); Invalidate(); }, delegate(Graphics g, Item it, bool h)
+            {
+                RoundFill(g, it.R, h ? Raised : Field, 9);
+                Icons.Draw(g, "terugzetten", it.R, 16 * S, string.IsNullOrEmpty(c.ShotFolder) ? T.Muted : T.Icon, 2f);
+            });
+            y += 52 * S;
+            // naar een andere computer: een bestandje met je instellingen
+            y = Section(y, L.T("Naar een andere computer"));
             bx = contentX;
-            bx += Button(bx, y, L.T("Schermafbeeldingen"), "map", delegate { OpenFolder(Overlay.ScreenshotDir); }, false) + 10 * S;
+            bx += Button(bx, y, L.T("Instellingen exporteren"), "aftekenen", delegate { ExportSettings(); }, false) + 10 * S;
+            bx += Button(bx, y, L.T("Instellingen importeren"), "map", delegate { ImportSettings(); }, false) + 10 * S;
             Button(bx, y, L.T("Tekeningen en instellingen"), "map", delegate { OpenFolder(StrokeStore.Dir); }, false);
+        }
+
+        void ChooseShotFolder()
+        {
+            using (FolderBrowserDialog fb = new FolderBrowserDialog())
+            {
+                fb.Description = L.T("Waar wil je je schermafbeeldingen bewaren?");
+                fb.SelectedPath = Overlay.ScreenshotDir;
+                fb.ShowNewFolderButton = true;
+                if (fb.ShowDialog(this) != DialogResult.OK || string.IsNullOrEmpty(fb.SelectedPath)) return;
+                Cfg.ShotFolder = fb.SelectedPath;
+                Changed(); BuildItems(); Invalidate();
+                Notice(L.T("Nieuwe schermafbeeldingen komen nu in deze map."));
+            }
+        }
+
+        // Dingen die bij deze computer horen (plek van de balk, opstarten): niet meenemen naar een andere computer
+        static readonly string[] PerComputer = { "ToolbarX", "ToolbarY", "TileX", "TileY", "ShotFolder", "Vertical" };
+
+        void ExportSettings()
+        {
+            using (SaveFileDialog sd = new SaveFileDialog())
+            {
+                sd.Title = L.T("Instellingen exporteren");
+                sd.Filter = L.T("NexusPen-instellingen") + " (*.nexuspen)|*.nexuspen";
+                sd.FileName = "NexusPen-instellingen.nexuspen";
+                sd.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                if (sd.ShowDialog(this) != DialogResult.OK) return;
+                try { Cfg.Save(sd.FileName); Usage.Log("instelling", "exporteren", ""); Notice(L.T("Klaar. Zet dit bestandje op je andere computer en kies daar Importeren.")); }
+                catch (Exception ex) { Log.Error("Instellingen exporteren", ex); Notice(L.T("Exporteren lukte niet.")); }
+            }
+        }
+
+        void ImportSettings()
+        {
+            using (OpenFileDialog od = new OpenFileDialog())
+            {
+                od.Title = L.T("Instellingen importeren");
+                od.Filter = L.T("NexusPen-instellingen") + " (*.nexuspen;*.ini)|*.nexuspen;*.ini";
+                od.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                if (od.ShowDialog(this) != DialogResult.OK) return;
+                try
+                {
+                    if (new FileInfo(od.FileName).Length > 256 * 1024) { Notice(L.T("Dit is geen bestand met NexusPen-instellingen.")); return; }
+                    Settings other = Settings.Load(od.FileName);   // leest alleen bekende instellingen, met de gewone controles
+                    foreach (System.Reflection.FieldInfo f in typeof(Settings).GetFields())
+                        if (!f.IsStatic && !f.IsInitOnly && Array.IndexOf(PerComputer, f.Name) < 0) f.SetValue(Cfg, f.GetValue(other));
+                    Cfg.Clamp();
+                    ov.RegisterGlobalHotkeys();
+                    Usage.Log("instelling", "importeren", "");
+                    Changed(); BuildItems(); Invalidate();
+                    Notice(L.T("Je instellingen zijn overgezet."));
+                }
+                catch (Exception ex) { Log.Error("Instellingen importeren", ex); Notice(L.T("Importeren lukte niet.")); }
+            }
         }
 
         static void OpenFolder(string dir)
@@ -1115,6 +1283,21 @@ namespace NexusPen
 
         void PaintDrag(Graphics g)
         {
+            if (dragKey == "col")
+            {
+                // streepje waar de kleur komt, en de kleur zelf onder je muis
+                int ci = ColorInsertIndex(dragPos);
+                if (colorSlots.Count > 0)
+                {
+                    RectangleF r = ci < colorSlots.Count ? colorSlots[ci] : colorSlots[colorSlots.Count - 1];
+                    float x = ci < colorSlots.Count ? r.X - 4 * S : r.Right + 2 * S;
+                    using (SolidBrush b = new SolidBrush(T.Accent)) g.FillRectangle(b, x, r.Y, 3 * S, r.Height);
+                }
+                Color[] cs = ov.Colors;
+                if (dragFrom >= 0 && dragFrom < cs.Length)
+                    using (SolidBrush b = new SolidBrush(cs[dragFrom])) g.FillEllipse(b, dragPos.X - 14 * S, dragPos.Y - 14 * S, 28 * S, 28 * S);
+                return;
+            }
             int ins = InsertIndex(dragPos);
             if (ins >= 0)
             {
@@ -1141,6 +1324,20 @@ namespace NexusPen
             base.OnMouseDown(e);
             if (e.Button != MouseButtons.Left) return;
             Item it = ItemAt(e.Location);
+            if (it != null && it.Key != null && it.Key.StartsWith("col:"))
+            {
+                int ci = int.Parse(it.Key.Substring(4));
+                // kruisje rechtsboven: meteen weghalen
+                if (ColorBadge(it.R).Contains(e.Location) && ov.ColorCount > 1) { RemoveColorAt(ci); return; }
+                pressed = it; pressAt = e.Location; dragActive = false; dragFrom = ci; dragKey = "col"; Capture = true;
+                return;
+            }
+            if (it != null && it.Key != null && it.Key.StartsWith("bar:") && KeyBadge(it.R).Contains(e.Location))
+            {
+                string[] bp = it.Key.Split(new char[] { ':' }, 3);
+                int bi;
+                if (bp.Length == 3 && bp[2] != "instellingen" && int.TryParse(bp[1], out bi)) { RemoveKeyFromBar(bi); return; }
+            }
             if (it != null && it.Key != null)
             {
                 // knop in Werkbalk: slepen begint pas als je beweegt
@@ -1189,9 +1386,12 @@ namespace NexusPen
             base.OnMouseUp(e);
             if (pressed == null) return;
             bool was = dragActive;
+            Item wasItem = pressed;
             pressed = null; dragActive = false;   // eerst opruimen, dan loslaten (anders ruimt CaptureChanged het al op)
             Capture = false;
+            if (dragKey == "col") { dragKey = null; if (was) DropColor(e.Location); else if (wasItem.Click != null) wasItem.Click(); Invalidate(); return; }
             if (was) DropKey(e.Location);
+            else if (wasItem.Key != null && wasItem.Key.StartsWith("tray:")) { AddKeyToBar(wasItem.Key.Substring(5)); return; }   // klik op een knop in de bak: erbij
             Invalidate();
         }
 

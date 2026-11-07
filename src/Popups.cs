@@ -151,15 +151,13 @@ namespace NexusPen
 
         public RowPopup(Overlay o) : base(o) { }
 
+        // Geen titel en geen tekst op de knoppen: de naam van de knop onder je muis staat klein onderin
         protected void Start(string title)
         {
             pad = 6 * S; h = 32 * S;
-            x = 12 * S;
-            if (title != null) { titleText = title; titleW = TextWidth(title, 12) + 8 * S; x += titleW; }
-            else titleText = null;
+            x = 8 * S;
         }
 
-        string titleText; float titleW;
         List<RectangleF> rowSeps = new List<RectangleF>();
 
         public override void Rebuild() { rowSeps.Clear(); base.Rebuild(); }
@@ -169,19 +167,40 @@ namespace NexusPen
             float w = (text == null ? 0 : TextWidth(text, 13) + 20 * S) + (icon != null ? (text == null ? 32 * S : 22 * S) : 0);
             Item it = Add(new RectangleF(x, pad, w, h), tipText, click);
             it.Paint = delegate(Graphics g, Item item, bool hv) { PaintChip(g, item.R, on != null && on(), hv, text, icon, iconColor); };
+            it.Name = text ?? tipText; it.On = on;
             x += w + 6 * S;
             return it;
         }
 
+        // Knop met alleen een plaatje (geen tekst): de naam komt onderin als je erover gaat
+        protected Item Icon(string name, string icon, Color iconColor, string tipText, Func<bool> on, Action click)
+        {
+            Item it = Chip(null, icon, iconColor, tipText, on, click);
+            it.Name = name;
+            return it;
+        }
+
+        const float CaptionH = 18;
+
         protected void Sep() { rowSeps.Add(Px(new RectangleF(x + 2 * S, pad + (h - 22 * S) / 2, Math.Max(1, Px(S)), 22 * S))); x += 11 * S; }
 
-        protected void Finish() { ClientSize = new Size((int)Math.Ceiling(x + 2 * S), (int)Math.Ceiling(h + pad * 2)); }
+        protected void Finish() { ClientSize = new Size((int)Math.Ceiling(x + 2 * S), (int)Math.Ceiling(h + pad * 2 + CaptionH * S)); }
 
         protected override void PaintExtra(Graphics g)
         {
-            if (titleText != null) Label(g, titleText, new RectangleF(12 * S, 0, titleW, ClientSize.Height), T.Muted, 12, true, StringAlignment.Near);
             using (SolidBrush b = new SolidBrush(T.Sep)) foreach (RectangleF r in rowSeps) g.FillRectangle(b, r);
+            // de naam van de knop onder je muis, anders van wat er aan staat
+            string name = hover != null ? hover.Name : null;
+            if (name == null) foreach (Item it in items) if (it.On != null && it.Name != null && it.On()) { name = it.Name; break; }
+            if (name != null)
+            {
+                int cut = name.IndexOf(". ");
+                if (cut > 0 && hover == null) name = name.Substring(0, cut);
+                Label(g, name, new RectangleF(10 * S, pad + h, ClientSize.Width - 20 * S, CaptionH * S), hover != null ? T.Text : T.Muted, 11, false, StringAlignment.Center);
+            }
         }
+
+        protected override void OnMouseMove(MouseEventArgs e) { Item before = hover; base.OnMouseMove(e); if (hover != before) Invalidate(); }
     }
 
     // ------------------------------------------------------------------ Vormen: lijn, pijl, rechthoek, cirkel
@@ -197,15 +216,23 @@ namespace NexusPen
             Overlay o = ov;
             Start(L.T("Gum"));
             string[] names = { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") };
+            float[] dots = { 6, 10, 15, 21 };
             for (int i = 0; i < Widths.Length; i++)
             {
-                float w = Widths[i];
-                Chip(names[i], null, Color.Empty, L.T("Grootte van de gum. Muiswiel = groter of kleiner"),
-                    delegate { return o.CurrentTool == Tool.Eraser && Math.Abs(o.PenWidth - w) < 0.5f; },
+                float w = Widths[i], dot = dots[i];
+                Func<bool> on = delegate { return o.CurrentTool == Tool.Eraser && Math.Abs(o.PenWidth - w) < 0.5f; };
+                Item it = Icon(names[i], null, Color.Empty, L.T("Grootte van de gum. Muiswiel = groter of kleiner"), on,
                     delegate { o.SetTool(Tool.Eraser); o.SetWidth(w); Invalidate(); });
+                // een rondje zo groot als de gum (geen woord nodig)
+                it.Paint = delegate(Graphics g, Item item, bool hv)
+                {
+                    PaintChip(g, item.R, on(), hv, null, null, Color.Empty);
+                    float d = dot * S;
+                    using (Pen p = new Pen(T.Icon, 1.6f * S)) g.DrawEllipse(p, item.R.X + (item.R.Width - d) / 2, item.R.Y + (item.R.Height - d) / 2, d, d);
+                };
             }
             Sep();
-            Chip(L.T("Alles wissen"), "prullenbak", Color.Empty, L.T("Alles wissen") + "  (Delete). " + L.T("Terug met Ctrl+Z"), null,
+            Icon(L.T("Alles wissen"), "prullenbak", Color.Empty, L.T("Alles wissen") + "  (Delete). " + L.T("Terug met Ctrl+Z"), null,
                 delegate { o.ClearAll(); if (o.Bar != null) o.Bar.ClosePopups(); });
             Finish();
         }
@@ -242,27 +269,35 @@ namespace NexusPen
         {
             Overlay o = ov;
             Start(L.T("Stempel"));
-            string[] tips = { L.T("Vinkje"), L.T("Kruis"), L.T("Ster"), L.T("Vraagteken") };
-            string[] icons = { "vink", "kruis", "ster", "vraag" };
-            for (int i = 0; i < 4; i++)
+            foreach (int i0 in Render.StampOrder)
             {
-                int idx = i;
-                Chip(null, icons[i], Render.StampColor(Render.StampKinds[i]), tips[i], delegate { return o.Cfg.StampKind == idx; },
+                int idx = i0;
+                string kind = Render.StampKinds[idx];
+                if (kind == "nummer")
+                {
+                    // nummer: een rondje met het volgende getal; rechtsklik = weer bij 1
+                    Item num = Icon(L.T("Nummer"), null, Color.Empty, L.T("Telt vanzelf op: 1, 2, 3. Rechtsklik = weer bij 1 beginnen"),
+                        delegate { return o.Cfg.StampKind == idx; }, delegate { o.Cfg.StampKind = idx; o.Cfg.Save(); o.SetTool(Tool.Stamp); Invalidate(); });
+                    num.RightClick = delegate { o.Cfg.StampNext = 1; o.Cfg.Save(); o.UpdateCursor(); Invalidate(); };
+                    num.Paint = delegate(Graphics g, Item item, bool hv)
+                    {
+                        PaintChip(g, item.R, o.Cfg.StampKind == idx, hv, null, null, Color.Empty);
+                        float d = 20 * S;
+                        RectangleF c0 = new RectangleF(item.R.X + (item.R.Width - d) / 2, item.R.Y + (item.R.Height - d) / 2, d, d);
+                        using (SolidBrush b = new SolidBrush(T.IsLight ? Color.Black : Color.White)) g.FillEllipse(b, c0);
+                        Label(g, o.Cfg.StampNext.ToString(), c0, T.IsLight ? Color.White : Color.Black, 11, true, StringAlignment.Center);
+                    };
+                    continue;
+                }
+                Item it = Icon(L.T(Render.StampName(kind)), Render.StampIcon(kind), Render.StampColor(kind), L.T(Render.StampName(kind)), delegate { return o.Cfg.StampKind == idx; },
                     delegate { o.Cfg.StampKind = idx; o.Cfg.Save(); o.SetTool(Tool.Stamp); Invalidate(); });
+                if (Render.StampIcon(kind) == null)
+                    it.Paint = delegate(Graphics g, Item item, bool hv)
+                    {
+                        PaintChip(g, item.R, o.Cfg.StampKind == idx, hv, null, null, Color.Empty);
+                        Render.DrawStampPreview(g, kind, item.R, 18 * S);
+                    };
             }
-            Item num = Chip(L.T("Nummer"), null, Color.Empty, L.T("Telt vanzelf op: 1, 2, 3. Rechtsklik = weer bij 1 beginnen"),
-                delegate { return o.Cfg.StampKind == 4; }, delegate { o.Cfg.StampKind = 4; o.Cfg.Save(); o.SetTool(Tool.Stamp); Invalidate(); });
-            num.R = Px(new RectangleF(num.R.X, num.R.Y, num.R.Width + 26 * S, num.R.Height));
-            x += 26 * S;
-            num.RightClick = delegate { o.Cfg.StampNext = 1; o.Cfg.Save(); o.UpdateCursor(); Invalidate(); };
-            num.Paint = delegate(Graphics g, Item item, bool hv)
-            {
-                PaintChip(g, item.R, o.Cfg.StampKind == 4, hv, null, null, Color.Empty);
-                float d = 20 * S, cx = item.R.X + 8 * S;
-                using (SolidBrush b = new SolidBrush(T.IsLight ? Color.Black : Color.White)) g.FillEllipse(b, cx, item.R.Y + (item.R.Height - d) / 2, d, d);
-                Label(g, o.Cfg.StampNext.ToString(), new RectangleF(cx, item.R.Y, d, item.R.Height), T.IsLight ? Color.White : Color.Black, 11, true, StringAlignment.Center);
-                Label(g, L.T("Nummer"), new RectangleF(cx + d + 6 * S, item.R.Y, item.R.Width - d - 18 * S, item.R.Height), T.Text, 13, true, StringAlignment.Near);
-            };
             Sep();
             string[] sizes = { "S", "M", "L" };
             for (int i = 0; i < 3; i++)
@@ -283,21 +318,21 @@ namespace NexusPen
         {
             Overlay o = ov;
             Start(L.T("Bord"));
-            Chip(L.T("Scherm"), null, Color.Empty, L.T("Gewoon over je scherm tekenen"), delegate { return o.BoardMode == Board.None; }, delegate { o.SetBoard(Board.None); Invalidate(); });
-            Item wb = Chip(L.T("Whiteboard"), "leeg", Color.Empty, L.T("Wit bord"), delegate { return o.BoardMode == Board.White; }, delegate { o.SetBoard(Board.White); Invalidate(); });
-            Item kb = Chip(L.T("Krijtbord"), "leeg", Color.Empty, L.T("Groen krijtbord"), delegate { return o.BoardMode == Board.Black; }, delegate { o.SetBoard(Board.Black); Invalidate(); });
-            Item zb = Chip(L.T("Zwart bord"), "leeg", Color.Empty, L.T("Zwart bord"), delegate { return o.BoardMode == Board.Dark; }, delegate { o.SetBoard(Board.Dark); Invalidate(); });
-            Swatchify(wb, Color.White, () => o.BoardMode == Board.White, L.T("Whiteboard"));
-            Swatchify(kb, Overlay.ChalkGreen, () => o.BoardMode == Board.Black, L.T("Krijtbord"));
-            Swatchify(zb, Overlay.DarkBoard, () => o.BoardMode == Board.Dark, L.T("Zwart bord"));
+            Icon(L.T("Scherm"), "scherm", Color.Empty, L.T("Gewoon over je scherm tekenen"), delegate { return o.BoardMode == Board.None; }, delegate { o.SetBoard(Board.None); Invalidate(); });
+            Item wb = Icon(L.T("Whiteboard"), "leeg", Color.Empty, L.T("Wit bord"), delegate { return o.BoardMode == Board.White; }, delegate { o.SetBoard(Board.White); Invalidate(); });
+            Item kb = Icon(L.T("Krijtbord"), "leeg", Color.Empty, L.T("Groen krijtbord"), delegate { return o.BoardMode == Board.Black; }, delegate { o.SetBoard(Board.Black); Invalidate(); });
+            Item zb = Icon(L.T("Zwart bord"), "leeg", Color.Empty, L.T("Zwart bord"), delegate { return o.BoardMode == Board.Dark; }, delegate { o.SetBoard(Board.Dark); Invalidate(); });
+            Swatchify(wb, Color.White, () => o.BoardMode == Board.White);
+            Swatchify(kb, Overlay.ChalkGreen, () => o.BoardMode == Board.Black);
+            Swatchify(zb, Overlay.DarkBoard, () => o.BoardMode == Board.Dark);
             Sep();
             string[] bgs = { L.T("Leeg"), L.T("Schrijflijnen"), L.T("Ruitjes"), L.T("Lijntjes") };
-            string[] icons = { null, "schrijflijnen", "ruitjes", "lijnen" };
+            string[] icons = { "leeg", "schrijflijnen", "ruitjes", "lijnen" };
             string[] tips = { L.T("Geen lijnen"), L.T("Schrijflijnen, handig voor Alfa"), L.T("Ruitjes"), L.T("Lijntjes, zoals in een schrift") };
             for (int i = 0; i < 4; i++)
             {
                 int idx = i;
-                Chip(bgs[i], icons[i], Color.Empty, tips[i], delegate { return o.Cfg.BoardBg == idx; },
+                Icon(bgs[i], icons[i], Color.Empty, tips[i], delegate { return o.Cfg.BoardBg == idx; },
                     delegate { o.Cfg.BoardBg = idx; o.Cfg.Save(); if (o.BoardMode == Board.None) o.SetBoard(Board.White); else o.Rebuild(); Invalidate(); });
             }
             // zelf in- en uitzoomen: van heel veel kleine regels tot een grote regel
@@ -316,15 +351,16 @@ namespace NexusPen
             Finish();
         }
 
-        void Swatchify(Item it, Color c, Func<bool> on, string text)
+        // een vlakje in de kleur van het bord, zonder woord
+        void Swatchify(Item it, Color c, Func<bool> on)
         {
             it.Paint = delegate(Graphics g, Item item, bool hv)
             {
                 PaintChip(g, item.R, on(), hv, null, null, Color.Empty);
-                RectangleF sq = new RectangleF(item.R.X + 10 * S, item.R.Y + (item.R.Height - 14 * S) / 2, 14 * S, 14 * S);
+                float d = 16 * S;
+                RectangleF sq = new RectangleF(item.R.X + (item.R.Width - d) / 2, item.R.Y + (item.R.Height - d) / 2, d, d);
                 using (SolidBrush b = new SolidBrush(c)) using (GraphicsPath gp = Svg.RoundRect(sq, 3 * S)) g.FillPath(b, gp);
                 using (Pen p = new Pen(Color.FromArgb(90, 128, 128, 128), 1)) using (GraphicsPath gp = Svg.RoundRect(sq, 3 * S)) g.DrawPath(p, gp);
-                Label(g, text, new RectangleF(sq.Right + 6 * S, item.R.Y, item.R.Right - sq.Right - 10 * S, item.R.Height), T.Text, 13, true, StringAlignment.Near);
             };
         }
     }

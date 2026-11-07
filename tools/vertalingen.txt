@@ -117,10 +117,8 @@ Strak | Square | Droits | Rectas
 Doorzichtigheid | Transparency | Transparence | Transparencia
 Dekkend | Solid | Opaque | Opaco
 Werkbalk | Toolbar | Barre d'outils | Barra de herramientas
-Sleep knoppen tussen je balk en de bak eronder. Binnen de balk sleep je ze naar een andere plek. | Drag buttons between your bar and the tray below. Inside the bar, drag them to another spot. | Faites glisser les boutons entre votre barre et le bac en dessous. Dans la barre, déplacez-les à un autre endroit. | Arrastra botones entre tu barra y la bandeja de abajo. Dentro de la barra, muévelos a otro sitio.
 Jouw balk | Your bar | Votre barre | Tu barra
 Niet in je balk | Not in your bar | Pas dans votre barre | No están en tu barra
-Erbij zetten: sleep een knop uit de bak omhoog. Weghalen: sleep hem naar beneden, of rechtsklik in de balk en kies Verbergen. | To add: drag a button up from the tray. To remove: drag it down, or right-click it in the bar and choose Hide. | Ajouter : faites glisser un bouton du bac vers le haut. Retirer : faites-le glisser vers le bas, ou clic droit dans la barre puis Masquer. | Añadir: arrastra un botón de la bandeja hacia arriba. Quitar: arrástralo hacia abajo, o haz clic derecho en la barra y elige Ocultar.
 Stand | Orientation | Orientation | Orientación
 Liggend | Horizontal | Horizontale | Horizontal
 Staand | Vertical | Verticale | Vertical
@@ -151,14 +149,9 @@ Goed zo! | Well done! | Bravo ! | ¡Muy bien!
 Stempels | Stamps | Tampons | Sellos
 Klik op de stempelknop in de balk en daarna waar je hem wilt hebben. | Click the stamp button in the bar, then click where you want it. | Cliquez sur le bouton tampon dans la barre, puis là où vous le voulez. | Haz clic en el botón de sello de la barra y luego donde lo quieras.
 Volgende nummer | Next number | Numéro suivant | Número siguiente
-Het nummer telt vanzelf op | The number counts up by itself | Le numéro augmente tout seul | El número aumenta solo
 Weer bij 1 beginnen | Start at 1 again | Recommencer à 1 | Volver a empezar en 1
 Bord en achtergrond | Board and background | Tableau et fond | Pizarra y fondo
-Een leeg bord over je hele scherm, met lijnen als je wilt en meerdere pagina's. | An empty board over your whole screen, with lines if you like and several pages. | Un tableau vide sur tout l'écran, avec des lignes si vous voulez et plusieurs pages. | Una pizarra vacía sobre toda la pantalla, con líneas si quieres y varias páginas.
 Achtergrond | Background | Fond | Fondo
-Je bord heeft nu {0} pagina's. Met de knop Bord in de werkbalk ga je naar de vorige of volgende pagina, of maak je een nieuwe. | Your board now has {0} pages. Use the Board button in the toolbar to go to the previous or next page, or to make a new one. | Votre tableau a maintenant {0} pages. Avec le bouton Tableau de la barre, allez à la page précédente ou suivante, ou créez-en une nouvelle. | Tu pizarra tiene ahora {0} páginas. Con el botón Pizarra de la barra vas a la página anterior o siguiente, o creas una nueva.
-Whiteboard openen | Open whiteboard | Ouvrir le tableau blanc | Abrir la pizarra blanca
-Krijtbord openen | Open chalkboard | Ouvrir le tableau noir | Abrir la pizarra de tiza
 Voorlezen | Read aloud | Lecture à voix haute | Leer en voz alta
 Komt in versie 1.3: tekst op je scherm laten voorlezen, en tekst van het scherm lezen en overnemen. Ook de timer komt dan. | Coming in version 1.3: have text on your screen read aloud, and read and copy text from the screen. The timer comes then too. | Dans la version 1.3 : faire lire à voix haute le texte de l'écran, et lire et copier du texte à l'écran. Le minuteur arrive aussi. | Llega en la versión 1.3: leer en voz alta el texto de la pantalla, y leer y copiar texto de la pantalla. También llega el temporizador.
 Sneltoetsen | Shortcuts | Raccourcis | Atajos
@@ -170,20 +163,15 @@ Uit | Off | Désactivés | Desactivados
 Werken overal, ook als je niet tekent | Work everywhere, even when you are not drawing | Fonctionnent partout, même sans dessiner | Funcionan en todas partes, aunque no estés dibujando
 Tijdens het tekenen | While drawing | Pendant le dessin | Mientras dibujas
 Standaard terugzetten | Restore defaults | Rétablir par défaut | Restablecer
-Klik op Wijzigen en druk je toetsen in. Backspace = geen sneltoets | Click Change and press your keys. Backspace = no shortcut | Cliquez sur Modifier et appuyez sur vos touches. Retour arrière = aucun raccourci | Haz clic en Cambiar y pulsa tus teclas. Retroceso = sin atajo
-Annuleren | Cancel | Annuler | Cancelar
-Wijzigen | Change | Modifier | Cambiar
 Druk nu je toetsen in | Press your keys now | Appuyez sur vos touches | Pulsa tus teclas ahora
 geen | none | aucun | ninguno
 Kies voor deze sneltoets een combinatie met Ctrl, Shift of Alt. | Choose a combination with Ctrl, Shift or Alt for this shortcut. | Choisissez une combinaison avec Ctrl, Maj ou Alt pour ce raccourci. | Elige una combinación con Ctrl, Mayús o Alt para este atajo.
 Deze sneltoets kan niet leeg zijn. | This shortcut cannot be empty. | Ce raccourci ne peut pas être vide. | Este atajo no puede estar vacío.
 Opgeslagen. | Saved. | Enregistré. | Guardado.
 Opslaan | Save | Enregistrer | Guardar
-NexusPen bewaart je tekening automatisch, zodat je niets kwijtraakt als er iets misgaat. Druk je op Opslaan (op de werkbalk of Ctrl+S), dan staat je tekening er de volgende keer dat je NexusPen opent gewoon weer. Leeg beginnen: druk op Delete (alles wissen) en daarna nog een keer op Opslaan. | NexusPen saves your drawing automatically, so you lose nothing if something goes wrong. Press Save (in the toolbar or Ctrl+S) and your drawing is simply back the next time you open NexusPen. To start empty: press Delete (clear everything) and then Save once more. | NexusPen enregistre votre dessin automatiquement, pour ne rien perdre en cas de problème. Appuyez sur Enregistrer (dans la barre ou Ctrl+S) et votre dessin sera là la prochaine fois que vous ouvrirez NexusPen. Pour repartir de zéro : appuyez sur Suppr (tout effacer) puis encore sur Enregistrer. | NexusPen guarda tu dibujo automáticamente, para que no pierdas nada si algo falla. Pulsa Guardar (en la barra o Ctrl+S) y tu dibujo estará ahí la próxima vez que abras NexusPen. Para empezar en blanco: pulsa Supr (borrar todo) y después Guardar otra vez.
 Nu opslaan | Save now | Enregistrer maintenant | Guardar ahora
 Opgeslagen. Je tekening en instellingen staan er de volgende keer weer. | Saved. Your drawing and settings will be back next time. | Enregistré. Votre dessin et vos paramètres seront là la prochaine fois. | Guardado. Tu dibujo y tus ajustes estarán ahí la próxima vez.
 Klaar. Kijk op je scherm. | Done. Look at your screen. | Terminé. Regardez votre écran. | Listo. Mira tu pantalla.
-Mappen | Folders | Dossiers | Carpetas
 Schermafbeeldingen | Screenshots | Captures d'écran | Capturas de pantalla
 Tekeningen en instellingen | Drawings and settings | Dessins et paramètres | Dibujos y ajustes
 Schermdelen | Screen sharing | Partage d'écran | Compartir pantalla
@@ -316,7 +304,6 @@ Een rechthoek is handig om een zin of een woord te lezen | A rectangle is handy 
 Vervagen | Fading | Effacement | Desvanecer
 Hoe lang blijft het staan? | How long does it stay? | Combien de temps reste-t-il ? | ¿Cuánto tiempo se queda?
 Grootte van lijnen en ruitjes | Size of lines and squares | Taille des lignes et carreaux | Tamaño de líneas y cuadros
-Zwart bord openen | Open blackboard | Ouvrir le tableau noir | Abrir pizarra negra
 Spotlicht: alleen rond je muis is het licht. Muiswiel = groter of kleiner. Rechtsklik = rond of rechthoek | Spotlight: only around your mouse is it light. Mouse wheel = bigger or smaller. Right-click = round or rectangle | Projecteur : seule la zone autour de la souris est éclairée. Molette = plus grand ou plus petit. Clic droit = rond ou rectangle | Foco: solo alrededor del ratón hay luz. Rueda = más grande o más pequeño. Clic derecho = redondo o rectángulo
 Rechthoek (om te lezen) | Rectangle (for reading) | Rectangle (pour lire) | Rectángulo (para leer)
 NexusPen afsluiten. Je tekening wordt eerst bewaard | Quit NexusPen. Your drawing is saved first | Quitter NexusPen. Votre dessin est d'abord enregistré | Salir de NexusPen. Tu dibujo se guarda primero
@@ -333,7 +320,6 @@ Gum, of rechtermuisknop ingedrukt. Muiswiel of knijpen = groter of kleiner | Era
 Klik = alles inklappen, slepen = de balk verplaatsen | Click = collapse everything, drag = move the toolbar | Clic = tout réduire, glisser = déplacer la barre | Clic = contraer todo, arrastrar = mover la barra
 Lijnen en ruitjes kleiner (meer regels) | Lines and squares smaller (more lines) | Lignes et carreaux plus petits (plus de lignes) | Líneas y cuadros más pequeños (más líneas)
 Lijnen en ruitjes groter (minder regels) | Lines and squares bigger (fewer lines) | Lignes et carreaux plus grands (moins de lignes) | Líneas y cuadros más grandes (menos líneas)
-Fijner: met min en plus in het Bord-venster zoom je zelf in of uit | Finer: use minus and plus in the Board window to zoom in or out yourself | Plus précis : avec moins et plus dans la fenêtre Tableau, vous zoomez vous-même | Más fino: con menos y más en la ventana Pizarra amplías o reduces tú mismo
 Deze sneltoets uitzetten | Turn this shortcut off | Désactiver ce raccourci | Desactivar este atajo
 Gekozen knop | Selected button | Bouton choisi | Botón elegido
 Rustig valt minder op tijdens de les | Calm stands out less during class | Discret attire moins l'attention en classe | Discreto llama menos la atención en clase
@@ -349,16 +335,11 @@ Vergrootglas weghalen | Remove magnifier | Retirer la loupe | Quitar la lupa
 Het vergrootglas werkt niet op deze computer. | The magnifier does not work on this computer. | La loupe ne fonctionne pas sur cet ordinateur. | La lupa no funciona en este ordenador.
 Wat je tekent verdwijnt vanzelf na {0} seconden. De tijd kies je in Instellingen | What you draw disappears after {0} seconds. Choose the time in Settings | Ce que vous dessinez disparaît après {0} secondes. Choisissez la durée dans Paramètres | Lo que dibujas desaparece tras {0} segundos. Elige el tiempo en Ajustes
 Instellingen blijft altijd in de balk. | Settings always stays in the bar. | Paramètres reste toujours dans la barre. | Ajustes siempre se queda en la barra.
-Eerder | Earlier | Avant | Antes
-Later | Later | Après | Después
-Weghalen | Remove | Retirer | Quitar
 Kleur toevoegen | Add colour | Ajouter une couleur | Añadir color
-Standaard | Default | Par défaut | Predeterminado
 Hoe lang blijft de laser zichtbaar? | How long does the laser stay visible? | Combien de temps le laser reste-t-il visible ? | ¿Cuánto tiempo se ve el láser?
 Snel weg | Quick | Rapide | Rápido
 Langzaam | Slow | Lent | Lento
 Blijft staan | Stays | Reste | Se queda
-Er moet minstens een kleur blijven. | At least one colour must remain. | Il doit rester au moins une couleur. | Debe quedar al menos un color.
 Hoogstens {0} kleuren. | At most {0} colours. | {0} couleurs au maximum. | Como máximo {0} colores.
 Deze kleur staat er al. | This colour is already there. | Cette couleur est déjà là. | Este color ya está.
 Vergrootglas | Magnifier | Loupe | Lupa
@@ -389,3 +370,22 @@ Timer: kies een tijd en start. Je cursisten zien hem ook bij schermdelen | Timer
 {0} keer zo groot | {0} times bigger | {0} fois plus grand | {0} veces más grande
 De knoppen in de balk terugzetten naar de standaard? Je eigen volgorde en verborgen knoppen gaan dan verloren. | Reset the buttons in the bar to the default? Your own order and hidden buttons will be lost. | Remettre les boutons de la barre par défaut ? Votre ordre et les boutons masqués seront perdus. | ¿Restablecer los botones de la barra? Se perderán tu orden y los botones ocultos.
 De werkbalk heeft weer de standaardknoppen. | The toolbar has the default buttons again. | La barre a de nouveau les boutons par défaut. | La barra vuelve a tener los botones predeterminados.
+Slepen = verplaatsen. Kruisje = weghalen. Plusje = erbij. | Drag = move. Cross = remove. Plus = add. | Glisser = déplacer. Croix = retirer. Plus = ajouter. | Arrastrar = mover. Cruz = quitar. Más = añadir.
+Standaardkleuren terugzetten | Restore default colours | Rétablir les couleurs par défaut | Restablecer colores predeterminados
+Zoomen op het bord: Ctrl+plus, Ctrl+min, Ctrl+0 of Ctrl+muiswiel. | Zoom on the board: Ctrl+plus, Ctrl+minus, Ctrl+0 or Ctrl+mouse wheel. | Zoom sur le tableau : Ctrl+plus, Ctrl+moins, Ctrl+0 ou Ctrl+molette. | Zoom en la pizarra: Ctrl+más, Ctrl+menos, Ctrl+0 o Ctrl+rueda.
+Klik en druk je toetsen in. Backspace = geen sneltoets | Click and press your keys. Backspace = no shortcut | Cliquez et appuyez sur vos touches. Retour arrière = aucun raccourci | Haz clic y pulsa tus teclas. Retroceso = sin atajo
+Alles wordt vanzelf bewaard. Met Opslaan staat je tekening er de volgende keer weer. | Everything is saved automatically. With Save your drawing is back next time. | Tout est enregistré automatiquement. Avec Enregistrer, votre dessin revient la prochaine fois. | Todo se guarda solo. Con Guardar tu dibujo vuelve la próxima vez.
+Andere map kiezen | Choose another folder | Choisir un autre dossier | Elegir otra carpeta
+Terug naar Afbeeldingen\\NexusPen | Back to Pictures\\NexusPen | Revenir à Images\\NexusPen | Volver a Imágenes\\NexusPen
+Naar een andere computer | To another computer | Vers un autre ordinateur | A otro ordenador
+Instellingen exporteren | Export settings | Exporter les paramètres | Exportar ajustes
+Instellingen importeren | Import settings | Importer les paramètres | Importar ajustes
+Waar wil je je schermafbeeldingen bewaren? | Where do you want to keep your screenshots? | Où voulez-vous enregistrer vos captures d'écran ? | ¿Dónde quieres guardar tus capturas?
+Nieuwe schermafbeeldingen komen nu in deze map. | New screenshots now go into this folder. | Les nouvelles captures vont maintenant dans ce dossier. | Las nuevas capturas van ahora a esta carpeta.
+NexusPen-instellingen | NexusPen settings | Paramètres NexusPen | Ajustes de NexusPen
+Klaar. Zet dit bestandje op je andere computer en kies daar Importeren. | Done. Put this file on your other computer and choose Import there. | Terminé. Mettez ce fichier sur votre autre ordinateur et choisissez Importer. | Listo. Pon este archivo en tu otro ordenador y elige Importar allí.
+Exporteren lukte niet. | Export did not work. | L'exportation n'a pas fonctionné. | No se pudo exportar.
+Dit is geen bestand met NexusPen-instellingen. | This is not a NexusPen settings file. | Ce n'est pas un fichier de paramètres NexusPen. | Este no es un archivo de ajustes de NexusPen.
+Je instellingen zijn overgezet. | Your settings have been transferred. | Vos paramètres ont été transférés. | Tus ajustes se han transferido.
+Importeren lukte niet. | Import did not work. | L'importation n'a pas fonctionné. | No se pudo importar.
+Zo-zo | So-so | Bof | Regular

@@ -406,7 +406,33 @@ namespace NexusPen
         }
 
         // Stempels: vinkje, kruis, ster, vraagteken of een nummer. Het soort staat in Text ("vink", "kruis", "ster", "vraag" of "#3").
-        public static readonly string[] StampKinds = { "vink", "kruis", "ster", "vraag", "nummer" };
+        // "zozo" (een gele golf ~): net niet helemaal goed, maar oké. Achteraan, dan blijven oude keuzes kloppen.
+        public static readonly string[] StampKinds = { "vink", "kruis", "ster", "vraag", "nummer", "zozo" };
+        // volgorde op het scherm: goed, zo-zo, fout, dan de rest
+        public static readonly int[] StampOrder = { 0, 5, 1, 2, 3, 4 };
+
+        static readonly string[] StampNames = { "Vinkje", "Kruis", "Ster", "Vraagteken", "Nummer", "Zo-zo" }; // vertaal
+        public static string StampName(string kind) { int i = Array.IndexOf(StampKinds, kind); return StampNames[i < 0 ? 0 : i]; }
+
+        // het icoon in de knopjes (null = zelf tekenen)
+        public static string StampIcon(string kind) { return kind == "zozo" || kind == "nummer" ? null : kind; }
+
+        // Klein voorbeeld van een stempel in een knopje
+        public static void DrawStampPreview(Graphics g, string kind, RectangleF r, float size)
+        {
+            Stroke s = new Stroke(); s.Tool = Tool.Stamp; s.FontSize = size; s.Text = kind; s.Color = StampColor(kind);
+            s.Pts.Add(new PointF(r.X + r.Width / 2, r.Y + r.Height / 2));
+            DrawStamp(g, s);
+        }
+
+        // de golf van het zo-zo-stempel, in een vlak van 24 bij 24
+        static GraphicsPath TildePath()
+        {
+            GraphicsPath gp = new GraphicsPath();
+            gp.AddBezier(3f, 14f, 6f, 8f, 9.5f, 8f, 12f, 12f);
+            gp.AddBezier(12f, 12f, 14.5f, 16f, 18f, 16f, 21f, 10f);
+            return gp;
+        }
         public static readonly float[] StampSizes = { 28, 40, 56 };
 
         public static Color StampColor(string kind)
@@ -416,6 +442,7 @@ namespace NexusPen
                 case "kruis": return ColorTranslator.FromHtml("#FF1F3D");
                 case "ster": return ColorTranslator.FromHtml("#FFD400");
                 case "vraag": return ColorTranslator.FromHtml("#2962FF");
+                case "zozo": return ColorTranslator.FromHtml("#FFC400");
                 case "nummer": return ColorTranslator.FromHtml("#1F1F23");
                 default: return ColorTranslator.FromHtml("#00C853");
             }
@@ -446,6 +473,18 @@ namespace NexusPen
                 g.TranslateTransform(r.X, r.Y); g.ScaleTransform(size / 24f, size / 24f);
                 using (Pen p = new Pen(Color.FromArgb(160, 90, 60, 0), 1.4f)) { p.LineJoin = LineJoin.Round; foreach (GraphicsPath gp in Icons.Paths("ster")) g.DrawPath(p, gp); }
                 g.Restore(st2);
+                return;
+            }
+            if (kind == "zozo")
+            {
+                GraphicsState st3 = g.Save();
+                g.TranslateTransform(r.X, r.Y); g.ScaleTransform(size / 24f, size / 24f);
+                using (GraphicsPath gp = TildePath())
+                {
+                    using (Pen p = new Pen(Color.FromArgb(110, 0, 0, 0), 4.4f)) { p.StartCap = p.EndCap = LineCap.Round; g.DrawPath(p, gp); }
+                    using (Pen p = new Pen(s.Color, 3f)) { p.StartCap = p.EndCap = LineCap.Round; g.DrawPath(p, gp); }
+                }
+                g.Restore(st3);
                 return;
             }
             string icon = kind == "kruis" ? "kruis" : kind == "vraag" ? "vraag" : "vink";

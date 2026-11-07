@@ -166,7 +166,7 @@ static class Tests {
       foreach (string k in Render.StampKinds) { var s = new Stroke{Tool=Tool.Stamp, FontSize=40, Text = k == "nummer" ? "#12" : k, Color = Render.StampColor(k)}; s.Pts.Add(new PointF(100,100));
         try { Render.Draw(sg, s, 1); } catch { stOk = false; } }
     }
-    Check(stOk && Render.StampKinds.Length == 5, "Alle vijf stempels tekenen, ook nummer 12");
+    Check(stOk && Render.StampKinds.Length == 6 && Render.StampOrder.Length == 6, "Alle zes stempels tekenen (ook zo-zo en nummer 12)");
     // 12. Versies vergelijken
     Check(Updates.IsNewer("1.2.1", "1.2.0") && Updates.IsNewer("v1.3", "1.2.0") && !Updates.IsNewer("1.2.0", "1.2.0") && !Updates.IsNewer("1.1.9", "1.2.0") && !Updates.IsNewer("rommel", "1.2.0"), "Nieuwe versie wordt goed herkend");
     // 13. Punten uit de code-review
