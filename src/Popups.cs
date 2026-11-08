@@ -782,6 +782,13 @@ namespace NexusPen
             using (SolidBrush b = new SolidBrush(t.Text))
             {
                 float x = 44 * S, y = (ClientSize.Height - f.GetHeight(g)) / 2;
+                if (L.RightToLeft)
+                {
+                    // Arabisch: één zin, van rechts naar links (anders komt het tweede deel eerst)
+                    using (StringFormat sf = new StringFormat(StringFormatFlags.DirectionRightToLeft | StringFormatFlags.NoWrap))
+                        g.DrawString((text + " " + bold).Trim(), f, b, new RectangleF(x, 0, ClientSize.Width - x - 8 * S - (folder != null ? TextWidth(L.T("Map openen"), 13) + 46 * S : 0), ClientSize.Height), sf);
+                    return;
+                }
                 g.DrawString(text, f, b, x, y);
                 x += g.MeasureString(text + " ", f).Width - 4 * S;
                 g.DrawString(bold, fb, b, x, y);

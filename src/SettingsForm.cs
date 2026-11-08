@@ -154,6 +154,7 @@ namespace NexusPen
                 c = Mix(bg, c);
             }
             TextFormatFlags fl = TextFormatFlags.NoPrefix;
+            if (L.RightToLeft) fl |= TextFormatFlags.RightToLeft;   // Arabisch: de woorden in de goede volgorde
             fl |= align == StringAlignment.Center ? TextFormatFlags.HorizontalCenter : align == StringAlignment.Far ? TextFormatFlags.Right : TextFormatFlags.Left;
             if (wrap) fl |= TextFormatFlags.WordBreak | TextFormatFlags.Top | TextFormatFlags.EndEllipsis;
             else fl |= TextFormatFlags.SingleLine | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis;

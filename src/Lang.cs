@@ -56,7 +56,10 @@ namespace NexusPen
         // de taal van Windows, als we die hebben; anders Engels
         public static string WindowsLanguage()
         {
-            string two = System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+            System.Globalization.CultureInfo ci = System.Globalization.CultureInfo.CurrentUICulture;
+            string two = ci.TwoLetterISOLanguageName;
+            // ons Chinees is vereenvoudigd Chinees: Taiwan en Hongkong krijgen liever Engels
+            if (two == "zh" && !(ci.Name.StartsWith("zh-CN") || ci.Name.StartsWith("zh-SG") || ci.Name.StartsWith("zh-Hans") || ci.Name == "zh")) return "en";
             return Array.IndexOf(Codes, two) >= 0 ? two : "en";
         }
 

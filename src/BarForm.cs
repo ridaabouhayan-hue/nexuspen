@@ -468,6 +468,7 @@ namespace NexusPen
             {
                 sf.Alignment = align; sf.LineAlignment = StringAlignment.Center; sf.Trimming = StringTrimming.EllipsisCharacter;
                 sf.FormatFlags = StringFormatFlags.NoWrap;
+                if (L.RightToLeft) sf.FormatFlags |= StringFormatFlags.DirectionRightToLeft;   // Arabisch
                 g.DrawString(text, f, b, r, sf);
             }
         }

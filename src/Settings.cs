@@ -139,7 +139,7 @@ namespace NexusPen
         public static Settings Load(string path)
         {
             Settings s = new Settings();
-            bool isOld = false, hasV2 = false, existed = false;
+            bool isOld = false, hasV2 = false, existed = false, hasLang = false;
             try
             {
                 if (File.Exists(path))
@@ -155,6 +155,7 @@ namespace NexusPen
                         string mapped;
                         if (OldNames.TryGetValue(k, out mapped)) { k = mapped; isOld = true; }
                         if (k == "PaletteV2") hasV2 = true;
+                        if (k == "Language" || k == "taal") hasLang = true;
                         System.Reflection.FieldInfo f;
                         if (byName.TryGetValue(k, out f)) Read(f, v, s);
                     }
@@ -163,6 +164,7 @@ namespace NexusPen
             catch { }
             if (isOld && s.FontName == "") s.FontName = "Andika";
             if (!existed) s.Language = L.WindowsLanguage();   // eerste keer: in de taal van Windows
+            else if (!hasLang) s.Language = "nl";             // een heel oud bestand (voor 1.2): toen was alles Nederlands
             // van 10 naar 16 kleuren: je gekozen kleur blijft dezelfde kleur
             if (existed && !hasV2) { if (s.ColorIndex >= 0 && s.ColorIndex < Palette.OldToNew.Length) s.ColorIndex = Palette.OldToNew[s.ColorIndex]; s.PaletteV2 = true; }
             s.Clamp();

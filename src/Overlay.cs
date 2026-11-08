@@ -1690,6 +1690,8 @@ namespace NexusPen
             }
         }
 
+        public bool HasDrawing { get { return StrokeCountAll() > 0; } }
+
         int StrokeCountAll()
         {
             StoreActive();

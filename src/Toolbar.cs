@@ -979,7 +979,9 @@ namespace NexusPen
         public void SavedFeedback()
         {
             flash.Stop(); flash.Start(); Invalidate();
-            ShowToast(L.T("Opgeslagen. Je tekening en instellingen staan er de volgende keer weer."), "", null, "vink");
+            // alleen beloven dat de tekening terugkomt als dat ook zo is
+            bool back = ov.Cfg.KeepDrawing != 0 && ov.HasDrawing;
+            ShowToast(back ? L.T("Opgeslagen. Je tekening en instellingen staan er de volgende keer weer.") : L.T("Opgeslagen."), "", null, "vink");
         }
 
         public void ShowToast(string text, string bold, string folder, string icon)
@@ -1103,6 +1105,7 @@ namespace NexusPen
             shotLipje = IsOpen(lipje);
             shotTile = IsOpen(tile);
             ClosePopups(); HideMiniBar();
+            if (toast != null && !toast.IsDisposed && toast.Visible) toast.Hide();   // een oude melding niet op de foto
             if (Visible) Hide();
             if (shotLipje) lipje.Hide();
             if (shotTile) tile.Hide();

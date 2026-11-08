@@ -126,6 +126,18 @@ static class Tests {
     L.Set("en"); Check(L.F("Pagina {0} van {1}", 2, 3) == "Page 2 of 3", "Tekst met getallen vertaalt goed"); L.Set("nl");
     L.Set("xx"); Check(L.Code == "en", "Onbekende taal valt terug op Engels"); L.Set("nl");
     Check(L.Codes[0] == "en" && L.Codes.Length == 9 && L.Columns[0] == "nl", "Engels eerst, negen talen");
+    // overstap naar Engels als standaard: bestaande gebruikers houden hun taal, een heel oud bestand blijft Nederlands
+    {
+      string oldIni = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np-oud-zonder-taal.ini");
+      System.IO.File.WriteAllText(oldIni, "# NexusPen instellingen\nThemeIndex=0\n");
+      string nlIni = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np-met-taal.ini");
+      System.IO.File.WriteAllText(nlIni, "# NexusPen instellingen\nLanguage=nl\n");
+      Check(Settings.Load(oldIni).Language == "nl" && Settings.Load(nlIni).Language == "nl", "Bestaande en heel oude instellingen houden Nederlands");
+      string noIni = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np-bestaat-niet-" + Guid.NewGuid().ToString("N") + ".ini");
+      Check(Array.IndexOf(L.Codes, Settings.Load(noIni).Language) >= 0, "Nieuwe installatie krijgt een taal die we hebben");
+      Check(L.TIn("tr", "Opslaan") == "Kaydet" && L.TIn("xx", "Opslaan") == "Save", "Onbekende taal geeft Engels");
+      try { System.IO.File.Delete(oldIni); System.IO.File.Delete(nlIni); } catch { }
+    }
     L.Set("zh"); string zh = L.T("Opslaan"); L.Set("ar"); string ar = L.T("Opslaan"); L.Set("nl");
     Check(zh != "Opslaan" && ar != "Opslaan" && zh != ar, "Opslaan ook in het Chinees en Arabisch");
 
