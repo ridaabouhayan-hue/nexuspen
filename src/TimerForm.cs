@@ -35,6 +35,7 @@ namespace NexusPen
         protected override void OnVisibleChanged(EventArgs e)
         {
             base.OnVisibleChanged(e);
+            if (!Visible && editFinish != null) editFinish(false);   // timer weg (kruisje of inklappen): het invulvak ook
             if (ov.Bar != null) ov.Bar.Refresh2();
         }
 
@@ -194,6 +195,7 @@ namespace NexusPen
         // ---- zelf een tijd typen: een klein invulvakje precies over de cijfers
         Item timeItem;
         Form editor;
+        Action<bool> editFinish;
 
         void EditTime()
         {
@@ -238,12 +240,18 @@ namespace NexusPen
                 me.Activate(); tb.Focus(); tb.SelectAll();
                 me.BeginInvoke((Action)delegate { if (!done && !me.IsDisposed) me.Deactivate += delegate { finish(true); }; });
             };
-            me.FormClosed += delegate { if (editor == me) editor = null; };
+            editFinish = finish;
+            me.FormClosed += delegate
+            {
+                if (editor == me) { editor = null; editFinish = null; }
+                try { tb.Font.Dispose(); } catch { }
+            };
             me.Show();
         }
 
         // de Esc van het invulvakje is niet voor de tekenlaag
         public bool Editing { get { return editor != null && !editor.IsDisposed; } }
+        public bool EditorInFront { get { return Editing && W.GetForegroundWindow() == editor.Handle; } }
 
         // voor de zelftest: het vakje openen, kijken of het blijft staan, en een tijd invullen
         public void EditForTest() { EditTime(); }

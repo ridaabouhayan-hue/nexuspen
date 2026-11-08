@@ -409,7 +409,9 @@ namespace NexusPen
             if (dirty) RenderFrame();
 
             // Esc werkt altijd, ook als de tekenlaag niet het actieve venster is
-            bool esc = (W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0 && !(lesTimer != null && !lesTimer.IsDisposed && lesTimer.Editing);
+            bool rawEsc = (W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0;
+            bool timerTyping = lesTimer != null && !lesTimer.IsDisposed && lesTimer.Editing;
+            bool esc = rawEsc && !timerTyping;   // de Esc van het timer-invulvak is niet voor de tekenlaag
             // Esc: eerst een open venstertje van de balk dicht, dan pas terug naar de muis
             if (esc && !lastEsc && MenuPopup.IsOpen) { MenuPopup.CloseOpen(); lastEsc = true; return; }   // eerst een open menu
             if (esc && !lastEsc && toolbar != null && toolbar.AnyPopupOpen) { toolbar.ClosePopups(); lastEsc = true; return; }
@@ -422,7 +424,7 @@ namespace NexusPen
                 if (selected != null) Deselect();
                 else if (CurrentTool != Tool.Mouse) SetTool(Tool.Mouse);
             }
-            lastEsc = esc;
+            lastEsc = esc || (timerTyping && rawEsc);   // dezelfde ingedrukte Esc telt na het sluiten van het vakje niet nog een keer
 
             // Bovenop blijven liggen (taakbalk, startmenu en Zoom duwen ons anders weg)
             if ((DateTime.Now - lastTopAt).TotalMilliseconds > 900 && IsHandleCreated && !W.OtherTopmostInFront())
@@ -1139,7 +1141,7 @@ namespace NexusPen
                         case 23:
                             {
                                 bool open = lesTimer != null && lesTimer.Editing;
-                                Console.WriteLine("Timer: invulvak blijft staan: " + open);
+                                Console.WriteLine("Timer: invulvak blijft staan: " + open + ", vooraan: " + (lesTimer != null && lesTimer.EditorInFront));
                                 if (!open) { Program.SelfTestErrors++; Console.Error.WriteLine("Het invulvak van de timer sluit meteen weer"); }
                                 screen("23-timer-tijd-typen");
                                 if (open) lesTimer.FinishEditForTest("2:30");
@@ -1164,9 +1166,21 @@ namespace NexusPen
                                 ShowSettings(null);
                             }
                             break;
-                        case 26:
-                            Console.WriteLine("Instellingen op het bord: bord " + BoardMode + ", instellingen zichtbaar " + (settingsForm != null && settingsForm.Visible));
-                            screen("25-instellingen-op-het-bord");
+                        case 26: break;   // even wachten: de tekenlaag zet zichzelf elke 900 ms weer bovenop
+                        case 27:
+                            {
+                                bool ok = settingsForm != null && settingsForm.Visible && BoardMode == Board.White;
+                                if (ok)
+                                {
+                                    Rectangle sb = settingsForm.Bounds;
+                                    W.POINT mid; mid.X = sb.Left + sb.Width / 2; mid.Y = sb.Top + sb.Height / 2;
+                                    IntPtr hit = W.GetAncestor(W.WindowFromPoint(mid), 2);   // GA_ROOT
+                                    ok = hit == settingsForm.Handle;
+                                }
+                                Console.WriteLine("Instellingen boven het bord: " + ok);
+                                if (!ok) { Program.SelfTestErrors++; Console.Error.WriteLine("Instellingen komt niet boven het bord"); }
+                                screen("25-instellingen-op-het-bord");
+                            }
                             break;
                         default:
                             if (settingsForm != null && pageStep < pagesToShow.Length)
@@ -2808,6 +2822,7 @@ namespace NexusPen
         {
             base.OnKeyDown(e);
             if (TypingKey(e)) return;
+            if (!DrawMode) return;   // de tekenlaag kreeg per ongeluk het toetsenbord (bijv. na Instellingen sluiten): toetsen zijn dan voor je eigen programma
             // op een bord: Ctrl+plus en Ctrl+min zoomen in en uit, Ctrl+0 terug naar 100%
             if (BoardMode != Board.None && e.Control && !e.Alt)
             {
