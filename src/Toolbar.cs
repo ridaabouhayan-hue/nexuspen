@@ -753,7 +753,9 @@ namespace NexusPen
             // (en sluit niet meer vanzelf). Was hij al even open, dan is een klik op de knop gewoon: dicht.
             if (open && popup != null && (object)popup == (object)hoverPopup && (DateTime.Now - hoverOpenedAt).TotalMilliseconds < 900) { hoverPopup = null; return; }
             ClosePopups();
-            if (open) return;
+            // dichtgeklikt: niet meteen weer openen doordat de muis nog een pixel op de knop beweegt
+            // (pas als je de knop verlaat en er weer op komt, opent erover bewegen hem opnieuw)
+            if (open) { hoverKey = key; return; }
             if (popup == null || popup.IsDisposed)
             {
                 popup = (T2)Activator.CreateInstance(typeof(T2), new object[] { ov });

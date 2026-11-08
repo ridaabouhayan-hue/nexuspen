@@ -449,7 +449,8 @@ namespace NexusPen
             if (typing != null && (DateTime.Now - caretAt).TotalMilliseconds > 530) { caretOn = !caretOn; caretAt = DateTime.Now; dirty = true; }
 
             // Rustig aan als er niets gebeurt: minder vaak wakker worden spaart de batterij
-            bool idle = !DrawMode && lasers.Count == 0 && fading.Count == 0 && !dirty && !needSave;
+            // (niet met een open venstertje van de balk: dan moet een korte klik ergens anders gezien worden)
+            bool idle = !DrawMode && lasers.Count == 0 && fading.Count == 0 && !dirty && !needSave && !(toolbar != null && toolbar.AnyPopupOpen);
             int want = idle ? 100 : 15;
             if (timer.Interval != want) timer.Interval = want;
         }
@@ -604,6 +605,8 @@ namespace NexusPen
                 }
                 try { CloseTextInput(true); } catch { typing = null; }
                 DrawMode = false;
+                // terug naar het gewone scherm: anders zou je niets meer zien (bordtekst toont alleen met het bord)
+                if (BoardMode != Board.None) { try { SetBoard(Board.None, false); } catch { BoardMode = Board.None; strokes = screenStrokes; } }
                 current = null;
                 erasing = false;
                 dragging = false; quietMove = false;
