@@ -205,6 +205,9 @@ namespace NexusPen
             return DrawMode ? Color.FromArgb(1, 0, 0, 0) : Color.FromArgb(0, 0, 0, 0);
         }
 
+        // wat op een bord staat, nooit zonder het bord laten zien (bij inklappen en weer openen kwam de tekst anders net eerder)
+        bool ShowStrokesNow { get { return StrokesVisible && (BoardMode == Board.None || DrawMode); } }
+
         public void Rebuild()
         {
             using (Graphics g = Graphics.FromImage(committed))
@@ -214,7 +217,7 @@ namespace NexusPen
                 g.CompositingMode = CompositingMode.SourceOver;
                 Render.Setup(g);
                 if (DrawMode && BoardMode != Board.None) DrawBoard(g);
-                if (StrokesVisible)
+                if (ShowStrokesNow)
                     foreach (Stroke s in strokes)
                         if (!(lifted && s == selected)) SafeDraw(g, s, 1f);
             }
@@ -236,7 +239,7 @@ namespace NexusPen
                 g.CompositingMode = CompositingMode.SourceOver;
                 Render.Setup(g);
                 if (DrawMode && BoardMode != Board.None) DrawBoard(g);
-                if (StrokesVisible)
+                if (ShowStrokesNow)
                     foreach (Stroke s in strokes)
                         if (!(lifted && s == selected) && StrokeBounds(s).IntersectsWith(r)) SafeDraw(g, s, 1f);
             }
@@ -425,6 +428,8 @@ namespace NexusPen
                 else if (CurrentTool != Tool.Mouse) SetTool(Tool.Mouse);
             }
             lastEsc = esc || (timerTyping && rawEsc);   // dezelfde ingedrukte Esc telt na het sluiten van het vakje niet nog een keer
+
+            if (toolbar != null) toolbar.WatchClickElsewhere();
 
             // Bovenop blijven liggen (taakbalk, startmenu en Zoom duwen ons anders weg)
             if ((DateTime.Now - lastTopAt).TotalMilliseconds > 900 && IsHandleCreated && !W.OtherTopmostInFront())

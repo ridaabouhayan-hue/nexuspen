@@ -749,8 +749,9 @@ namespace NexusPen
         {
             bool open = IsOpen(popup);
             StopHoverOpen();   // een klik telt, niet meer het wachtende 'erover bewegen'
-            // al open door erover te bewegen: een klik laat hem gewoon open (dan sluit hij niet meer vanzelf)
-            if (open && popup != null && (object)popup == (object)hoverPopup) { hoverPopup = null; return; }
+            // Net open door erover te bewegen, en je klikt meteen: dan wilde je hem openen, hij blijft open
+            // (en sluit niet meer vanzelf). Was hij al even open, dan is een klik op de knop gewoon: dicht.
+            if (open && popup != null && (object)popup == (object)hoverPopup && (DateTime.Now - hoverOpenedAt).TotalMilliseconds < 900) { hoverPopup = null; return; }
             ClosePopups();
             if (open) return;
             if (popup == null || popup.IsDisposed)
@@ -803,6 +804,29 @@ namespace NexusPen
         string hoverKey;
         BarForm hoverPopup;
         string hoverPopupKey;
+        DateTime hoverOpenedAt;
+
+        // Een venstertje (kleur, vormen, stempel, bord...) blijft open zolang je met de balk bezig bent.
+        // Klik je ergens anders (in een ander programma), dan gaat het dicht, zodat het nooit voor je werk blijft staan.
+        // Op de tekenlaag zelf regelt de tekenlaag dat al (die sluit ze bij elke klik).
+        bool clickWasDown;
+        static readonly uint MyPid = (uint)System.Diagnostics.Process.GetCurrentProcess().Id;
+        public void WatchClickElsewhere()
+        {
+            bool down = (W.GetAsyncKeyState(0x01) & 0x8000) != 0 || (W.GetAsyncKeyState(0x02) & 0x8000) != 0;
+            if (down && !clickWasDown && AnyPopupOpen)
+            {
+                try
+                {
+                    Point m = Control.MousePosition;
+                    IntPtr h = W.GetAncestor(W.WindowFromPoint(new W.POINT(m.X, m.Y)), 2);   // GA_ROOT
+                    uint pid; W.GetWindowThreadProcessId(h, out pid);
+                    if (h == IntPtr.Zero || pid != MyPid) ClosePopups();
+                }
+                catch { }
+            }
+            clickWasDown = down;
+        }
         int leaveTicks;
 
         void StopHoverOpen() { if (hoverOpen != null) hoverOpen.Stop(); hoverKey = null; }
@@ -838,7 +862,7 @@ namespace NexusPen
                 case "gum": TogglePopup(ref eraserPopup, k); f = eraserPopup; break;
                 default: TogglePopup(ref boardPopup, k); f = boardPopup; break;
             }
-            hoverPopup = f; hoverPopupKey = k; leaveTicks = 0;
+            hoverPopup = f; hoverPopupKey = k; leaveTicks = 0; hoverOpenedAt = DateTime.Now;
             if (hoverClose == null)
             {
                 hoverClose = new System.Windows.Forms.Timer(); hoverClose.Interval = 150;
