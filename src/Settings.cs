@@ -55,7 +55,7 @@ namespace NexusPen
         // stempels en bord
         public int StampKind = 0, StampSize = 1, StampNext = 1, BoardBg = 0;
         // algemeen
-        public string Language = "nl";
+        public string Language = "en";   // nieuwe installatie: de taal van Windows (zie Load), anders Engels
         public bool ShowInTaskbar = true, UpdateCheck = true;   // ShowInTaskbar: oud, niet meer gebruikt
         public bool InTaakbalk = false;         // als programma in de taakbalk; standaard alleen het icoon bij de klok
         public int KeepDrawing = 1;             // nooit, na Opslaan, altijd
@@ -162,6 +162,7 @@ namespace NexusPen
             }
             catch { }
             if (isOld && s.FontName == "") s.FontName = "Andika";
+            if (!existed) s.Language = L.WindowsLanguage();   // eerste keer: in de taal van Windows
             // van 10 naar 16 kleuren: je gekozen kleur blijft dezelfde kleur
             if (existed && !hasV2) { if (s.ColorIndex >= 0 && s.ColorIndex < Palette.OldToNew.Length) s.ColorIndex = Palette.OldToNew[s.ColorIndex]; s.PaletteV2 = true; }
             s.Clamp();
@@ -207,7 +208,7 @@ namespace NexusPen
             ShortcutMode = Math.Max(0, Math.Min(2, ShortcutMode));
             ShortenAt = Math.Max(0, ShortenAt);
             if (Tool == Tool.Focus || Tool == Tool.Select || Tool == Tool.Mouse || Tool == Tool.Loupe) Tool = Tool.Pen;
-            if (Array.IndexOf(L.Codes, Language) < 0) Language = "nl";
+            if (Array.IndexOf(L.Codes, Language) < 0) Language = "en";
         }
 
         public void Save() { Save(FilePath); }

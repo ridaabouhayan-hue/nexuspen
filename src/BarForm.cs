@@ -530,12 +530,13 @@ namespace NexusPen
     // Dat lettertype zit in Windows, dus Windows kan het zelf haarscherp tekenen (ClearType).
     static class UiFont
     {
-        public static string Name { get { return "Segoe UI"; } }
+        // Chinees staat niet in Segoe UI: dan het Chinese lettertype van Windows (Arabisch en Russisch zitten wel in Segoe UI)
+        public static string Name { get { return L.Code == "zh" && Fonts.Has("Microsoft YaHei UI") ? "Microsoft YaHei UI" : "Segoe UI"; } }
 
         // Vet wordt Semibold: rustiger en minder dik, zoals in het ontwerp
         public static Font Make(float px, bool bold)
         {
-            if (bold && Fonts.Has("Segoe UI Semibold")) return Fonts.Make("Segoe UI Semibold", px, FontStyle.Regular);
+            if (bold && Name == "Segoe UI" && Fonts.Has("Segoe UI Semibold")) return Fonts.Make("Segoe UI Semibold", px, FontStyle.Regular);
             return Fonts.Make(Name, px, bold ? FontStyle.Bold : FontStyle.Regular);
         }
     }

@@ -445,7 +445,6 @@ namespace NexusPen
         {
             Settings c = Cfg;
             float y = Heading(contentTop, L.T("Taal"), null);
-            string[] examples = { "Pen, Markeerstift, Opslaan", "Pen, Highlighter, Save", "Stylo, Surligneur, Enregistrer", "Lápiz, Resaltador, Guardar" };
             float cw = (contentW - 12 * S) / 2, ch = 76 * S;
             for (int i = 0; i < L.Codes.Length; i++)
             {
@@ -461,7 +460,8 @@ namespace NexusPen
                     RoundFill(g, code, Field, 10);
                     Txt(g, L.Codes[idx].ToUpperInvariant(), code, t.Text, 14, true, StringAlignment.Center, false);
                     Txt(g, L.Names[idx], new RectangleF(code.Right + 14 * S, it.R.Y + 16 * S, it.R.Width - 120 * S, 22 * S), t.Text, 16, true, StringAlignment.Near, false);
-                    Txt(g, examples[idx], new RectangleF(code.Right + 14 * S, it.R.Y + 40 * S, it.R.Width - 120 * S, 18 * S), t.Muted, 12, false, StringAlignment.Near, false);
+                    string ex = L.TIn(L.Codes[idx], "Pen") + ", " + L.TIn(L.Codes[idx], "Markeerstift") + ", " + L.TIn(L.Codes[idx], "Opslaan");
+                    Txt(g, ex, new RectangleF(code.Right + 14 * S, it.R.Y + 40 * S, it.R.Width - 120 * S, 18 * S), t.Muted, 12, false, StringAlignment.Near, false);
                     if (on)
                     {
                         RectangleF ck = new RectangleF(it.R.Right - 40 * S, it.R.Y + (ch - 24 * S) / 2, 24 * S, 24 * S);
@@ -470,7 +470,7 @@ namespace NexusPen
                     }
                 });
             }
-            y += 2 * (ch + 12 * S) + 16 * S;
+            y += (L.Codes.Length + 1) / 2 * (ch + 12 * S) + 16 * S;
             Button(contentX, y, L.T("Taal van Windows gebruiken"), "taal", delegate { c.Language = L.WindowsLanguage(); Changed(); }, false);
         }
 

@@ -981,6 +981,7 @@ namespace NexusPen
         // Voor de automatische test op GitHub: alles een keer openen, plaatjes maken en weer netjes sluiten
         public void RunSelfTest()
         {
+            Cfg.Language = "nl"; L.Set("nl");   // de schermafbeeldingen van de test in het Nederlands (Rida kijkt mee)
             System.Windows.Forms.Timer t = new System.Windows.Forms.Timer();
             int step = 0;
             string shots = Path.Combine(Environment.CurrentDirectory, Path.Combine("out", "schermen"));

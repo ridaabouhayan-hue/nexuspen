@@ -114,14 +114,20 @@ static class Tests {
     using (var sm = Logo.Bitmap(16, Color.FromArgb(255, 0xFF, 0x80, 0x00), Color.White)) Check(sm.GetPixel(8, 1).R > 200, "Klein logo (16 px) tekent");
 
     // 7. Vertalingen
-    bool rowsOk = true; foreach (string[] r in LangData.Rows) if (r.Length != 4 || string.Join("", r).IndexOf('—') >= 0) rowsOk = false;
-    Check(rowsOk && LangData.Rows.Length > 250, "Elke vertaling heeft NL, EN, FR en ES, zonder lang streepje (" + LangData.Rows.Length + ")");
+    bool rowsOk = true; foreach (string[] r in LangData.Rows) if (r.Length != L.Columns.Length || string.Join("", r).IndexOf('—') >= 0) rowsOk = false;
+    foreach (string[] r in LangData.Rows) for (int ci = 1; ci < r.Length; ci++) if (string.IsNullOrEmpty(r[ci])) rowsOk = false;
+    Check(rowsOk && LangData.Rows.Length > 250, "Elke tekst heeft alle " + L.Columns.Length + " talen, zonder lang streepje (" + LangData.Rows.Length + ")");
+    bool phOk = true; foreach (string[] r in LangData.Rows) for (int ci = 1; ci < r.Length; ci++) for (int k = 0; k < 3; k++) if (r[0].Contains("{" + k + "}") != r[ci].Contains("{" + k + "}")) phOk = false;
+    Check(phOk, "Invulplekken {0} {1} {2} staan in elke vertaling");
     L.Set("en"); string en = L.T("Opslaan"); L.Set("fr"); string fr = L.T("Opslaan"); L.Set("es"); string es = L.T("Opslaan");
     string unk = L.T("Dit bestaat niet"); L.Set("nl");
     Check(en == "Save" && fr == "Enregistrer" && es == "Guardar" && L.T("Opslaan") == "Opslaan", "Opslaan in vier talen");
     Check(unk == "Dit bestaat niet", "Onbekende tekst blijft Nederlands, geen crash");
     L.Set("en"); Check(L.F("Pagina {0} van {1}", 2, 3) == "Page 2 of 3", "Tekst met getallen vertaalt goed"); L.Set("nl");
-    L.Set("xx"); Check(L.Code == "nl", "Onbekende taal valt terug op Nederlands"); L.Set("nl");
+    L.Set("xx"); Check(L.Code == "en", "Onbekende taal valt terug op Engels"); L.Set("nl");
+    Check(L.Codes[0] == "en" && L.Codes.Length == 9 && L.Columns[0] == "nl", "Engels eerst, negen talen");
+    L.Set("zh"); string zh = L.T("Opslaan"); L.Set("ar"); string ar = L.T("Opslaan"); L.Set("nl");
+    Check(zh != "Opslaan" && ar != "Opslaan" && zh != ar, "Opslaan ook in het Chinees en Arabisch");
 
     // 8. Sneltoetsen: standaard Ctrl+Shift, eigen keuze en botsingen
     var sc = new Settings(); Shortcuts.Cfg = sc;

@@ -28,7 +28,7 @@ def tabel():
         line = line.rstrip('\n')
         if not line or line.startswith('#'): continue
         parts = [x.strip() for x in line.split(' | ')]
-        if len(parts) != 4: print('Fout in regel:', line); sys.exit(1)
+        if len(parts) != 9: print('Fout in regel (9 talen nodig):', line); sys.exit(1)
         rows[parts[0]] = parts
     return rows
 
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     for k in bad: print('LANG STREEPJE:', k)
     out = ['// Gemaakt door tools/check_vertalingen.py uit tools/vertalingen.txt. Niet met de hand aanpassen.',
            'namespace NexusPen', '{', '    static class LangData', '    {',
-           '        // nl, en, fr, es', '        public static readonly string[][] Rows = new string[][]', '        {']
+           '        // nl (sleutel), en, fr, es, pt, tr, ru, ar, zh', '        public static readonly string[][] Rows = new string[][]', '        {']
     for s in all_:
         if s in rows:
             out.append('            new string[] { ' + ', '.join(cs(x) for x in rows[s]) + ' },')
