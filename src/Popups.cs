@@ -43,7 +43,7 @@ namespace NexusPen
             for (int i = 0; i < Palette.Names.Length; i++)
             {
                 int idx = i;
-                Item it = Add(new RectangleF(pad + 3 * S + i * segW, y + 3 * S, segW, 28 * S), i == 0 ? L.T("Felle kleuren") : L.T("Zachte kleuren"), delegate { o.SetPalette(idx); Invalidate(); });
+                Item it = Add(new RectangleF(pad + 3 * S + i * segW, y + 3 * S, segW, 28 * S), i == 0 ? L.T("Felle kleuren") : L.T("Zachte kleuren"), delegate { o.SetPalette(idx); Rebuild(); });
                 it.Paint = delegate(Graphics g, Item item, bool h)
                 {
                     Theme t = T;
@@ -337,13 +337,25 @@ namespace NexusPen
                 Icon(bgs[i], icons[i], Color.Empty, tips[i], delegate { return o.Cfg.BoardBg == idx; },
                     delegate { o.Cfg.BoardBg = idx; o.Cfg.Save(); if (o.BoardMode == Board.None) o.SetBoard(Board.White); else o.Rebuild(); Invalidate(); });
             }
-            // zelf in- en uitzoomen: van heel veel kleine regels tot een grote regel
-            Icon(L.T("Uitzoomen"), "min", Color.Empty, L.T("Lijnen en ruitjes kleiner (meer regels)"), null, delegate { o.ZoomBoard(-1); Rebuild(); });
-            Item zl = Add(new RectangleF(x, pad, 56 * S, h), L.T("Grootte van lijnen en ruitjes"), delegate { o.Cfg.BoardZoom = 1; o.Cfg.Save(); o.ZoomBoard(0); Rebuild(); });
+            // lijnen en ruitjes groter of kleiner: één blokje (min, percentage, plus), zodat het bij de lijnen hoort
+            float bwz = 30 * S, lw = 50 * S;
+            RectangleF group = new RectangleF(x, pad, bwz * 2 + lw + 4 * S, h);
+            Item grp = Add(group, L.T("Grootte van lijnen en ruitjes"), null);
+            grp.Name = L.T("Lijnen en ruitjes groter of kleiner");
+            grp.Paint = delegate(Graphics g, Item item, bool hv)
+            {
+                using (SolidBrush b = new SolidBrush(T.Chip)) using (GraphicsPath gp = Svg.RoundRect(item.R, 8 * S)) g.FillPath(b, gp);
+            };
+            Item zmin = Add(new RectangleF(x + 2 * S, pad + 2 * S, bwz, h - 4 * S), L.T("Lijnen en ruitjes kleiner (meer regels)"), delegate { o.ZoomBoard(-1); Rebuild(); });
+            zmin.Name = L.T("Lijnen kleiner");
+            zmin.Paint = delegate(Graphics g, Item item, bool hv) { if (hv) using (SolidBrush b = new SolidBrush(T.Hover)) using (GraphicsPath gp = Svg.RoundRect(item.R, 6 * S)) g.FillPath(b, gp); Icons.Draw(g, "min", item.R, 15 * S, T.Icon, 2f); };
+            Item zl = Add(new RectangleF(x + 2 * S + bwz, pad + 2 * S, lw, h - 4 * S), L.T("Grootte van lijnen en ruitjes"), delegate { o.Cfg.BoardZoom = 1; o.Cfg.Save(); o.ZoomBoard(0); Rebuild(); });
             zl.Name = L.T("Klik = terug naar 100%");
-            zl.Paint = delegate(Graphics g, Item item, bool hv) { if (hv) PaintChip(g, item.R, false, true, null, null, Color.Empty); Label(g, Math.Round(o.Cfg.BoardZoom * 100) + "%", item.R, T.Text, 13, true, StringAlignment.Center); };
-            x += 56 * S + 6 * S;
-            Icon(L.T("Inzoomen"), "zoom", Color.Empty, L.T("Lijnen en ruitjes groter (minder regels)"), null, delegate { o.ZoomBoard(1); Rebuild(); });
+            zl.Paint = delegate(Graphics g, Item item, bool hv) { if (hv) using (SolidBrush b = new SolidBrush(T.Hover)) using (GraphicsPath gp = Svg.RoundRect(item.R, 6 * S)) g.FillPath(b, gp); Label(g, Math.Round(o.Cfg.BoardZoom * 100) + "%", item.R, T.Text, 12, true, StringAlignment.Center); };
+            Item zplus = Add(new RectangleF(x + 2 * S + bwz + lw, pad + 2 * S, bwz, h - 4 * S), L.T("Lijnen en ruitjes groter (minder regels)"), delegate { o.ZoomBoard(1); Rebuild(); });
+            zplus.Name = L.T("Lijnen groter");
+            zplus.Paint = delegate(Graphics g, Item item, bool hv) { if (hv) using (SolidBrush b = new SolidBrush(T.Hover)) using (GraphicsPath gp = Svg.RoundRect(item.R, 6 * S)) g.FillPath(b, gp); Icons.Draw(g, "plus", item.R, 15 * S, T.Icon, 2f); };
+            x += group.Width + 6 * S;
             Sep();
             Chip(null, "links", Color.Empty, L.T("Vorige pagina"), null, delegate { o.PrevPage(); Rebuild(); });
             Item pg = Add(new RectangleF(x, pad, 52 * S, h), L.T("Pagina"), null);

@@ -759,6 +759,32 @@ namespace NexusPen
             });
             y += ((total + perRow - 1) / perRow) * cell + 14 * S;
             y = Toggle(y, L.T("Krijtstreep"), null, delegate { return c.Chalk; }, delegate(bool v) { c.Chalk = v; });
+            // voorbeeld: links een gewone lijn, rechts dezelfde lijn als krijt, op een bord
+            float py = y + 6 * S, ph = 64 * S;
+            Later(delegate(Graphics g)
+            {
+                Theme t = T;
+                RectangleF box = new RectangleF(contentX, py, contentW, ph);
+                using (SolidBrush b = new SolidBrush(Overlay.ChalkGreen)) using (GraphicsPath gp = Svg.RoundRect(box, 10 * S)) g.FillPath(b, gp);
+                float half = box.Width / 2;
+                for (int side = 0; side < 2; side++)
+                {
+                    float x0 = box.X + side * half + 24 * S, x1 = box.X + (side + 1) * half - 120 * S;
+                    Stroke st = new Stroke(); st.Tool = Tool.Pen; st.Width = 5 * S; st.Color = Color.White;
+                    if (side == 1) st.Style |= Stroke.Chalk;
+                    for (int i = 0; i <= 40; i++)
+                    {
+                        float f = i / 40f;
+                        st.Pts.Add(new PointF(x0 + (x1 - x0) * f, box.Y + ph / 2 + (float)Math.Sin(f * Math.PI * 2.4) * 12 * S));
+                    }
+                    GraphicsState gs = g.Save();
+                    Render.Setup(g); Render.Draw(g, st, 1f);
+                    g.Restore(gs);
+                    Txt(g, side == 0 ? L.T("Gewoon") : L.T("Krijt"), new RectangleF(x1 + 14 * S, box.Y, 90 * S, ph), Color.FromArgb(220, 255, 255, 255), 12, true, StringAlignment.Near, false, Overlay.ChalkGreen);
+                }
+            });
+            Mark(py + ph);
+            y = py + ph + 10 * S;
             y = Toggle(y, L.T("Vervagen"), null, delegate { return c.Fade; }, delegate(bool v) { c.Fade = v; });
             y = Segments(y, L.T("Hoe lang blijft het staan?"), null, new string[] { "3 s", "5 s", "7 s", "12 s" }, delegate { return Array.IndexOf(Settings.FadeChoices, c.FadeSeconds); }, delegate(int i) { c.FadeSeconds = Settings.FadeChoices[i]; });
             y = Segments(y, L.T("Laserpen"), null, new string[] { L.T("Snel weg"), L.T("Langzaam"), L.T("Blijft staan") }, delegate { return c.LaserMode; }, delegate(int i) { c.LaserMode = i; });

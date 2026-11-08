@@ -11,6 +11,12 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.5", "8 november 2026",
+                I("tekst", "Tekst verdwijnt niet meer bij een rechtsklik"),
+                I("groter", "Tekst en stempels even groot op een 4K-scherm"),
+                I("kleuren", "Fel en Zacht wisselen meteen in het kleurvenster"),
+                I("bord", "Lijnen groter of kleiner als één duidelijk blokje"),
+                I("krijt", "Voorbeeld van de krijtstreep in Instellingen")),
             V("1.3.4", "7 november 2026",
                 I("tekst", "Tekst ingedrukt verplaatsen, zonder streepje en zonder kader"),
                 I("zoom", "Vergrootglas: ronde hoeken, je muis één keer, staat boven de plek die het vergroot"),

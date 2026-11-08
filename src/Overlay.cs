@@ -1767,11 +1767,17 @@ namespace NexusPen
 
         int wheelAcc;
 
+        // Op een scherm met grotere schaal (4K op 200%) worden tekst en stempels even groot als op een gewoon scherm.
+        // De getallen in Instellingen blijven hetzelfde (36 blijft 36); op het scherm wordt het 36 x de schaal.
+        float ScreenScale { get { try { return Math.Max(1f, Math.Min(4f, W.UiScaleAt(Control.MousePosition))); } catch { return 1f; } } }
+
         void WheelText(int delta)
         {
-            float cur = typing != null ? typing.FontSize : Cfg.TextSize;
+            float sc = ScreenScale;
+            float cur = typing != null ? typing.FontSize / sc : Cfg.TextSize;
             float nw = NextSize(TextSizes, cur, delta);
             Cfg.TextSize = nw;
+            nw *= sc;
             if (typing != null)
             {
                 // de tekst die je typt groeit mee; de klikplek (midden van de eerste regel) blijft staan
@@ -1783,7 +1789,7 @@ namespace NexusPen
                 TypingChanged();
             }
             UpdateCursor();
-            if (toolbar != null) toolbar.ShowWidthTip(Control.MousePosition, nw, TextSizes[0], TextSizes[TextSizes.Length - 1], L.T("Tekstgrootte"));
+            if (toolbar != null) toolbar.ShowWidthTip(Control.MousePosition, Cfg.TextSize, TextSizes[0], TextSizes[TextSizes.Length - 1], L.T("Tekstgrootte"));
         }
 
         public float StampPx { get { return Cfg.StampPx > 0 ? Cfg.StampPx : Render.StampSizes[Cfg.StampSize]; } }
@@ -1944,7 +1950,7 @@ namespace NexusPen
                     case Tool.Stamp:
                     {
                         string kind = Render.StampKinds[Cfg.StampKind];
-                        Stroke st = new Stroke(); st.Tool = Tool.Stamp; st.FontSize = StampPx; st.Color = Render.StampColor(kind);
+                        Stroke st = new Stroke(); st.Tool = Tool.Stamp; st.FontSize = StampPx * ScreenScale; st.Color = Render.StampColor(kind);
                         st.Text = kind == "nummer" ? "#" + Cfg.StampNext : kind; st.Pts.Add(PointF.Empty);
                         c = ToolCursor.For("stempel|" + st.Text + "|" + st.FontSize, delegate { return ToolCursor.Stamp(st); });
                         break;
@@ -2259,6 +2265,8 @@ namespace NexusPen
                     return;
                 }
             }
+            // rechtermuisknop = even gummen, maar niet met Tekst, Selecteren of Stempel: dan verdwijnt er per ongeluk een tekst
+            if (e.Button == MouseButtons.Right && (CurrentTool == Tool.Text || CurrentTool == Tool.Select || CurrentTool == Tool.Stamp)) return;
             if (e.Button == MouseButtons.Right || (e.Button == MouseButtons.Left && CurrentTool == Tool.Eraser))
             {
                 if (current != null) { pendingDirty = U(pendingDirty, StrokeBounds(current)); current = null; }
@@ -2312,7 +2320,7 @@ namespace NexusPen
                 Stroke st = new Stroke();
                 st.Tool = Tool.Stamp; st.Width = PenWidth;
                 st.Color = Render.StampColor(kind);
-                st.FontSize = StampPx;
+                st.FontSize = StampPx * ScreenScale;
                 st.Text = kind == "nummer" ? "#" + (Cfg.StampNext++) : kind;
                 if (kind == "nummer") UpdateCursor();
                 st.Pts.Add(p);
@@ -2673,7 +2681,7 @@ namespace NexusPen
             {
                 float d = (float)Math.Sqrt(Dist2(p, typing.Pts[0]));
                 typing.FontSize = Math.Max(8, Math.Min(400, textSizeFrom * d / textDistFrom));
-                Cfg.TextSize = typing.FontSize;
+                Cfg.TextSize = typing.FontSize / ScreenScale;
                 TypingChanged();
                 return true;
             }
@@ -2836,7 +2844,7 @@ namespace NexusPen
             else
             {
                 Stroke s = new Stroke();
-                s.Tool = Tool.Text; s.Color = CurrentColor; s.Width = PenWidth; s.FontSize = Cfg.TextSize; s.Text = "";
+                s.Tool = Tool.Text; s.Color = CurrentColor; s.Width = PenWidth; s.FontSize = Cfg.TextSize * ScreenScale; s.Text = "";
                 s.FontName = Cfg.FontName; s.Outline = Cfg.TextOutline; s.OutlineWidth = Cfg.OutlineWidth; s.OutlineColor = Cfg.OutlineColor;
                 // de klik komt midden in de eerste regel, zoals bij Epic Pen
                 s.Pts.Add(new PointF(clientPt.X, clientPt.Y));
