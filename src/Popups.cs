@@ -731,7 +731,11 @@ namespace NexusPen
         System.Windows.Forms.Timer hideTimer = new System.Windows.Forms.Timer();
         string text = "", bold = "", folder, icon = "info";
 
-        public Toast(Overlay o) : base(o) { hideTimer.Interval = 4500; hideTimer.Tick += delegate { hideTimer.Stop(); Hide(); }; }
+        public Toast(Overlay o) : base(o)
+        {
+            hideTimer.Interval = 4500; hideTimer.Tick += delegate { hideTimer.Stop(); Hide(); };
+            Owner = o;   // altijd boven de tekenlaag en het bord, anders zie je de melding niet
+        }
 
         public void ShowMessage(string t, string b, string dir, string ic)
         {
@@ -764,8 +768,15 @@ namespace NexusPen
         protected override void PaintExtra(Graphics g)
         {
             Theme t = T;
+            if (icon == "vink")
+            {
+                // gelukt: een groen rondje met een wit vinkje
+                RectangleF c = new RectangleF(13 * S, (ClientSize.Height - 22 * S) / 2, 22 * S, 22 * S);
+                using (SolidBrush b = new SolidBrush(ColorTranslator.FromHtml("#16A34A"))) g.FillEllipse(b, c);
+                Icons.Draw(g, "vink", c, 14 * S, Color.White, 2.6f);
+            }
             // foto (schermafbeelding) in de accentkleur; een gewone melding rustig in de kleur van de tekst
-            Icons.Draw(g, icon, new RectangleF(14 * S, 0, 20 * S, ClientSize.Height), 18 * S, icon == "foto" ? t.Accent : t.Muted, 2f);
+            else Icons.Draw(g, icon, new RectangleF(14 * S, 0, 20 * S, ClientSize.Height), 18 * S, icon == "foto" ? t.Accent : t.Muted, 2f);
             using (Font f = Fonts.Make(UiFont.Name, 13 * S, FontStyle.Regular))
             using (Font fb = UiFont.Make(13 * S, true))
             using (SolidBrush b = new SolidBrush(t.Text))

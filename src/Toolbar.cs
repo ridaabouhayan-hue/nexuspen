@@ -368,7 +368,11 @@ namespace NexusPen
                     break;
                 case "opslaan":
                     it = Button(r, "opslaan", Shortcuts.Tip(L.T("Opslaan: je tekening staat er de volgende keer weer"), "opslaan"),
-                        delegate { Use(key); ClosePopups(); if (o.SaveExplicit()) { flash.Stop(); flash.Start(); } }, null, null);
+                        delegate
+                        {
+                            Use(key); ClosePopups();
+                            if (o.SaveExplicit()) SavedFeedback();
+                        }, null, null);
                     it.Paint = PaintSave;
                     break;
                 case "oog":
@@ -970,6 +974,13 @@ namespace NexusPen
 
         // icon: wat er gebeurt (foto bij een schermafbeelding, anders een rustig info-icoontje)
         public void ShowToast(string text, string bold, string folder) { ShowToast(text, bold, folder, folder != null ? "foto" : "info"); }
+
+        // Opgeslagen: het knopje wordt even een vinkje, en onderin een melding met een groen vinkje
+        public void SavedFeedback()
+        {
+            flash.Stop(); flash.Start(); Invalidate();
+            ShowToast(L.T("Opgeslagen. Je tekening en instellingen staan er de volgende keer weer."), "", null, "vink");
+        }
 
         public void ShowToast(string text, string bold, string folder, string icon)
         {

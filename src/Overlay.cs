@@ -1140,7 +1140,11 @@ namespace NexusPen
                                 settingsForm.Refresh();
                                 snap(settingsForm, "10-instellingen-" + (pageStep + 1).ToString("00") + "-" + pagesToShow[pageStep]);
                                 pageStep++;
-                                if (pageStep == pagesToShow.Length) { L.Set("en"); settingsForm.ShowPage("Algemeen"); settingsForm.Refresh(); snap(settingsForm, "11-english"); snap(toolbar, "12-werkbalk-english"); L.Set("nl");
+                                if (pageStep == pagesToShow.Length) { L.Set("en"); settingsForm.ShowPage("Algemeen"); settingsForm.Refresh(); snap(settingsForm, "11-english"); snap(toolbar, "12-werkbalk-english");
+                                    // Chinees en Arabisch: komen de letters goed op het scherm?
+                                    L.Set("zh"); settingsForm.Rebuild(); settingsForm.ShowPage("Taal"); settingsForm.Refresh(); snap(settingsForm, "11-chinees");
+                                    L.Set("ar"); settingsForm.Rebuild(); settingsForm.ShowPage("Algemeen"); settingsForm.Refresh(); snap(settingsForm, "11-arabisch");
+                                    L.Set("nl"); settingsForm.Rebuild();
                                     // licht thema: zijn de letters rechts ook scherp?
                                     int keepTheme = Cfg.ThemeIndex; Cfg.ThemeIndex = 1; ApplySettings(); settingsForm.Rebuild(); settingsForm.ShowPage("Uiterlijk"); settingsForm.Refresh(); snap(settingsForm, "11-licht-uiterlijk");
                                     Cfg.ThemeIndex = keepTheme; ApplySettings();
@@ -1367,7 +1371,7 @@ namespace NexusPen
             ContextMenu m = new ContextMenu();
             m.MenuItems.Add(L.T("Tekenen aan of uit") + "\t" + Cfg.HotkeyDraw, delegate { ToggleDraw(); });
             m.MenuItems.Add(L.T("Alles in- of uitklappen") + "\t" + Cfg.HotkeyHide, delegate { ToggleAllHidden(); });
-            m.MenuItems.Add(L.T("Opslaan voor de volgende keer") + (Shortcuts.Combo("opslaan").Length > 0 ? "\t" + Shortcuts.Combo("opslaan") : ""), delegate { SaveExplicit(); });
+            m.MenuItems.Add(L.T("Opslaan voor de volgende keer") + (Shortcuts.Combo("opslaan").Length > 0 ? "\t" + Shortcuts.Combo("opslaan") : ""), delegate { if (SaveExplicit() && toolbar != null) toolbar.SavedFeedback(); });
             m.MenuItems.Add(L.T("Schermafbeelding maken"), delegate { Screenshot(); });
             if (PendingUpdate != null) m.MenuItems.Add(L.F("Bijwerken naar {0}", PendingUpdate.Version), delegate { InstallUpdate(); });
             m.MenuItems.Add(L.T("Instellingen..."), delegate { ShowSettings(null); });
@@ -2817,7 +2821,7 @@ namespace NexusPen
                     case "oog": ToggleStrokesVisible(); break;
                     case "undo": Undo(); break;
                     case "redo": Redo(); break;
-                    case "opslaan": SaveExplicit(); if (toolbar != null) toolbar.Refresh2(); break;
+                    case "opslaan": if (SaveExplicit() && toolbar != null) toolbar.SavedFeedback(); break;
                     case "kopie": DuplicateSelected(); break;
                 }
                 return;
@@ -2997,7 +3001,7 @@ namespace NexusPen
                     }
                     Usage.Log("foto", "", "");
                     string shown = dir == DefaultScreenshotDir ? L.T("Afbeeldingen") + " > NexusPen" : Path.GetFileName(dir.TrimEnd('\\'));
-                    if (toolbar != null) toolbar.ShowToast(L.T("Opgeslagen in"), shown + " " + L.T("en gekopieerd naar het klembord"), dir);
+                    if (toolbar != null) toolbar.ShowToast(L.T("Schermafbeelding opgeslagen in"), shown + " " + L.T("en gekopieerd naar het klembord"), dir, "vink");
                 }
             }
             catch (Exception ex)

@@ -785,8 +785,8 @@ namespace NexusPen
             });
             Mark(py + ph);
             y = py + ph + 10 * S;
-            y = Toggle(y, L.T("Vervagen"), null, delegate { return c.Fade; }, delegate(bool v) { c.Fade = v; });
-            y = Segments(y, L.T("Hoe lang blijft het staan?"), null, new string[] { "3 s", "5 s", "7 s", "12 s" }, delegate { return Array.IndexOf(Settings.FadeChoices, c.FadeSeconds); }, delegate(int i) { c.FadeSeconds = Settings.FadeChoices[i]; });
+            y = Toggle(y, L.T("Vervagen"), null, delegate { return c.Fade; }, delegate(bool v) { c.Fade = v; BuildItems(); });
+            if (c.Fade) y = Segments(y, L.T("Hoe lang blijft het staan?"), null, new string[] { "3 s", "5 s", "7 s", "12 s" }, delegate { return Array.IndexOf(Settings.FadeChoices, c.FadeSeconds); }, delegate(int i) { c.FadeSeconds = Settings.FadeChoices[i]; });
             y = Segments(y, L.T("Laserpen"), null, new string[] { L.T("Snel weg"), L.T("Langzaam"), L.T("Blijft staan") }, delegate { return c.LaserMode; }, delegate(int i) { c.LaserMode = i; });
         }
 
