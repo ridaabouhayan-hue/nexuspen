@@ -2246,16 +2246,17 @@ namespace NexusPen
 
         public void SendSelectedToBack()
         {
-            if (selected == null) return;
+            if (selected == null || strokes.IndexOf(selected) == 0) return;
             Checkpoint();
             strokes.Remove(selected);
             strokes.Insert(0, selected);
+            Deselect();   // dan pak je met de volgende klik wat er nu bovenop ligt
             Rebuild();
         }
 
         public void BringSelectedToFront()
         {
-            if (selected == null) return;
+            if (selected == null || strokes.IndexOf(selected) == strokes.Count - 1) return;
             Checkpoint();
             strokes.Remove(selected);
             strokes.Add(selected);
@@ -2361,7 +2362,7 @@ namespace NexusPen
             MenuPopup.CloseOpen();
             PointF p = e.Location;
             if (typing != null && e.Button == MouseButtons.Left && TextMouseDown(e)) return;
-            if (typing != null && e.Button == MouseButtons.Right && RectangleF.Inflate(TextFrame(typing), 8, 8).Contains(p)) { ShowTextMenu(PointToScreen(e.Location)); return; }
+            if (typing != null && e.Button == MouseButtons.Right && RectangleF.Inflate(TextFrame(typing), EdgeOut, EdgeOut).Contains(p)) { ShowTextMenu(PointToScreen(e.Location)); return; }
             if (typing != null) CloseTextInput(true);   // ergens anders geklikt: de tekst is klaar
             if (CurrentTool == Tool.Focus || CurrentTool == Tool.Mouse) return;   // wijzer op het bord: klikken doet niets
             if (CurrentTool == Tool.Loupe) { if (e.Button == MouseButtons.Left) PinLoupe(PointToScreen(e.Location)); return; }
@@ -2661,7 +2662,11 @@ namespace NexusPen
             bool handled = true;
             switch (e.KeyCode)
             {
-                case Keys.Escape: lastEsc = true; CloseTextInput(true); return true;
+                case Keys.Escape:
+                    lastEsc = true;
+                    // eerst alleen het menu dicht, je typt gewoon verder (het menu kan door dezelfde Esc net al dicht zijn)
+                    if (MenuPopup.IsOpen || (DateTime.Now - MenuPopup.ClosedAt).TotalMilliseconds < 400) { MenuPopup.CloseOpen(); return true; }
+                    CloseTextInput(true); return true;
                 case Keys.Enter:
                     if (ctrl) { CloseTextInput(true); return true; }
                     ed.Insert("\n"); break;
@@ -2735,6 +2740,9 @@ namespace NexusPen
         }
 
         float HandleR { get { return 12 * TypingScale; } }   // op een 4K-scherm even groot als op een gewoon scherm
+        // de rand van het tekstkader (om te verplaatsen): even breed op elk scherm, ook op 4K
+        float EdgeOut { get { return 8 * TypingScale; } }
+        bool OnTextEdge(RectangleF f, PointF p) { float i = 4 * TypingScale; return RectangleF.Inflate(f, EdgeOut, EdgeOut).Contains(p) && !RectangleF.Inflate(f, -i, -i).Contains(p); }
         bool textHover;   // muis boven de tekst: dan pas het kader en het hoekje tonen
         PointF SizeHandle(RectangleF f) { return new PointF(f.Right + 2, f.Bottom + 2); }
 
@@ -2745,7 +2753,7 @@ namespace NexusPen
             PointF p = e.Location;
             RectangleF f = TextFrame(typing);
             float grab = (HandleR + 6) * (HandleR + 6);
-            if (RectangleF.Inflate(f, 8, 8).Contains(p) && !RectangleF.Inflate(f, -4, -4).Contains(p) && Dist2(p, SizeHandle(f)) > grab)
+            if (OnTextEdge(f, p) && Dist2(p, SizeHandle(f)) > grab)
             {
                 textDrag = 2; textDragFrom = p; textPtFrom = typing.Pts[0]; Capture = true;
                 return true;
@@ -2823,7 +2831,7 @@ namespace NexusPen
             RectangleF f = TextFrame(typing);
             float grab = (HandleR + 6) * (HandleR + 6);
             Cursor want = Dist2(p, SizeHandle(f)) <= grab ? Cursors.SizeNWSE
-                : RectangleF.Inflate(f, 8, 8).Contains(p) && !RectangleF.Inflate(f, -4, -4).Contains(p) ? Cursors.SizeAll
+                : OnTextEdge(f, p) ? Cursors.SizeAll
                 : Cursors.IBeam;
             bool near = RectangleF.Inflate(f, HandleR * 2 + 4, HandleR * 2 + 4).Contains(p);
             if (near != textHover) { textHover = near; RenderSoon(); }
@@ -2857,7 +2865,9 @@ namespace NexusPen
                     {
                         // gewoon streepje zoals in een tekstverwerker, in de kleur van je tekst (met je rand eromheen als de tekst een rand heeft)
                         RectangleF cr = lay.CaretRect(ed.Caret, Math.Max(2, (float)Math.Round(1.5f * TypingScale)));
-                        if (typing.Outline) using (SolidBrush ob = new SolidBrush(Render.OutlineColorOf(typing))) g.FillRectangle(ob, RectangleF.Inflate(cr, 1, 1));
+                        // met een randje eromheen (de randkleur van de tekst, anders licht of donker), zodat je hem altijd ziet
+                        Color edge = typing.Outline ? Render.OutlineColorOf(typing) : Theme.Luma(typing.Color) > 0.6 ? Color.FromArgb(160, 0, 0, 0) : Color.FromArgb(200, 255, 255, 255);
+                        using (SolidBrush ob = new SolidBrush(edge)) g.FillRectangle(ob, RectangleF.Inflate(cr, 1, 1));
                         using (SolidBrush cb = new SolidBrush(Color.FromArgb(255, typing.Color))) g.FillRectangle(cb, cr);
                     }
                 }

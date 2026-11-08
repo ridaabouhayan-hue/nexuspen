@@ -109,6 +109,7 @@ namespace NexusPen
         }
 
         public static void CloseOpen() { if (open != null && !open.IsDisposed) open.Close(); }
+        public static DateTime ClosedAt = DateTime.MinValue;   // net dicht (bijv. door Esc): dan is die Esc niet ook voor de tekst
         public static bool IsOpen { get { return open != null && !open.IsDisposed && open.Visible; } }
         public static MenuPopup Current { get { return IsOpen ? open : null; } }
 
@@ -133,6 +134,7 @@ namespace NexusPen
         {
             watch.Stop(); watch.Dispose();
             if (open == this) open = null;
+            ClosedAt = DateTime.Now;
             base.OnFormClosed(e);   // Close() ruimt het venster zelf op
         }
     }
