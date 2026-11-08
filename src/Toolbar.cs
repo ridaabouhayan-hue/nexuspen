@@ -12,11 +12,11 @@ namespace NexusPen
     // zodat je ze in Instellingen kunt slepen en met rechtsklik kunt verbergen.
     class Toolbar : BarForm
     {
-        public const string DefaultLayout = "muis,selecteer|pen,markeer,laser|vormen,tekst,gum|kleur,stempel,focus,loep|undo,bord,timer,foto|opslaan,oog,wis,instellingen,afsluiten,weg";
+        public const string DefaultLayout = "muis,selecteer|pen,markeer,laser|vormen,tekst,gum|kleur,stempel,focus,loep|undo,bord,timer,foto|opslaan,wis,instellingen,afsluiten,weg";
 
         // alle knoppen die in de balk kunnen; de losse vormen, Krijt en Opnieuw staan standaard in de bak
         public static readonly string[] Catalog = { "muis", "selecteer", "pen", "krijt", "markeer", "laser", "vormen", "lijn", "pijl", "rechthoek", "cirkel",
-            "tekst", "gum", "kleur", "stempel", "focus", "loep", "timer", "undo", "redo", "wis", "bord", "foto", "opslaan", "oog", "instellingen", "afsluiten", "weg" };
+            "tekst", "gum", "kleur", "stempel", "focus", "loep", "timer", "undo", "redo", "wis", "bord", "foto", "opslaan", "instellingen", "afsluiten", "weg" };
 
         public static string NameOf(string key)
         {
@@ -46,7 +46,6 @@ namespace NexusPen
                 case "bord": return L.T("Bord");
                 case "foto": return L.T("Schermafbeelding");
                 case "opslaan": return L.T("Opslaan");
-                case "oog": return L.T("Tekeningen verbergen");
                 case "instellingen": return L.T("Instellingen");
                 case "afsluiten": return L.T("NexusPen afsluiten");
                 case "weg": return L.T("Wegschuiven");
@@ -375,11 +374,6 @@ namespace NexusPen
                         }, null, null);
                     it.Paint = PaintSave;
                     break;
-                case "oog":
-                    it = Button(r, "oog", Shortcuts.Tip(L.T("Tekeningen verbergen of weer tonen"), "oog"),
-                        delegate { Use(key); ClosePopups(); o.ToggleStrokesVisible(); }, null, delegate { return !o.StrokesVisible; });
-                    it.Paint = PaintEye;
-                    break;
                 case "instellingen":
                     it = Button(r, "instellingen", L.T("Instellingen"), delegate { Use(key); ClosePopups(); o.ShowSettings(null); }, null, null);
                     break;
@@ -465,11 +459,6 @@ namespace NexusPen
             it.Paint = null; PaintItem(g, it); it.Paint = PaintSave;
         }
 
-        void PaintEye(Graphics g, Item it, bool h)
-        {
-            it.Icon = ov.StrokesVisible ? "oog" : "oogopen";
-            it.Paint = null; PaintItem(g, it); it.Paint = PaintEye;
-        }
 
         void PaintOverflow(Graphics g, Item it, bool h)
         {

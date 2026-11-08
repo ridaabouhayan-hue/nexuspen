@@ -214,26 +214,50 @@ namespace NexusPen
             tb.Text = TimeText(); tb.MaxLength = 6;
             tb.Width = editor.ClientSize.Width - 8; tb.Left = 4; tb.Top = Math.Max(0, (editor.ClientSize.Height - tb.PreferredHeight) / 2);
             editor.Controls.Add(tb);
+            Form me = editor;
             bool done = false;
-            Action finish = delegate
+            Action<bool> finish = delegate(bool keep)
             {
                 if (done) return; done = true;
                 int sec;
-                if (TryParseTime(tb.Text, out sec)) { SetTime(sec); Usage.Log("timer", "zelf getypt", ""); }
+                if (keep && TryParseTime(tb.Text, out sec)) { SetTime(sec); Usage.Log("timer", "zelf getypt", ""); }
                 else if (wasRunning) StartPause();
-                try { editor.Close(); } catch { }
-                Invalidate();
+                try { me.Close(); } catch { }
+                if (!IsDisposed) RenderNow();
             };
             tb.KeyDown += delegate(object o, KeyEventArgs e)
             {
-                if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; finish(); }
-                else if (e.KeyCode == Keys.Escape) { e.SuppressKeyPress = true; done = true; if (wasRunning) StartPause(); editor.Close(); Invalidate(); }
+                if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; finish(true); }
+                else if (e.KeyCode == Keys.Escape) { e.SuppressKeyPress = true; finish(false); }
             };
-            tb.LostFocus += delegate { if (!done) finish(); };
-            editor.Show();
-            editor.Activate(); W.ForceForeground(editor.Handle);   // meteen kunnen typen, ook als je net in een ander programma was
-            tb.Focus(); tb.SelectAll();
+            // Ergens anders klikken = klaar. Pas luisteren als het vakje echt vooraan staat: tijdens het
+            // naar voren halen verliest het heel even de focus, en dan sloot het vroeger meteen weer.
+            me.Shown += delegate
+            {
+                W.ForceForeground(me.Handle);   // meteen kunnen typen, ook als je net in een ander programma was
+                me.Activate(); tb.Focus(); tb.SelectAll();
+                me.BeginInvoke((Action)delegate { if (!done && !me.IsDisposed) me.Deactivate += delegate { finish(true); }; });
+            };
+            me.FormClosed += delegate { if (editor == me) editor = null; };
+            me.Show();
         }
+
+        // de Esc van het invulvakje is niet voor de tekenlaag
+        public bool Editing { get { return editor != null && !editor.IsDisposed; } }
+
+        // voor de zelftest: het vakje openen, kijken of het blijft staan, en een tijd invullen
+        public void EditForTest() { EditTime(); }
+        public bool FinishEditForTest(string text)
+        {
+            if (!Editing) return false;
+            TextBox tb = editor.Controls.Count > 0 ? editor.Controls[0] as TextBox : null;
+            if (tb == null) return false;
+            tb.Text = text;
+            tb.Focus();
+            W.SendMessage(tb.Handle, 0x0100, new IntPtr((int)Keys.Enter), IntPtr.Zero);   // Enter
+            return true;
+        }
+        public int SetSecondsForTest { get { return setSeconds; } }
 
         // "5" = 5 minuten, "5:30" of "5.30" = 5 minuten en 30 seconden, "90s" = 90 seconden
         public static bool TryParseTime(string text, out int seconds)

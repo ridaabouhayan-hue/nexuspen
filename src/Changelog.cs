@@ -11,6 +11,12 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.8", "8 November 2026",
+                I("timer", "Typing your own time in the timer now works"),
+                I("foto", "Screenshot: falls back to another folder and always tells you what happened"),
+                I("muis", "Esc gives a normal pointer; pressing it again hides nothing"),
+                I("rechthoek", "Only collapsing hides everything; only the bin clears everything"),
+                I("instellingen", "Settings opens on top of the board")),
             V("1.3.7", "8 November 2026",
                 I("muis", "Pointer on a board just gives a normal mouse pointer; the board stays"),
                 I("timer", "Click the digits of the timer to type your own time")),

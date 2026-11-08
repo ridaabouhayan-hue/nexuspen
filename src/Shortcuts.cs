@@ -33,7 +33,6 @@ namespace NexusPen
             new Shortcut("loep", "Vergrootglas", "zoom", Keys.G, null),
             new Shortcut("bord", "Bord", "bord", Keys.B, null),
             new Shortcut("foto", "Schermafbeelding", "foto", Keys.C, null),
-            new Shortcut("oog", "Tekeningen verbergen", "oog", Keys.H, null),
             new Shortcut("undo", "Ongedaan maken", "undo", Keys.None, "Ctrl+Z"),
             new Shortcut("redo", "Opnieuw", "redo", Keys.None, "Ctrl+Y"),
             new Shortcut("opslaan", "Opslaan", "opslaan", Keys.None, "Ctrl+S"),
@@ -80,7 +79,6 @@ namespace NexusPen
             if (s.Fixed != null) return s.Fixed;
             int mode = Cfg == null ? 0 : Cfg.ShortcutMode;
             if (mode == 2 || s.Letter == Keys.None) return "";
-            if (id == "oog" && mode == 0) return "";   // Ctrl+Shift+H is al "alles in- of uitklappen"
             return (mode == 0 ? "Ctrl+Shift+" : "") + s.Letter;
         }
 

@@ -409,7 +409,7 @@ namespace NexusPen
             if (dirty) RenderFrame();
 
             // Esc werkt altijd, ook als de tekenlaag niet het actieve venster is
-            bool esc = (W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0;
+            bool esc = (W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0 && !(lesTimer != null && !lesTimer.IsDisposed && lesTimer.Editing);
             // Esc: eerst een open venstertje van de balk dicht, dan pas terug naar de muis
             if (esc && !lastEsc && MenuPopup.IsOpen) { MenuPopup.CloseOpen(); lastEsc = true; return; }   // eerst een open menu
             if (esc && !lastEsc && toolbar != null && toolbar.AnyPopupOpen) { toolbar.ClosePopups(); lastEsc = true; return; }
@@ -417,10 +417,10 @@ namespace NexusPen
             if (esc && !lastEsc && DrawMode && pinnedLoupes.Count > 0) { CloseAllLoupes(); lastEsc = true; return; }   // dan de vergrootglazen (alleen als je met NexusPen werkt)
             if (esc && !lastEsc && DrawMode && typing == null)
             {
-                // Esc: eerst de selectie weg, dan een gewone wijzer, en staat de wijzer al op een bord: het bord dicht
+                // Esc: eerst de selectie weg, dan een gewone wijzer. Daarna doet Esc niets meer:
+                // alles verbergen gaat alleen met inklappen (het logo), alles weghalen alleen met de prullenbak.
                 if (selected != null) Deselect();
-                else if (CurrentTool == Tool.Mouse) { SetDrawMode(false); RefreshUi(); }
-                else SetTool(Tool.Mouse);
+                else if (CurrentTool != Tool.Mouse) SetTool(Tool.Mouse);
             }
             lastEsc = esc;
 
@@ -1133,9 +1133,41 @@ namespace NexusPen
                             screen("20-vergrootglas-timer");
                             if (lesTimer != null) snap(lesTimer, "21-timer");
                             foreach (Loupe l in pinnedLoupes) if (l.Strip != null) snap(l.Strip, "22-vergrootglas-balkje");
-                            CloseAllLoupes(); ToggleTimer();
+                            CloseAllLoupes();
+                            if (lesTimer != null) lesTimer.EditForTest();   // klik op de cijfers: zelf een tijd typen
                             break;
-                        case 23: ShowSettings(null); break;
+                        case 23:
+                            {
+                                bool open = lesTimer != null && lesTimer.Editing;
+                                Console.WriteLine("Timer: invulvak blijft staan: " + open);
+                                if (!open) { Program.SelfTestErrors++; Console.Error.WriteLine("Het invulvak van de timer sluit meteen weer"); }
+                                screen("23-timer-tijd-typen");
+                                if (open) lesTimer.FinishEditForTest("2:30");
+                            }
+                            break;
+                        case 24:
+                            {
+                                bool ok = lesTimer != null && !lesTimer.Editing && lesTimer.SetSecondsForTest == 150;
+                                Console.WriteLine("Timer: 2:30 getypt en Enter: " + ok);
+                                if (!ok) { Program.SelfTestErrors++; Console.Error.WriteLine("Een getypte tijd in de timer werkt niet"); }
+                                ToggleTimer();
+                                SetBoard(Board.White);
+                                LastShotPath = null; Screenshot();
+                            }
+                            break;
+                        case 25:
+                            {
+                                bool ok = LastShotPath != null && File.Exists(LastShotPath);
+                                Console.WriteLine("Schermafbeelding opgeslagen: " + ok + (ok ? " (" + LastShotPath + ")" : ""));
+                                if (!ok) { Program.SelfTestErrors++; Console.Error.WriteLine("Schermafbeelding wordt niet opgeslagen"); }
+                                screen("24-melding-schermafbeelding");
+                                ShowSettings(null);
+                            }
+                            break;
+                        case 26:
+                            Console.WriteLine("Instellingen op het bord: bord " + BoardMode + ", instellingen zichtbaar " + (settingsForm != null && settingsForm.Visible));
+                            screen("25-instellingen-op-het-bord");
+                            break;
                         default:
                             if (settingsForm != null && pageStep < pagesToShow.Length)
                             {
@@ -1483,8 +1515,7 @@ namespace NexusPen
         // ---------- instellingen en uiterlijk
         public void ShowSettings(string page)
         {
-            // het bord gaat even weg voor de instellingen, en komt terug als je ze sluit
-            Board keepBoard = BoardMode;
+            // het bord blijft staan; Instellingen komt er bovenop (met een gewone wijzer)
             if (DrawMode) SetTool(Tool.Mouse);
             Usage.Log("menu", "instellingen", page ?? "");
             if (settingsForm != null && !settingsForm.IsDisposed)
@@ -1494,11 +1525,8 @@ namespace NexusPen
                 return;
             }
             settingsForm = new SettingsForm(this);
-            settingsForm.FormClosed += delegate
-            {
-                settingsForm = null;
-                if (keepBoard != Board.None && BoardMode == Board.None && !allHidden) SetBoard(keepBoard);
-            };
+            settingsForm.Owner = this;   // altijd boven de tekenlaag en het bord
+            settingsForm.FormClosed += delegate { settingsForm = null; };
             if (page != null) settingsForm.ShowPage(page);
             settingsForm.Show();
             settingsForm.Activate();
@@ -1581,8 +1609,8 @@ namespace NexusPen
             RefreshUi();
         }
 
-        // tekenen aan of uit: uit is echt uit (ook het bord gaat dicht)
-        public void ToggleDraw() { if (DrawMode) { if (typing != null) CloseTextInput(true); SetDrawMode(false); RefreshUi(); } else SetTool(LastDrawTool); }
+        // tekenen aan of uit: op een bord wissel je tussen de wijzer en je pen, het bord blijft staan
+        public void ToggleDraw() { if (DrawMode && CurrentTool != Tool.Mouse) SetTool(Tool.Mouse); else SetTool(LastDrawTool); }
 
         public void ToggleFocus() { if (FocusOn) SetTool(Tool.Mouse); else SetTool(Tool.Focus); }
 
@@ -1890,15 +1918,6 @@ namespace NexusPen
         public void NextPage() { GoToPage(pageIndex + 1); }
         public void NewPage() { StoreActive(); pages.Insert(pageIndex + 1, new List<Stroke>()); GoToPage(pageIndex + 1); }
 
-        // Oog: alle tekeningen even weg (en terug naar de muis). Nog een keer klikken = weer tonen.
-        public void ToggleStrokesVisible()
-        {
-            StrokesVisible = !StrokesVisible;
-            // op een bord blijft het bord staan; anders terug naar de muis
-            if (!StrokesVisible) { Deselect(); if (DrawMode && BoardMode == Board.None) SetDrawMode(false); }
-            Rebuild();
-            RefreshUi();
-        }
 
         // ---------- inklappen: alles weg (balk, tekeningen, bord), alleen het logo blijft
         public bool IsCollapsed { get { return allHidden; } }
@@ -2842,7 +2861,6 @@ namespace NexusPen
                     case "loep": ToggleLoupe(); break;
                     case "bord": CycleBoard(); break;
                     case "foto": Screenshot(); break;
-                    case "oog": ToggleStrokesVisible(); break;
                     case "undo": Undo(); break;
                     case "redo": Redo(); break;
                     case "opslaan": if (SaveExplicit() && toolbar != null) toolbar.SavedFeedback(); break;
@@ -2984,10 +3002,13 @@ namespace NexusPen
         {
             if (screenshotBusy) return;
             screenshotBusy = true;
-            bool hadSel = selected != null;
-            if (hadSel) Deselect();
-            if (toolbar != null) toolbar.HideForShot();
-            RenderFrame();
+            try
+            {
+                if (selected != null) Deselect();
+                if (toolbar != null) toolbar.HideForShot();
+                RenderFrame();
+            }
+            catch (Exception ex) { Log.Error("Schermafbeelding voorbereiden", ex); }
             System.Windows.Forms.Timer t = new System.Windows.Forms.Timer();
             t.Interval = 150;
             t.Tick += delegate
@@ -3013,26 +3034,47 @@ namespace NexusPen
                 {
                     using (Graphics g = Graphics.FromImage(bmp))
                         g.CopyFromScreen(r.X, r.Y, 0, 0, r.Size, CopyPixelOperation.SourceCopy | CopyPixelOperation.CaptureBlt);
-                    try { Clipboard.SetImage(bmp); } catch { }   // eerst op het klembord: dat lukt ook als de map niet werkt
-                    string dir = ScreenshotDir, name = "NexusPen_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".png";
-                    try { Directory.CreateDirectory(dir); bmp.Save(Path.Combine(dir, name), ImageFormat.Png); }
-                    catch (Exception ex)
-                    {
-                        // eigen map werkt niet (alleen-lezen, OneDrive): dan in de gewone map
-                        if (dir == DefaultScreenshotDir) throw;
-                        Log.Error("Schermafbeelding in eigen map", ex);
-                        dir = DefaultScreenshotDir; Directory.CreateDirectory(dir); bmp.Save(Path.Combine(dir, name), ImageFormat.Png);
-                    }
+                    bool onClipboard = false;
+                    try { Clipboard.SetImage(bmp); onClipboard = true; } catch (Exception ex) { Log.Error("Schermafbeelding naar klembord", ex); }   // eerst op het klembord: dat lukt ook als de map niet werkt
+                    string name = "NexusPen_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".png";
+                    // je eigen map, anders Afbeeldingen\NexusPen, anders Downloads\NexusPen
+                    // (Windows-beveiliging of OneDrive houdt Afbeeldingen soms op slot)
+                    string dir = null;
+                    foreach (string d in new string[] { ScreenshotDir, DefaultScreenshotDir, DownloadsShotDir })
+                        if (d != null && TrySaveShot(bmp, d, name)) { dir = d; break; }
+                    if (dir == null) { ShotFailed(onClipboard); return; }
+                    LastShotPath = Path.Combine(dir, name);
                     Usage.Log("foto", "", "");
-                    string shown = dir == DefaultScreenshotDir ? L.T("Afbeeldingen") + " > NexusPen" : Path.GetFileName(dir.TrimEnd('\\'));
-                    if (toolbar != null) toolbar.ShowToast(L.T("Schermafbeelding opgeslagen in"), shown + " " + L.T("en gekopieerd naar het klembord"), dir, "vink");
+                    string shown = dir == DefaultScreenshotDir ? L.T("Afbeeldingen") + " > NexusPen" : dir == DownloadsShotDir ? "Downloads > NexusPen" : Path.GetFileName(dir.TrimEnd('\\'));
+                    string more = onClipboard ? " " + L.T("en gekopieerd naar het klembord") : "";
+                    if (toolbar != null) toolbar.ShowToast(L.T("Schermafbeelding opgeslagen in"), shown + more, dir, "vink");
                 }
             }
             catch (Exception ex)
             {
                 Log.Error("Schermafbeelding mislukt", ex);
-                if (tray != null) tray.ShowBalloonTip(3000, "NexusPen", L.T("Schermafbeelding mislukt") + ": " + ex.Message, ToolTipIcon.Warning);
+                ShotFailed(false);
             }
+        }
+
+        public string LastShotPath;
+        static string DownloadsShotDir
+        {
+            get { try { return Path.Combine(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"), "NexusPen"); } catch { return null; } }
+        }
+
+        static bool TrySaveShot(Bitmap bmp, string dir, string name)
+        {
+            try { Directory.CreateDirectory(dir); bmp.Save(Path.Combine(dir, name), ImageFormat.Png); return true; }
+            catch (Exception ex) { Log.Error("Schermafbeelding opslaan in " + dir, ex); return false; }
+        }
+
+        // mislukt: altijd een melding die je ziet (een ballonnetje van Windows zie je vaak niet)
+        void ShotFailed(bool onClipboard)
+        {
+            string bold = onClipboard ? L.T("wel gekopieerd naar het klembord") : "";
+            if (toolbar != null && !allHidden) toolbar.ShowToast(L.T("Schermafbeelding mislukt"), bold, null, "info");
+            else if (tray != null) tray.ShowBalloonTip(3000, "NexusPen", L.T("Schermafbeelding mislukt"), ToolTipIcon.Warning);
         }
 
     }
