@@ -61,7 +61,7 @@ namespace NexusPen
 
         void SetTime(int seconds)
         {
-            setSeconds = Math.Max(60, Math.Min(99 * 60, seconds));
+            setSeconds = Math.Max(1, Math.Min(99 * 60 + 59, seconds));
             leftMs = setSeconds * 1000.0;
             done = false;
             Usage.Log("timer", (setSeconds / 60).ToString(), "kiezen");
@@ -144,7 +144,9 @@ namespace NexusPen
             float timeW = TextWidth("00:00", 30) + 8 * S;
             float x = pad, y = pad;
             // de tijd zelf (klik = starten of pauzeren)
-            Item time = Add(new RectangleF(x, y, timeW, 40 * S), L.T("Klik om te starten of te pauzeren"), delegate { StartPause(); });
+            Item time = Add(new RectangleF(x, y, timeW, 40 * S), L.T("Klik om zelf een tijd te typen"), null);
+            timeItem = time;
+            time.Click = delegate { EditTime(); };
             time.Paint = delegate(Graphics g, Item it, bool h)
             {
                 Theme t = T;
@@ -187,6 +189,69 @@ namespace NexusPen
             }
             y += 26 * S + pad;
             ClientSize = new Size((int)Math.Ceiling(w), (int)Math.Ceiling(y));
+        }
+
+        // ---- zelf een tijd typen: een klein invulvakje precies over de cijfers
+        Item timeItem;
+        Form editor;
+
+        void EditTime()
+        {
+            if (editor != null && !editor.IsDisposed) return;
+            bool wasRunning = running;
+            if (running) { running = false; clock.Stop(); }
+            Theme t = T;
+            RectangleF r = timeItem.R;
+            editor = new Form();
+            editor.FormBorderStyle = FormBorderStyle.None; editor.ShowInTaskbar = false; editor.TopMost = true;
+            editor.StartPosition = FormStartPosition.Manual; editor.BackColor = t.Bar;
+            editor.Bounds = new Rectangle(Left + (int)r.X, Top + (int)r.Y, (int)r.Width, (int)r.Height);
+            editor.Owner = this;
+            TextBox tb = new TextBox();
+            tb.BorderStyle = BorderStyle.None; tb.TextAlign = HorizontalAlignment.Center;
+            tb.BackColor = t.Bar; tb.ForeColor = t.Text;
+            tb.Font = UiFont.Make(26 * S, true);
+            tb.Text = TimeText(); tb.MaxLength = 6;
+            tb.Width = editor.ClientSize.Width - 8; tb.Left = 4; tb.Top = Math.Max(0, (editor.ClientSize.Height - tb.PreferredHeight) / 2);
+            editor.Controls.Add(tb);
+            bool done = false;
+            Action finish = delegate
+            {
+                if (done) return; done = true;
+                int sec;
+                if (TryParseTime(tb.Text, out sec)) { SetTime(sec); Usage.Log("timer", "zelf getypt", ""); }
+                else if (wasRunning) StartPause();
+                try { editor.Close(); } catch { }
+                Invalidate();
+            };
+            tb.KeyDown += delegate(object o, KeyEventArgs e)
+            {
+                if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; finish(); }
+                else if (e.KeyCode == Keys.Escape) { e.SuppressKeyPress = true; done = true; if (wasRunning) StartPause(); editor.Close(); Invalidate(); }
+            };
+            tb.LostFocus += delegate { if (!done) finish(); };
+            editor.Show();
+            editor.Activate(); W.ForceForeground(editor.Handle);   // meteen kunnen typen, ook als je net in een ander programma was
+            tb.Focus(); tb.SelectAll();
+        }
+
+        // "5" = 5 minuten, "5:30" of "5.30" = 5 minuten en 30 seconden, "90s" = 90 seconden
+        public static bool TryParseTime(string text, out int seconds)
+        {
+            seconds = 0;
+            string t = (text ?? "").Trim().ToLowerInvariant().Replace(" ", "").Replace(".", ":").Replace(",", ":");
+            if (t.Length == 0) return false;
+            int m, sec;
+            if (t.EndsWith("s") && int.TryParse(t.TrimEnd('s'), out sec)) { seconds = sec; }
+            else if (t.Contains(":"))
+            {
+                string[] p = t.Split(':');
+                if (p.Length != 2 || !int.TryParse(p[0].Length == 0 ? "0" : p[0], out m) || !int.TryParse(p[1].Length == 0 ? "0" : p[1], out sec) || m < 0 || sec < 0 || sec > 59) return false;
+                seconds = m * 60 + sec;
+            }
+            else if (int.TryParse(t.TrimEnd('m'), out m)) seconds = m * 60;
+            else return false;
+            return seconds >= 1 && seconds <= 99 * 60 + 59;
         }
 
         void PaintIconButton(Graphics g, Item it, bool h, string icon, bool primary)

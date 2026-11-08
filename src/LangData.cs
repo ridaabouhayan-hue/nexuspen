@@ -371,7 +371,7 @@ namespace NexusPen
             new string[] { "Zacht donkergroen", "Soft dark green", "Vert foncé doux", "Verde oscuro suave", "Verde-escuro suave", "Yumuşak koyu yeşil", "Мягкий тёмно-зелёный", "أخضر داكن هادئ", "柔和深绿" },
             new string[] { "Zacht donkerblauw", "Soft navy", "Bleu marine doux", "Azul marino suave", "Azul-marinho suave", "Yumuşak lacivert", "Мягкий тёмно-синий", "كحلي هادئ", "柔和藏青" },
             new string[] { "Zacht bordeaux", "Soft burgundy", "Bordeaux doux", "Burdeos suave", "Bordô suave", "Yumuşak bordo", "Мягкий бордовый", "عنابي هادئ", "柔和酒红" },
-            new string[] { "Klik om te starten of te pauzeren", "Click to start or pause", "Cliquez pour démarrer ou mettre en pause", "Haz clic para iniciar o pausar", "Clique para iniciar ou pausar", "Başlatmak veya duraklatmak için tıkla", "Нажмите, чтобы запустить или поставить на паузу", "انقر للبدء أو الإيقاف المؤقت", "点击开始或暂停" },
+            new string[] { "Klik om zelf een tijd te typen", "Click to type a time", "Cliquez pour saisir une durée", "Haz clic para escribir un tiempo", "Clique para digitar um tempo", "Süre yazmak için tıklayın", "Нажмите, чтобы ввести время", "انقر لكتابة وقت", "点击输入时间" },
             new string[] { "Starten of pauzeren", "Start or pause", "Démarrer ou pause", "Iniciar o pausar", "Iniciar ou pausar", "Başlat veya duraklat", "Запуск или пауза", "بدء أو إيقاف مؤقت", "开始或暂停" },
             new string[] { "Opnieuw beginnen", "Start over", "Recommencer", "Empezar de nuevo", "Recomeçar", "Baştan başla", "Начать заново", "البدء من جديد", "重新开始" },
             new string[] { "Groot of klein", "Big or small", "Grand ou petit", "Grande o pequeño", "Grande ou pequeno", "Büyük veya küçük", "Большой или маленький", "كبير أو صغير", "放大或缩小" },

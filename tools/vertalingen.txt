@@ -328,7 +328,6 @@ Zacht turquoise | Soft turquoise | Turquoise doux | Turquesa suave | Turquesa su
 Zacht donkergroen | Soft dark green | Vert foncé doux | Verde oscuro suave | Verde-escuro suave | Yumuşak koyu yeşil | Мягкий тёмно-зелёный | أخضر داكن هادئ | 柔和深绿
 Zacht donkerblauw | Soft navy | Bleu marine doux | Azul marino suave | Azul-marinho suave | Yumuşak lacivert | Мягкий тёмно-синий | كحلي هادئ | 柔和藏青
 Zacht bordeaux | Soft burgundy | Bordeaux doux | Burdeos suave | Bordô suave | Yumuşak bordo | Мягкий бордовый | عنابي هادئ | 柔和酒红
-Klik om te starten of te pauzeren | Click to start or pause | Cliquez pour démarrer ou mettre en pause | Haz clic para iniciar o pausar | Clique para iniciar ou pausar | Başlatmak veya duraklatmak için tıkla | Нажмите, чтобы запустить или поставить на паузу | انقر للبدء أو الإيقاف المؤقت | 点击开始或暂停
 Starten of pauzeren | Start or pause | Démarrer ou pause | Iniciar o pausar | Iniciar ou pausar | Başlat veya duraklat | Запуск или пауза | بدء أو إيقاف مؤقت | 开始或暂停
 Opnieuw beginnen | Start over | Recommencer | Empezar de nuevo | Recomeçar | Baştan başla | Начать заново | البدء من جديد | 重新开始
 Groot of klein | Big or small | Grand ou petit | Grande o pequeño | Grande ou pequeno | Büyük veya küçük | Большой или маленький | كبير أو صغير | 放大或缩小
@@ -404,3 +403,4 @@ Lijnen kleiner | Smaller lines | Lignes plus petites | Líneas más pequeñas | 
 Lijnen groter | Bigger lines | Lignes plus grandes | Líneas más grandes | Linhas maiores | Daha büyük çizgiler | Линии больше | أسطر أكبر | 线条变大
 Gewoon | Normal | Normal | Normal | Normal | Normal | Обычный | عادي | 普通
 Schermafbeelding opgeslagen in | Screenshot saved in | Capture d'écran enregistrée dans | Captura guardada en | Captura de tela salva em | Ekran görüntüsü şuraya kaydedildi: | Снимок экрана сохранён в | تم حفظ لقطة الشاشة في | 截图已保存到
+Klik om zelf een tijd te typen | Click to type a time | Cliquez pour saisir une durée | Haz clic para escribir un tiempo | Clique para digitar um tempo | Süre yazmak için tıklayın | Нажмите, чтобы ввести время | انقر لكتابة وقت | 点击输入时间

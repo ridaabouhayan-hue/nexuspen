@@ -417,7 +417,10 @@ namespace NexusPen
             if (esc && !lastEsc && DrawMode && pinnedLoupes.Count > 0) { CloseAllLoupes(); lastEsc = true; return; }   // dan de vergrootglazen (alleen als je met NexusPen werkt)
             if (esc && !lastEsc && DrawMode && typing == null)
             {
-                if (selected != null) Deselect(); else SetTool(Tool.Mouse);
+                // Esc: eerst de selectie weg, dan een gewone wijzer, en staat de wijzer al op een bord: het bord dicht
+                if (selected != null) Deselect();
+                else if (CurrentTool == Tool.Mouse) { SetDrawMode(false); RefreshUi(); }
+                else SetTool(Tool.Mouse);
             }
             lastEsc = esc;
 
@@ -1544,7 +1547,20 @@ namespace NexusPen
         public void SetTool(Tool t)
         {
             if (typing != null) CloseTextInput(true);
-            if (t == Tool.Mouse) { if (DrawMode) SetDrawMode(false); RefreshUi(); return; }
+            if (t == Tool.Mouse)
+            {
+                // op een bord: alleen een gewone wijzer, het bord en wat erop staat blijven gewoon staan
+                if (DrawMode && BoardMode != Board.None)
+                {
+                    Deselect(); FadeLasersNow(); StopFollowLoupe();
+                    if (CurrentTool == Tool.Focus) { fullDirty = true; dirty = true; }
+                    CurrentTool = Tool.Mouse; Usage.ToolChanged("Mouse");
+                    UpdateCursor(); RefreshUi();
+                    return;
+                }
+                if (DrawMode) SetDrawMode(false);
+                RefreshUi(); return;
+            }
             if (t != Tool.Select) Deselect();
             if (t != Tool.Laser) FadeLasersNow();
             bool wasFocus = CurrentTool == Tool.Focus;
@@ -1565,7 +1581,8 @@ namespace NexusPen
             RefreshUi();
         }
 
-        public void ToggleDraw() { if (DrawMode) SetTool(Tool.Mouse); else SetTool(LastDrawTool); }
+        // tekenen aan of uit: uit is echt uit (ook het bord gaat dicht)
+        public void ToggleDraw() { if (DrawMode) { if (typing != null) CloseTextInput(true); SetDrawMode(false); RefreshUi(); } else SetTool(LastDrawTool); }
 
         public void ToggleFocus() { if (FocusOn) SetTool(Tool.Mouse); else SetTool(Tool.Focus); }
 
@@ -1835,6 +1852,7 @@ namespace NexusPen
             if (byUser && b != Board.None && !DrawMode) SetTool(Tool.Select);
             Rebuild();
             RefreshUi();
+            MouseOffBoard();
         }
 
         public void CycleBoard() { SetBoard(BoardMode == Board.None ? Board.White : BoardMode == Board.White ? Board.Black : BoardMode == Board.Black ? Board.Dark : Board.None); }
@@ -1920,8 +1938,12 @@ namespace NexusPen
                 if (collapsedTool != Tool.Mouse && CurrentTool != collapsedTool) SetTool(collapsedTool);
             }
             if (DrawMode && CurrentTool == Tool.Loupe) StartFollowLoupe();   // het vergrootglas weer laten meegaan
+            MouseOffBoard();
             Usage.Log("uitklappen", "", "");
         }
+
+        // de wijzer zonder bord: dan gewoon met de muis op je scherm werken (klikken gaan weer naar je programma's)
+        void MouseOffBoard() { if (DrawMode && CurrentTool == Tool.Mouse && BoardMode == Board.None) SetDrawMode(false); }
 
         public void ToggleAllHidden() { if (allHidden) ExpandAll(); else CollapseAll(); }
 
@@ -1968,7 +1990,7 @@ namespace NexusPen
                         c = ToolCursor.For("stempel|" + st.Text + "|" + st.FontSize, delegate { return ToolCursor.Stamp(st); });
                         break;
                     }
-                    case Tool.Select: case Tool.Focus: case Tool.Loupe: c = Cursors.Default; break;
+                    case Tool.Select: case Tool.Focus: case Tool.Loupe: case Tool.Mouse: c = Cursors.Default; break;
                 }
             }
             catch (Exception ex) { Log.Error("Cursor", ex); }
@@ -2262,7 +2284,7 @@ namespace NexusPen
             PointF p = e.Location;
             if (typing != null && e.Button == MouseButtons.Left && TextMouseDown(e)) return;
             if (typing != null) CloseTextInput(true);   // ergens anders geklikt: de tekst is klaar
-            if (CurrentTool == Tool.Focus) return;
+            if (CurrentTool == Tool.Focus || CurrentTool == Tool.Mouse) return;   // wijzer op het bord: klikken doet niets
             if (CurrentTool == Tool.Loupe) { if (e.Button == MouseButtons.Left) PinLoupe(PointToScreen(e.Location)); return; }
             // dubbelklik op iets wat er staat (met pen, markeerstift of een vorm): meteen selecteren
             if (e.Button == MouseButtons.Left && e.Clicks >= 2 && StrokesVisible && (CurrentTool == Tool.Pen || CurrentTool == Tool.Marker || IsShape(CurrentTool)))

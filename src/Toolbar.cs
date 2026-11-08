@@ -405,7 +405,7 @@ namespace NexusPen
             Overlay o = ov;
             string key = icon;
             return Button(r, icon, tipText, delegate { Use(key); ClosePopups(); o.SetTool(t); },
-                delegate { return t == Tool.Mouse ? !o.DrawMode : o.DrawMode && o.CurrentTool == t; }, null);
+                delegate { return t == Tool.Mouse ? (!o.DrawMode || o.CurrentTool == Tool.Mouse) : o.DrawMode && o.CurrentTool == t; }, null);
         }
 
         void Use(string key) { Usage.Log("klik", key, "balk"); }

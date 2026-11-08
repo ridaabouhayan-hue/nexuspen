@@ -11,6 +11,9 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.7", "8 November 2026",
+                I("muis", "Pointer on a board just gives a normal mouse pointer; the board stays"),
+                I("timer", "Click the digits of the timer to type your own time")),
             V("1.3.6", "8 November 2026",
                 I("taal", "English is now the default language"),
                 I("taal", "Five new languages: Portuguese, Turkish, Russian, Arabic and Chinese"),

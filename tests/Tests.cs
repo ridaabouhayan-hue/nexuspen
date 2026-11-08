@@ -265,6 +265,16 @@ static class Tests {
       Check(Updates.IsNewer("1.3.2", "1.3.1") && !Updates.IsNewer("1.3.1", "1.3.1") && !Updates.IsNewer("1.2.9", "1.3.0"), "Versienummers vergelijken");
     }
 
+    // 15f. Timer: zelf een tijd typen
+    {
+      int ts; bool a = TimerForm.TryParseTime("5", out ts) && ts == 300;
+      bool b = TimerForm.TryParseTime("5:30", out ts) && ts == 330;
+      bool c2 = TimerForm.TryParseTime("1.05", out ts) && ts == 65;
+      bool d = TimerForm.TryParseTime("90s", out ts) && ts == 90;
+      bool e2 = !TimerForm.TryParseTime("abc", out ts) && !TimerForm.TryParseTime("5:75", out ts) && !TimerForm.TryParseTime("0", out ts) && !TimerForm.TryParseTime("5:-3", out ts) && !TimerForm.TryParseTime("-2", out ts);
+      Check(a && b && c2 && d && e2, "Timer: 5, 5:30, 1.05 en 90s worden goed gelezen, onzin niet");
+    }
+
     // 15e. Wat is er nieuw: bovenaan staat deze versie, en elk icoontje bestaat
     {
       bool iconsOk = true;
