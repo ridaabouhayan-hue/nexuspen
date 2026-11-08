@@ -779,17 +779,24 @@ namespace NexusPen
         {
             if (quietMove) return;   // tekst gewoon verplaatsen: geen kader eromheen
             RectangleF r = SelectionBox();
+            DrawPickFrame(g, r, new PointF[] { r.Location, new PointF(r.Right, r.Top), new PointF(r.Left, r.Bottom), new PointF(r.Right, r.Bottom) }, 1f);
+        }
+
+        // Eén soort kader voor alles wat je vastpakt (selectie en tekst die je typt): gestippeld in de accentkleur
+        // van je thema, met een donkere rand eronder zodat hij op elk bord en scherm te zien is, en vierkante hoekjes.
+        void DrawPickFrame(Graphics g, RectangleF r, PointF[] corners, float sc)
+        {
             Color acc = Theme.Accent;
-            using (GraphicsPath gp = Svg.RoundRect(r, 6))
+            using (GraphicsPath gp = Svg.RoundRect(r, 6 * sc))
             {
-                using (Pen p = new Pen(Color.FromArgb(150, 0, 0, 0), 3)) g.DrawPath(p, gp);
-                using (Pen p = new Pen(acc, 1.6f)) { p.DashPattern = new float[] { 4, 3 }; g.DrawPath(p, gp); }
+                using (Pen p = new Pen(Color.FromArgb(150, 0, 0, 0), 3 * sc)) g.DrawPath(p, gp);
+                using (Pen p = new Pen(acc, 1.6f * sc)) { p.DashPattern = new float[] { 4, 3 }; g.DrawPath(p, gp); }
             }
             using (SolidBrush b = new SolidBrush(acc))
-                foreach (PointF c in new PointF[] { r.Location, new PointF(r.Right, r.Top), new PointF(r.Left, r.Bottom), new PointF(r.Right, r.Bottom) })
+                foreach (PointF c in corners)
                 {
-                    g.FillRectangle(Brushes.White, c.X - 5, c.Y - 5, 10, 10);
-                    g.FillRectangle(b, c.X - 4, c.Y - 4, 8, 8);
+                    g.FillRectangle(Brushes.White, c.X - 5 * sc, c.Y - 5 * sc, 10 * sc, 10 * sc);
+                    g.FillRectangle(b, c.X - 4 * sc, c.Y - 4 * sc, 8 * sc, 8 * sc);
                 }
         }
 
@@ -2237,6 +2244,15 @@ namespace NexusPen
             if (toolbar != null) toolbar.ShowMiniBar(SelectionScreenRect(), true);
         }
 
+        public void SendSelectedToBack()
+        {
+            if (selected == null) return;
+            Checkpoint();
+            strokes.Remove(selected);
+            strokes.Insert(0, selected);
+            Rebuild();
+        }
+
         public void BringSelectedToFront()
         {
             if (selected == null) return;
@@ -2345,6 +2361,7 @@ namespace NexusPen
             MenuPopup.CloseOpen();
             PointF p = e.Location;
             if (typing != null && e.Button == MouseButtons.Left && TextMouseDown(e)) return;
+            if (typing != null && e.Button == MouseButtons.Right && RectangleF.Inflate(TextFrame(typing), 8, 8).Contains(p)) { ShowTextMenu(PointToScreen(e.Location)); return; }
             if (typing != null) CloseTextInput(true);   // ergens anders geklikt: de tekst is klaar
             if (CurrentTool == Tool.Focus || CurrentTool == Tool.Mouse) return;   // wijzer op het bord: klikken doet niets
             if (CurrentTool == Tool.Loupe) { if (e.Button == MouseButtons.Left) PinLoupe(PointToScreen(e.Location)); return; }
@@ -2659,19 +2676,7 @@ namespace NexusPen
                 case Keys.A: if (ctrl) ed.SelectAll(); else handled = false; break;
                 case Keys.C: if (ctrl) CopyText(false); else handled = false; break;
                 case Keys.X: if (ctrl) CopyText(true); else handled = false; break;
-                case Keys.V:
-                    if (!ctrl) { handled = false; break; }
-                    try
-                    {
-                        if (Clipboard.ContainsText())
-                        {
-                            string add = Clipboard.GetText().Replace("\r\n", "\n").Replace('\r', '\n').Replace('\t', ' ');
-                            if (add.Length > 2000) add = add.Substring(0, 2000);
-                            ed.Insert(add);
-                        }
-                    }
-                    catch (Exception ex) { Log.Error("Plakken", ex); }
-                    break;
+                case Keys.V: if (ctrl) PasteText(); else handled = false; break;
                 case Keys.Z: if (ctrl) { if (shift) ed.Redo(); else ed.Undo(); } else handled = false; break;
                 case Keys.Y: if (ctrl) ed.Redo(); else handled = false; break;
                 case Keys.Oemplus: case Keys.Add: if (ctrl) WheelText(120); else handled = false; break;
@@ -2680,6 +2685,35 @@ namespace NexusPen
             }
             if (handled) { e.Handled = true; e.SuppressKeyPress = true; TypingChanged(); }
             return true;   // tijdens het typen doen sneltoetsen niets; letters komen via OnKeyPress
+        }
+
+        void PasteText()
+        {
+            try
+            {
+                if (Clipboard.ContainsText())
+                {
+                    string add = Clipboard.GetText().Replace("\r\n", "\n").Replace('\r', '\n').Replace('\t', ' ');
+                    if (add.Length > 2000) add = add.Substring(0, 2000);
+                    ed.Insert(add);
+                }
+            }
+            catch (Exception ex) { Log.Error("Plakken", ex); }
+        }
+
+        // Rechtermuisknop in de tekst: het gewone menu van Windows (knippen, kopiëren, plakken, alles selecteren)
+        void ShowTextMenu(Point screen)
+        {
+            bool sel = ed.HasSelection, any = ed.Text.Length > 0, paste = false;
+            try { paste = Clipboard.ContainsText(); } catch { }
+            MenuPopup m = new MenuPopup(this);
+            Action<Action> run = delegate(Action a) { if (typing == null) return; a(); TypingChanged(); };
+            m.Add(L.T("Knippen"), "Ctrl+X", sel ? (Action)delegate { run(delegate { CopyText(true); }); } : null);
+            m.Add(L.T("Kopiëren"), "Ctrl+C", sel ? (Action)delegate { run(delegate { CopyText(false); }); } : null);
+            m.Add(L.T("Plakken"), "Ctrl+V", paste ? (Action)delegate { run(PasteText); } : null);
+            m.AddSeparator();
+            m.Add(L.T("Alles selecteren"), "Ctrl+A", any ? (Action)delegate { run(delegate { ed.SelectAll(); }); } : null);
+            m.ShowAt(screen);
         }
 
         void CopyText(bool cut)
@@ -2702,7 +2736,6 @@ namespace NexusPen
 
         float HandleR { get { return 12 * TypingScale; } }   // op een 4K-scherm even groot als op een gewoon scherm
         bool textHover;   // muis boven de tekst: dan pas het kader en het hoekje tonen
-        PointF MoveHandle(RectangleF f) { return new PointF(f.Left - HandleR - 2, f.Top - HandleR - 2); }
         PointF SizeHandle(RectangleF f) { return new PointF(f.Right + 2, f.Bottom + 2); }
 
         static float Dist2(PointF a, PointF b) { float dx = a.X - b.X, dy = a.Y - b.Y; return dx * dx + dy * dy; }
@@ -2712,7 +2745,7 @@ namespace NexusPen
             PointF p = e.Location;
             RectangleF f = TextFrame(typing);
             float grab = (HandleR + 6) * (HandleR + 6);
-            if (Dist2(p, MoveHandle(f)) <= grab || (RectangleF.Inflate(f, 8, 8).Contains(p) && !RectangleF.Inflate(f, -4, -4).Contains(p) && Dist2(p, SizeHandle(f)) > grab))
+            if (RectangleF.Inflate(f, 8, 8).Contains(p) && !RectangleF.Inflate(f, -4, -4).Contains(p) && Dist2(p, SizeHandle(f)) > grab)
             {
                 textDrag = 2; textDragFrom = p; textPtFrom = typing.Pts[0]; Capture = true;
                 return true;
@@ -2790,7 +2823,7 @@ namespace NexusPen
             RectangleF f = TextFrame(typing);
             float grab = (HandleR + 6) * (HandleR + 6);
             Cursor want = Dist2(p, SizeHandle(f)) <= grab ? Cursors.SizeNWSE
-                : Dist2(p, MoveHandle(f)) <= grab || (RectangleF.Inflate(f, 8, 8).Contains(p) && !RectangleF.Inflate(f, -4, -4).Contains(p)) ? Cursors.SizeAll
+                : RectangleF.Inflate(f, 8, 8).Contains(p) && !RectangleF.Inflate(f, -4, -4).Contains(p) ? Cursors.SizeAll
                 : Cursors.IBeam;
             bool near = RectangleF.Inflate(f, HandleR * 2 + 4, HandleR * 2 + 4).Contains(p);
             if (near != textHover) { textHover = near; RenderSoon(); }
@@ -2809,25 +2842,10 @@ namespace NexusPen
                         using (SolidBrush b = new SolidBrush(Color.FromArgb(120, 0, 120, 215)))
                             foreach (RectangleF r in lay.SelectionRects(ed.SelStart, ed.SelEnd)) g.FillRectangle(b, r);
                     SafeDraw(g, typing, 1f);
+                    // hetzelfde kader als bij een selectie, in de kleur van je thema; rechtsonder het hoekje voor groter of kleiner
                     RectangleF f = TextFrame(typing);
-                    bool showFrame = textHover || textDrag != 0;
-                    if (showFrame)
-                    {
-                        using (Pen p = new Pen(Color.FromArgb(140, 0, 0, 0), 3)) g.DrawRectangle(p, f.X, f.Y, f.Width, f.Height);
-                        using (Pen p = new Pen(Color.FromArgb(230, 255, 255, 255), 1.2f)) { p.DashPattern = new float[] { 4, 3 }; g.DrawRectangle(p, f.X, f.Y, f.Width, f.Height); }
-                    }
-                    // rondje met vier pijltjes: verplaatsen
-                    PointF mh = MoveHandle(f); float r0 = HandleR;
-                    g.FillEllipse(Brushes.White, mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0);
-                    using (Pen p = new Pen(Color.FromArgb(200, 30, 30, 34), 1.2f)) g.DrawEllipse(p, mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0);
-                    Icons.Draw(g, "verplaats", new RectangleF(mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0), r0 * 1.5f, Color.FromArgb(255, 30, 30, 34), 2f);
-                    // hoekje: groter of kleiner (alleen als je met de muis bij de tekst bent)
                     PointF sh = SizeHandle(f);
-                    if (showFrame)
-                    {
-                        g.FillRectangle(Brushes.White, sh.X - 6, sh.Y - 6, 12, 12);
-                        using (Pen p = new Pen(Color.FromArgb(200, 30, 30, 34), 1.2f)) g.DrawRectangle(p, sh.X - 6, sh.Y - 6, 12, 12);
-                    }
+                    if (textHover || textDrag != 0) DrawPickFrame(g, f, new PointF[] { sh }, TypingScale);   // alleen als je met de muis bij de tekst bent
                     if (textDrag == 4 && textDropIdx >= 0)
                     {
                         // waar de gesleepte woorden terechtkomen: een streepje in de accentkleur
@@ -2837,10 +2855,10 @@ namespace NexusPen
                     }
                     if (caretOn && !ed.HasSelection)
                     {
-                        // gewoon streepje zoals in Windows: zwart met een dun wit randje, 2 pixels breed
-                        RectangleF cr = lay.CaretRect(ed.Caret, 2);
-                        g.FillRectangle(Brushes.White, RectangleF.Inflate(cr, 1, 1));
-                        g.FillRectangle(Brushes.Black, cr);
+                        // gewoon streepje zoals in een tekstverwerker, in de kleur van je tekst (met je rand eromheen als de tekst een rand heeft)
+                        RectangleF cr = lay.CaretRect(ed.Caret, Math.Max(2, (float)Math.Round(1.5f * TypingScale)));
+                        if (typing.Outline) using (SolidBrush ob = new SolidBrush(Render.OutlineColorOf(typing))) g.FillRectangle(ob, RectangleF.Inflate(cr, 1, 1));
+                        using (SolidBrush cb = new SolidBrush(Color.FromArgb(255, typing.Color))) g.FillRectangle(cb, cr);
                     }
                 }
             }

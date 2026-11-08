@@ -8,7 +8,7 @@ MAP = {
  "undo": "undo-2", "redo": "redo-2", "bord": "presentation", "foto": "camera", "opslaan": "save",
  "oog": "eye-off", "oogopen": "eye", "instellingen": "settings", "op": "chevron-up", "neer": "chevron-down",
  "links": "chevron-left", "rechts": "chevron-right", "plus": "plus", "min": "minus", "lijn": "slash", "pijl": "move-up-right",
- "rechthoek": "rectangle-horizontal", "cirkel": "circle", "prullenbak": "trash-2", "dupliceer": "copy", "voren": "bring-to-front",
+ "rechthoek": "rectangle-horizontal", "cirkel": "circle", "prullenbak": "trash-2", "dupliceer": "copy", "voren": "bring-to-front", "achter": "send-to-back",
  "map": "folder", "kruis": "x", "vink": "check", "taal": "languages", "toetsen": "keyboard", "huis": "house",
  "grafiek": "chart-no-axes-column", "info": "info", "schermdelen": "monitor-off", "kleuren": "palette", "voorlezen": "volume-2",
  "ster": "star", "vraag": "circle-question-mark", "hekje": "hash", "lijnen": "align-justify", "ruitjes": "grid-3x3",

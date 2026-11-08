@@ -11,6 +11,11 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.11", "8 November 2026",
+                I("achter", "Send to back, to reach something small under something big"),
+                I("tekst", "Right-click in text: cut, copy, paste and select all"),
+                I("tekst", "Typing looks normal: no special round handle, the cursor in the colour of your text"),
+                I("selecteer", "One kind of frame for selecting and typing, in the colour of your theme")),
             V("1.3.10", "8 November 2026",
                 I("bord", "The board and its text come back at the same moment"),
                 I("kleuren", "Click a button again to close its window; it also closes when you click elsewhere")),

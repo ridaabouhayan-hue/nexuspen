@@ -11,7 +11,7 @@ namespace NexusPen
     // onder de muis, een rustig vinkje. Sluit bij een klik ergens anders of met Esc.
     class MenuPopup : BarForm
     {
-        class Entry { public string Text; public Action Click; public bool Check, HasCheck, Sep; }
+        class Entry { public string Text, Hint; public Action Click; public bool Check, HasCheck, Sep; }
 
         readonly List<Entry> entries = new List<Entry>();
         readonly System.Windows.Forms.Timer watch = new System.Windows.Forms.Timer();
@@ -28,6 +28,8 @@ namespace NexusPen
 
         public void Add(string text, Action click) { Entry e = new Entry(); e.Text = text; e.Click = click; entries.Add(e); }
         public void AddCheck(string text, bool on, Action click) { Entry e = new Entry(); e.Text = text; e.Click = click; e.HasCheck = true; e.Check = on; entries.Add(e); }
+        // met de sneltoets rechts in de regel, zoals in Windows (Kopiëren   Ctrl+C); click null = grijs
+        public void Add(string text, string hint, Action click) { Entry e = new Entry(); e.Text = text; e.Hint = hint; e.Click = click; entries.Add(e); }
         public void AddSeparator() { Entry e = new Entry(); e.Sep = true; entries.Add(e); }
 
         // Maten (in pixels bij 100%): rand 6, regel 36, tekst 12 van het vlakje, scheidingslijn 9
@@ -39,7 +41,10 @@ namespace NexusPen
             foreach (Entry e in entries) if (e.HasCheck) checks = true;
             float textX = Pad + TextPad + (checks ? CheckW : 0);
             float maxW = 0;
+            float hintW = 0;
             foreach (Entry e in entries) if (!e.Sep) maxW = Math.Max(maxW, TextWidthPlain(e.Text, 14));
+            foreach (Entry e in entries) if (!e.Sep && e.Hint != null) hintW = Math.Max(hintW, TextWidthPlain(e.Hint, 13));
+            if (hintW > 0) maxW += hintW + 28 * S;
             float w = Math.Max(180 * S, textX * S + maxW + (TextPad + Pad + 6) * S);
             float y = Pad * S;
             foreach (Entry en in entries)
@@ -59,6 +64,7 @@ namespace NexusPen
                         Icons.Draw(g, "vink", new RectangleF(item.R.X + TextPad * S - 2 * S, item.R.Y + (item.R.Height - cs) / 2, cs, cs), cs, t.Accent, 2.2f);
                     }
                     Label(g, e.Text, new RectangleF(tx, item.R.Y, item.R.Right - tx - TextPad * S, item.R.Height), e.Click != null ? t.Text : t.Muted, 14, false, StringAlignment.Near);
+                    if (e.Hint != null) Label(g, e.Hint, new RectangleF(tx, item.R.Y, item.R.Right - tx - TextPad * S, item.R.Height), t.Muted, 13, false, StringAlignment.Far);
                 };
                 y += RowH * S;
             }

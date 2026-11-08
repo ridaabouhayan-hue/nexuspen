@@ -7,6 +7,7 @@ namespace NexusPen
     {
         public static readonly Dictionary<string, string[]> All = new Dictionary<string, string[]>
         {
+            { "achter", new string[] { "r|14 14 8 8 2", "r|2 2 8 8 2", "p|M7 14v1a2 2 0 0 0 2 2h1", "p|M14 7h1a2 2 0 0 1 2 2v1" } },
             { "afsluiten", new string[] { "p|M12 2v10", "p|M18.4 6.6a9 9 0 1 1-12.77.04" } },
             { "afspelen", new string[] { "p|M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" } },
             { "aftekenen", new string[] { "p|m16 17 5-5-5-5", "p|M21 12H9", "p|M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" } },

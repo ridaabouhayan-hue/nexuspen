@@ -403,3 +403,8 @@ Gewoon | Normal | Normal | Normal | Normal | Normal | Обычный | عادي 
 Schermafbeelding opgeslagen in | Screenshot saved in | Capture d'écran enregistrée dans | Captura guardada en | Captura de tela salva em | Ekran görüntüsü şuraya kaydedildi: | Снимок экрана сохранён в | تم حفظ لقطة الشاشة في | 截图已保存到
 Klik om zelf een tijd te typen | Click to type a time | Cliquez pour saisir une durée | Haz clic para escribir un tiempo | Clique para digitar um tempo | Süre yazmak için tıklayın | Нажмите, чтобы ввести время | انقر لكتابة وقت | 点击输入时间
 wel gekopieerd naar het klembord | but copied to the clipboard | mais copiée dans le presse-papiers | pero copiada al portapapeles | mas copiada para a área de transferência | ama panoya kopyalandı | но скопирован в буфер обмена | لكن تم نسخها إلى الحافظة | 但已复制到剪贴板
+Naar achteren | Send to back | Mettre en arrière-plan | Enviar al fondo | Enviar para trás | En arkaya gönder | На задний план | إرسال إلى الخلف | 置于底层
+Knippen | Cut | Couper | Cortar | Recortar | Kes | Вырезать | قص | 剪切
+Kopiëren | Copy | Copier | Copiar | Copiar | Kopyala | Копировать | نسخ | 复制
+Plakken | Paste | Coller | Pegar | Colar | Yapıştır | Вставить | لصق | 粘贴
+Alles selecteren | Select all | Tout sélectionner | Seleccionar todo | Selecionar tudo | Tümünü seç | Выделить всё | تحديد الكل | 全选
