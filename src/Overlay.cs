@@ -1162,6 +1162,27 @@ namespace NexusPen
                                 bool ok = LastShotPath != null && File.Exists(LastShotPath);
                                 Console.WriteLine("Schermafbeelding opgeslagen: " + ok + (ok ? " (" + LastShotPath + ")" : ""));
                                 if (!ok) { Program.SelfTestErrors++; Console.Error.WriteLine("Schermafbeelding wordt niet opgeslagen"); }
+                                else
+                                {
+                                    // het witte bord moet op de foto staan (anders mist de tekenlaag)
+                                    try
+                                    {
+                                        using (Bitmap shot = new Bitmap(LastShotPath))
+                                        {
+                                            Rectangle ps = Screen.PrimaryScreen.Bounds, vs = SystemInformation.VirtualScreen;
+                                            // een paar plekken, want een lijntje van het bord kan precies op een plek liggen
+                                            Color c = Color.Empty; bool board = false;
+                                            foreach (int dy in new int[] { 37, 51, 66, 83, 99 })
+                                            {
+                                                c = shot.GetPixel(ps.X - vs.X + ps.Width / 2, ps.Y - vs.Y + ps.Height / 2 + dy);
+                                                if (c.R > 225 && c.G > 225 && c.B > 225) { board = true; break; }
+                                            }
+                                            Console.WriteLine("Bord op de schermafbeelding: " + board + " (" + c + ")");
+                                            if (!board) { Program.SelfTestErrors++; Console.Error.WriteLine("De tekenlaag staat niet op de schermafbeelding"); }
+                                        }
+                                    }
+                                    catch (Exception ex) { Program.SelfTestErrors++; Console.Error.WriteLine("Schermafbeelding nakijken: " + ex.Message); }
+                                }
                                 screen("24-melding-schermafbeelding");
                                 ShowSettings(null);
                             }
@@ -3051,9 +3072,10 @@ namespace NexusPen
                 {
                     using (Graphics g = Graphics.FromImage(bmp))
                     {
-                        // CaptureBlt neemt ook doorzichtige vensters mee (de tekenlaag); lukt dat niet, dan gewoon
-                        try { g.CopyFromScreen(r.X, r.Y, 0, 0, r.Size, CopyPixelOperation.SourceCopy | CopyPixelOperation.CaptureBlt); }
-                        catch (Exception ex) { Log.Error("Schermafbeelding met CaptureBlt", ex); g.CopyFromScreen(r.X, r.Y, 0, 0, r.Size, CopyPixelOperation.SourceCopy); }
+                        // met de tekenlaag en het bord erbij; lukt dat niet, dan de gewone manier van .NET
+                        bool copied = false;
+                        try { copied = W.CopyScreen(g, r); } catch (Exception ex) { Log.Error("Schermafbeelding met BitBlt", ex); }
+                        if (!copied) { Log.Info("Schermafbeelding: BitBlt lukte niet, de gewone manier"); g.CopyFromScreen(r.X, r.Y, 0, 0, r.Size, CopyPixelOperation.SourceCopy); }
                     }
                     if (Program.SelfTest) Console.WriteLine("Schermafbeelding: scherm gekopieerd " + r.Size);
                     bool onClipboard = false;

@@ -48,6 +48,22 @@ namespace NexusPen
         [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
         [DllImport("user32.dll")] public static extern IntPtr GetDC(IntPtr hWnd);
         [DllImport("user32.dll")] public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+        [DllImport("gdi32.dll", SetLastError = true)] public static extern bool BitBlt(IntPtr hdcDest, int x, int y, int w, int h, IntPtr hdcSrc, int sx, int sy, uint rop);
+
+        // Het hele scherm kopieren, met doorzichtige vensters erbij (de tekenlaag en het bord).
+        // .NET weigert SourceCopy samen met CaptureBlt, daarom rechtstreeks via Windows.
+        public static bool CopyScreen(Graphics g, Rectangle r)
+        {
+            IntPtr src = GetDC(IntPtr.Zero);
+            if (src == IntPtr.Zero) return false;
+            try
+            {
+                IntPtr dst = g.GetHdc();
+                try { return BitBlt(dst, 0, 0, r.Width, r.Height, src, r.X, r.Y, 0x00CC0020u | 0x40000000u); }   // SRCCOPY | CAPTUREBLT
+                finally { g.ReleaseHdc(dst); }
+            }
+            finally { ReleaseDC(IntPtr.Zero, src); }
+        }
         [DllImport("gdi32.dll")] public static extern IntPtr CreateCompatibleDC(IntPtr hDC);
         [DllImport("gdi32.dll")] public static extern bool DeleteDC(IntPtr hdc);
         [DllImport("gdi32.dll")] public static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
