@@ -144,7 +144,7 @@ namespace NexusPen
         // De stempel zelf, licht doorzichtig
         public static Bitmap Stamp(Stroke st)
         {
-            float d = Math.Max(14, Math.Min(150, st.FontSize));
+            float d = Math.Max(14, Math.Min(MaxCircle, st.FontSize));
             Graphics g; float c;
             Bitmap b = Canvas(d + 8, out g, out c);
             using (g)

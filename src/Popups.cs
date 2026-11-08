@@ -43,7 +43,13 @@ namespace NexusPen
             for (int i = 0; i < Palette.Names.Length; i++)
             {
                 int idx = i;
-                Item it = Add(new RectangleF(pad + 3 * S + i * segW, y + 3 * S, segW, 28 * S), i == 0 ? L.T("Felle kleuren") : L.T("Zachte kleuren"), delegate { o.SetPalette(idx); Rebuild(); });
+                Item it = Add(new RectangleF(pad + 3 * S + i * segW, y + 3 * S, segW, 28 * S), i == 0 ? L.T("Felle kleuren") : L.T("Zachte kleuren"), delegate
+                {
+                    // andere set: opnieuw opbouwen; stond het venster boven de balk, dan blijft de onderkant op zijn plek
+                    int bottom = Bottom; bool above = o.Bar != null && Bottom <= o.Bar.Top + 2;
+                    o.SetPalette(idx); Rebuild();
+                    if (above) Top = bottom - Height;
+                });
                 it.Paint = delegate(Graphics g, Item item, bool h)
                 {
                     Theme t = T;

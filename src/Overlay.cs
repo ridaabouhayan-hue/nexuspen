@@ -72,7 +72,9 @@ namespace NexusPen
         TextEditor ed;             // pijltjes, selectie, muis en eigen Ongedaan maken in de tekst
         int textDrag;              // 0 niets, 1 selecteren met de muis, 2 verplaatsen, 3 groter of kleiner,
                                    // 4 geselecteerde woorden slepen, 5 ingedrukt op een tekst (slepen = hele tekst verplaatsen)
-        int textDropIdx = -1;      // bij 4: waar de woorden terechtkomen
+        int textDropIdx = -1;
+        float textDragScale = 1;
+        float lastCursorScale = 1;   // bij groter of kleiner slepen: de schaal van het scherm van de tekst      // bij 4: waar de woorden terechtkomen
         PointF textDragFrom, textPtFrom;
         float textSizeFrom, textDistFrom;
         DateTime caretAt;
@@ -1769,11 +1771,15 @@ namespace NexusPen
 
         // Op een scherm met grotere schaal (4K op 200%) worden tekst en stempels even groot als op een gewoon scherm.
         // De getallen in Instellingen blijven hetzelfde (36 blijft 36); op het scherm wordt het 36 x de schaal.
-        float ScreenScale { get { try { return Math.Max(1f, Math.Min(4f, W.UiScaleAt(Control.MousePosition))); } catch { return 1f; } } }
+        // de schaal van Windows (125%, 150%, 200%) op het scherm waar de muis staat, niet hoe groot het scherm is
+        float ScreenScale { get { return ScaleAt(Control.MousePosition); } }
+        static float ScaleAt(Point screen) { try { return Math.Max(1f, Math.Min(4f, W.DpiScaleAt(screen))); } catch { return 1f; } }
+        // de schaal op de plek van de tekst die je typt (de muis kan op een ander scherm staan, bijvoorbeeld de beamer)
+        float TypingScale { get { return typing != null ? ScaleAt(PointToScreen(Point.Round(typing.Pts[0]))) : ScreenScale; } }
 
         void WheelText(int delta)
         {
-            float sc = ScreenScale;
+            float sc = TypingScale;
             float cur = typing != null ? typing.FontSize / sc : Cfg.TextSize;
             float nw = NextSize(TextSizes, cur, delta);
             Cfg.TextSize = nw;
@@ -2348,6 +2354,8 @@ namespace NexusPen
         {
             base.OnMouseMove(e);
             if (!DrawMode || RealMouseInSelfTest) return;
+            // naar een scherm met een andere schaal: de stempelcursor in de goede grootte
+            if (CurrentTool == Tool.Stamp) { float sc = ScreenScale; if (Math.Abs(sc - lastCursorScale) > 0.01f) { lastCursorScale = sc; UpdateCursor(); } }
             if (typing != null && TextMouseMove(e)) return;
             if (inputAt < 0) inputAt = Perf.Now;
             PointF p = e.Location;
@@ -2432,6 +2440,7 @@ namespace NexusPen
         {
             base.OnMouseUp(e);
             if (RealMouseInSelfTest) return;
+            if (e.Button == MouseButtons.Right && !erasing) return;   // rechts loslaten zonder gummen: niets afbreken
             if (textDrag == 4 && typing != null && ed != null)
             {
                 // losgelaten: de woorden naar die plek (met Ctrl: een kopie). Niet bewogen: gewoon het streepje daar.
@@ -2498,6 +2507,7 @@ namespace NexusPen
         protected override void OnMouseDoubleClick(MouseEventArgs e)
         {
             base.OnMouseDoubleClick(e);
+            if (e.Button != MouseButtons.Left) return;
             if (skipDoubleClick) { skipDoubleClick = false; return; }
             if (!DrawMode || CurrentTool != Tool.Select || selected == null || selected.Tool != Tool.Text) return;
             Stroke old = selected;
@@ -2599,7 +2609,7 @@ namespace NexusPen
             return b;
         }
 
-        float HandleR { get { return 12; } }
+        float HandleR { get { return 12 * TypingScale; } }   // op een 4K-scherm even groot als op een gewoon scherm
         bool textHover;   // muis boven de tekst: dan pas het kader en het hoekje tonen
         PointF MoveHandle(RectangleF f) { return new PointF(f.Left - HandleR - 2, f.Top - HandleR - 2); }
         PointF SizeHandle(RectangleF f) { return new PointF(f.Right + 2, f.Bottom + 2); }
@@ -2618,7 +2628,7 @@ namespace NexusPen
             }
             if (Dist2(p, SizeHandle(f)) <= grab)
             {
-                textDrag = 3; textDragFrom = p; textSizeFrom = typing.FontSize;
+                textDrag = 3; textDragFrom = p; textSizeFrom = typing.FontSize; textDragScale = TypingScale;
                 textDistFrom = Math.Max(10, (float)Math.Sqrt(Dist2(p, typing.Pts[0]))); Capture = true;
                 return true;
             }
@@ -2681,7 +2691,7 @@ namespace NexusPen
             {
                 float d = (float)Math.Sqrt(Dist2(p, typing.Pts[0]));
                 typing.FontSize = Math.Max(8, Math.Min(400, textSizeFrom * d / textDistFrom));
-                Cfg.TextSize = typing.FontSize / ScreenScale;
+                Cfg.TextSize = typing.FontSize / textDragScale;
                 TypingChanged();
                 return true;
             }
@@ -2719,7 +2729,7 @@ namespace NexusPen
                     PointF mh = MoveHandle(f); float r0 = HandleR;
                     g.FillEllipse(Brushes.White, mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0);
                     using (Pen p = new Pen(Color.FromArgb(200, 30, 30, 34), 1.2f)) g.DrawEllipse(p, mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0);
-                    Icons.Draw(g, "verplaats", new RectangleF(mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0), 18, Color.FromArgb(255, 30, 30, 34), 2f);
+                    Icons.Draw(g, "verplaats", new RectangleF(mh.X - r0, mh.Y - r0, 2 * r0, 2 * r0), r0 * 1.5f, Color.FromArgb(255, 30, 30, 34), 2f);
                     // hoekje: groter of kleiner (alleen als je met de muis bij de tekst bent)
                     PointF sh = SizeHandle(f);
                     if (showFrame)
