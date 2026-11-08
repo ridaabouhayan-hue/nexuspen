@@ -25,7 +25,12 @@ namespace NexusPen
         }
 
         public static void Info(string msg) { Write("INFO ", msg); }
-        public static void Error(string msg, Exception ex) { Write("FOUT ", msg + (ex != null ? Environment.NewLine + Anon(ex.ToString()) : "")); }
+        public static void Error(string msg, Exception ex)
+        {
+            string text = msg + (ex != null ? Environment.NewLine + Anon(ex.ToString()) : "");
+            Write("FOUT ", text);
+            if (Program.SelfTest) { try { Console.WriteLine("FOUT " + text); } catch { } }   // in de zelftest meteen zichtbaar in het verslag van GitHub
+        }
 
         // het foutlog wordt soms gedeeld: je Windows-naam uit de paden halen
         static string Anon(string t)

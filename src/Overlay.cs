@@ -3015,6 +3015,7 @@ namespace NexusPen
 
         public void Screenshot()
         {
+            if (Program.SelfTest) Console.WriteLine("Schermafbeelding: gevraagd (bezig " + screenshotBusy + ")");
             if (screenshotBusy) return;
             screenshotBusy = true;
             try
@@ -3030,6 +3031,7 @@ namespace NexusPen
             {
                 t.Stop();
                 t.Dispose();
+                if (Program.SelfTest) Console.WriteLine("Schermafbeelding: maken");
                 try { CaptureScreen(); }
                 finally
                 {
@@ -3048,7 +3050,12 @@ namespace NexusPen
                 using (Bitmap bmp = new Bitmap(r.Width, r.Height, PixelFormat.Format32bppArgb))
                 {
                     using (Graphics g = Graphics.FromImage(bmp))
-                        g.CopyFromScreen(r.X, r.Y, 0, 0, r.Size, CopyPixelOperation.SourceCopy | CopyPixelOperation.CaptureBlt);
+                    {
+                        // CaptureBlt neemt ook doorzichtige vensters mee (de tekenlaag); lukt dat niet, dan gewoon
+                        try { g.CopyFromScreen(r.X, r.Y, 0, 0, r.Size, CopyPixelOperation.SourceCopy | CopyPixelOperation.CaptureBlt); }
+                        catch (Exception ex) { Log.Error("Schermafbeelding met CaptureBlt", ex); g.CopyFromScreen(r.X, r.Y, 0, 0, r.Size, CopyPixelOperation.SourceCopy); }
+                    }
+                    if (Program.SelfTest) Console.WriteLine("Schermafbeelding: scherm gekopieerd " + r.Size);
                     bool onClipboard = false;
                     try { Clipboard.SetImage(bmp); onClipboard = true; } catch (Exception ex) { Log.Error("Schermafbeelding naar klembord", ex); }   // eerst op het klembord: dat lukt ook als de map niet werkt
                     string name = "NexusPen_" + DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss") + ".png";
