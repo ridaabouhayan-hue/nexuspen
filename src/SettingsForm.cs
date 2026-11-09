@@ -892,6 +892,7 @@ namespace NexusPen
             }
             y += ((shown + 2) / 3) * (ch + 10 * S) + 10 * S;
             y = Toggle(y, L.T("Rand om tekst"), null, delegate { return c.TextOutline; }, delegate(bool v) { c.TextOutline = v; });
+            y = Toggle(y, L.T("Rand om lijnen en vormen"), L.T("Pen, krijt, lijn, pijl, rechthoek en cirkel. Dikte en kleur zoals bij tekst."), delegate { return c.LineOutline; }, delegate(bool v) { c.LineOutline = v; });
             y = Segments(y, L.T("Dikte van de rand"), null, new string[] { L.T("Dun"), L.T("Middel"), L.T("Dik") }, delegate { return c.OutlineWidth; }, delegate(int i) { c.OutlineWidth = i; });
             y = Segments(y, L.T("Randkleur"), null, new string[] { L.T("Zwart"), L.T("Wit"), L.T("Automatisch") }, delegate { return c.OutlineColor; }, delegate(int i) { c.OutlineColor = i; });
             y = Segments(y, L.T("Standaardgrootte"), null, new string[] { "24", "36", "48", "64" }, delegate { int[] v = { 24, 36, 48, 64 }; int b = 1; for (int i = 0; i < 4; i++) if (Math.Abs(v[i] - c.TextSize) < 1) b = i; return b; },
@@ -1260,7 +1261,7 @@ namespace NexusPen
             float y = Heading(contentTop, L.T("Gebruik"), L.T("Alleen op deze pc."));
             float keepW = contentW; contentW = colW;
             y = Toggle(y, L.T("Gebruik bijhouden"), L.T("Er gaat niets naar internet"), delegate { return c.Usage; }, delegate(bool v) { c.Usage = v; });
-            string[] names = { "Klikken op knoppen", "Gereedschap en tijd", "Kleuren en dikte", "Menu's en instellingen", "Twijfel en fouten", "Lessen", "Scherm en snelheid" }; // vertaal
+            string[] names = { "Klikken op knoppen", "Gereedschap en tijd", "Kleuren en dikte", "Menu's en instellingen", "Twijfel en fouten", "Lessen", "Scherm en snelheid", "Strepen (alleen getallen, geen inhoud)" }; // vertaal
             for (int i = 0; i < names.Length; i++)
             {
                 int bit = Usage.Categories[i];

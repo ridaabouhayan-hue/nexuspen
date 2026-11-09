@@ -50,6 +50,8 @@ namespace NexusPen
         // tekst
         public string FontName = "Andika";
         public bool TextOutline = true;
+        public bool LineOutline;                // rand om lijnen en vormen (pen, krijt, lijn, pijl, rechthoek, cirkel)
+        public bool UsageV2;                    // eenmalig: strepen bijhouden erbij (vanaf 1.3.13)
         public int OutlineWidth = 1, OutlineColor = 0;   // dun, middel, dik / zwart, wit, automatisch
         public float TextSize = 36;
         // stempels en bord
@@ -66,7 +68,7 @@ namespace NexusPen
         // gebruik
         public bool ShowTips = false;           // uitleg tonen als je met de muis over een knop gaat
         public bool Usage = true;
-        public int UsageCats = 127;
+        public int UsageCats = 255;
 
         public const float MaxWidth = 68;
         public static readonly int[] FadeChoices = { 3, 5, 7, 12 };
@@ -139,7 +141,7 @@ namespace NexusPen
         public static Settings Load(string path)
         {
             Settings s = new Settings();
-            bool isOld = false, hasV2 = false, existed = false, hasLang = false;
+            bool isOld = false, hasV2 = false, existed = false, hasLang = false, hasUsageV2 = false;
             try
             {
                 if (File.Exists(path))
@@ -155,6 +157,7 @@ namespace NexusPen
                         string mapped;
                         if (OldNames.TryGetValue(k, out mapped)) { k = mapped; isOld = true; }
                         if (k == "PaletteV2") hasV2 = true;
+                        if (k == "UsageV2") hasUsageV2 = true;
                         if (k == "Language" || k == "taal") hasLang = true;
                         System.Reflection.FieldInfo f;
                         if (byName.TryGetValue(k, out f)) Read(f, v, s);
@@ -166,6 +169,8 @@ namespace NexusPen
             if (!existed) s.Language = L.WindowsLanguage();   // eerste keer: in de taal van Windows
             else if (!hasLang) s.Language = "nl";             // een heel oud bestand (voor 1.2): toen was alles Nederlands
             // van 10 naar 16 kleuren: je gekozen kleur blijft dezelfde kleur
+            // strepen bijhouden kwam er in 1.3.13 bij: aan, tenzij je eerder zelf al iets had uitgezet
+            if (!hasUsageV2) { if (s.UsageCats == 127) s.UsageCats = 255; s.UsageV2 = true; }
             if (existed && !hasV2) { if (s.ColorIndex >= 0 && s.ColorIndex < Palette.OldToNew.Length) s.ColorIndex = Palette.OldToNew[s.ColorIndex]; s.PaletteV2 = true; }
             s.Clamp();
             return s;

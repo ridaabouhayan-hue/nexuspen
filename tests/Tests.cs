@@ -265,6 +265,19 @@ static class Tests {
       Check(Updates.IsNewer("1.3.2", "1.3.1") && !Updates.IsNewer("1.3.1", "1.3.1") && !Updates.IsNewer("1.2.9", "1.3.0"), "Versienummers vergelijken");
     }
 
+    // 15g. Rand om lijnen en vormen
+    {
+      Stroke rLn = new Stroke(); rLn.Tool = Tool.Line; rLn.Width = 6; rLn.Color = Color.Red; rLn.Pts.Add(new PointF(10, 10)); rLn.Pts.Add(new PointF(100, 10));
+      RectangleF rPlain = Render.Bounds(rLn);
+      Stroke rLo = rLn.Clone(); rLo.Outline = true; rLo.OutlineWidth = 1; rLo.OutlineColor = 0;
+      RectangleF rWith = Render.Bounds(rLo);
+      Stroke rMk = new Stroke(); rMk.Tool = Tool.Marker; rMk.Width = 6; rMk.Outline = true; rMk.Pts.Add(new PointF(0, 0));
+      bool rDrew = true;
+      try { using (Bitmap rBb = new Bitmap(120, 40)) using (Graphics rGg = Graphics.FromImage(rBb)) Render.Draw(rGg, rLo, 1f); } catch { rDrew = false; }
+      Check(rWith.Height > rPlain.Height && Render.OutlineWidth(rMk) == 0 && Render.CanOutline(Tool.Pen) && !Render.CanOutline(Tool.Laser) && rDrew,
+        "Rand om een lijn: tekent, en de omtrek groeit mee; markeerstift en laser krijgen geen rand");
+    }
+
     // 15f. Timer: zelf een tijd typen
     {
       int tTs; bool tA = TimerForm.TryParseTime("5", out tTs) && tTs == 300;

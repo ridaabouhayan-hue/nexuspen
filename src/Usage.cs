@@ -8,12 +8,13 @@ namespace NexusPen
 {
     // ------------------------------------------------------------------ Gebruik bijhouden (alleen op deze pc)
     // Wat er wordt bijgehouden: op welke knop je klikt, welk gereedschap en hoe lang, kleuren en dikte,
-    // menu's en instellingen, twijfel (direct ongedaan maken), lessen en techniek.
+    // menu's en instellingen, twijfel (direct ongedaan maken), lessen en techniek, en per streep een paar
+    // getallen (gereedschap, kleurnummer, dikte, duur, lengte, scherm of bord, rand). Geen plek, geen vorm, geen tekst.
     // NOOIT: wat je schrijft of tekent, wat er op je scherm staat, namen of bestanden.
     static class Usage
     {
-        public const int Clicks = 1, Tools = 2, Colors = 4, Menus = 8, Doubt = 16, Lessons = 32, Tech = 64;
-        public static readonly int[] Categories = { Clicks, Tools, Colors, Menus, Doubt, Lessons, Tech };
+        public const int Clicks = 1, Tools = 2, Colors = 4, Menus = 8, Doubt = 16, Lessons = 32, Tech = 64, Strokes = 128;
+        public static readonly int[] Categories = { Clicks, Tools, Colors, Menus, Doubt, Lessons, Tech, Strokes };
 
         static Settings cfg;
         static readonly List<string> buffer = new List<string>();
@@ -36,6 +37,7 @@ namespace NexusPen
                 case "kleur": case "dikte": case "palet": return Colors;
                 case "instelling": case "menu": return Menus;
                 case "ongedaan": case "gum-na-tekenen": case "zoeken": return Doubt;
+                case "streep": return Strokes;
                 case "start": case "stop": case "inklappen": case "uitklappen": case "wegschuiven": case "opslaan": case "foto": case "afsluiten": return Lessons;
                 default: return Tech;
             }

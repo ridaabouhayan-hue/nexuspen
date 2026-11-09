@@ -11,6 +11,10 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.13", "9 November 2026",
+                I("vormen", "Outline around lines and shapes, on or off in Settings > Text"),
+                I("muis", "Back to the mouse: the program you were in is active again, no extra click"),
+                I("info", "Usage: a few numbers per stroke, never what you draw or write")),
             V("1.3.12", "9 November 2026",
                 I("tekst", "Three more fonts: Arial, Calibri and Comic Sans"),
                 I("prullenbak", "Delete at the end of your text removes the whole text box"),

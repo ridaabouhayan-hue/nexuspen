@@ -472,12 +472,13 @@ namespace NexusPen
             size.Paint = delegate(Graphics g, Item item, bool hv) { Label(g, o.SelectedSize.ToString(), item.R, T.Text, 13, true, StringAlignment.Center); };
             x += 36 * S;
             Button(new RectangleF(x, pad, h, h), "plus", L.T("Groter"), delegate { o.ScaleSelected(1.12f); Invalidate(); }, null, null); x += h;
-            if (o.SelectionIsText)
+            if (o.SelectionCanOutline)
             {
                 barSeps.Add(Px(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, Math.Max(1, Px(S)), 20 * S))); x += 9 * S;
                 float rw = TextWidth(L.T("Rand"), 13) + 40 * S;
-                Item rand = Add(new RectangleF(x, pad, rw, h), L.T("Rand om de tekst aan of uit"), delegate { o.ToggleOutlineSelected(); Invalidate(); });
-                rand.Paint = delegate(Graphics g, Item item, bool hv) { PaintChip(g, item.R, o.SelectionHasOutline, hv, L.T("Rand"), "tekst", Color.Empty); };
+                bool isText = o.SelectionIsText;
+                Item rand = Add(new RectangleF(x, pad, rw, h), isText ? L.T("Rand om de tekst aan of uit") : L.T("Rand aan of uit"), delegate { o.ToggleOutlineSelected(); Invalidate(); });
+                rand.Paint = delegate(Graphics g, Item item, bool hv) { PaintChip(g, item.R, o.SelectionHasOutline, hv, L.T("Rand"), isText ? "tekst" : "vormen", Color.Empty); };
                 x += rw + 2 * S;
             }
             barSeps.Add(Px(new RectangleF(x + 4 * S, pad + (h - 20 * S) / 2, Math.Max(1, Px(S)), 20 * S))); x += 9 * S;

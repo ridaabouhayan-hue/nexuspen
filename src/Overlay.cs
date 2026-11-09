@@ -1607,6 +1607,8 @@ namespace NexusPen
         void SetDrawMode(bool on)
         {
             if (on && allHidden) { collapsedDraw = false; ExpandAll(); }   // je kiest zelf een gereedschap: dat gaat voor
+            if (on && !DrawMode) RememberOtherWindow();
+            bool giveBack = !on && DrawMode;
             DrawMode = on;
             int ex = W.GetWindowLong(Handle, W.GWL_EXSTYLE);
             if (on) ex &= ~W.WS_EX_TRANSPARENT; else ex |= W.WS_EX_TRANSPARENT;
@@ -1618,6 +1620,40 @@ namespace NexusPen
             RenderFrame();
             if (on) Activate();
             RefreshUi();
+            if (giveBack) GiveBackFocus();
+        }
+
+        // Tekenen uit: het programma waarin je zat weer actief maken. Anders had dat programma
+        // eerst nog een klik van je nodig voordat je er weer in kon typen of scrollen.
+        IntPtr otherWindow;
+        static readonly uint MyPid = (uint)System.Diagnostics.Process.GetCurrentProcess().Id;
+        static bool IsOurs(IntPtr h) { uint pid; W.GetWindowThreadProcessId(h, out pid); return pid == MyPid; }
+
+        void RememberOtherWindow()
+        {
+            try { IntPtr fg = W.GetForegroundWindow(); if (fg != IntPtr.Zero && !IsOurs(fg)) otherWindow = fg; } catch { }
+        }
+
+        void GiveBackFocus()
+        {
+            try
+            {
+                IntPtr fg = W.GetForegroundWindow();
+                if (fg != IntPtr.Zero && !IsOurs(fg)) return;   // je zit al in een ander programma
+                // Instellingen, de timer of een melding van NexusPen zelf: die houden het toetsenbord
+                if (fg != IntPtr.Zero && fg != Handle) return;
+                IntPtr target = IntPtr.Zero;
+                if (otherWindow != IntPtr.Zero && W.IsWindow(otherWindow) && W.IsWindowVisible(otherWindow)) target = otherWindow;
+                else
+                {
+                    // anders het programma onder de muis
+                    Point m = Control.MousePosition;
+                    IntPtr h = W.GetAncestor(W.WindowFromPoint(new W.POINT(m.X, m.Y)), 2);
+                    if (h != IntPtr.Zero && !IsOurs(h)) target = h;
+                }
+                if (target != IntPtr.Zero) W.ForceForeground(target);
+            }
+            catch { }
         }
 
         static bool HasWidth(Tool t) { return t == Tool.Pen || t == Tool.Marker || t == Tool.Laser || t == Tool.Eraser || IsShape(t); }
@@ -2187,6 +2223,7 @@ namespace NexusPen
 
         public Color SelectedColor { get { return selected == null ? Color.Empty : selected.Color; } }
         public bool SelectionIsText { get { return selected != null && selected.Tool == Tool.Text; } }
+        public bool SelectionCanOutline { get { return selected != null && (selected.Tool == Tool.Text || Render.CanOutline(selected.Tool)); } }
         public bool SelectionHasOutline { get { return selected != null && selected.Outline; } }
 
         // Getal in het selectiebalkje: lettergrootte, stempelgrootte of lijndikte
@@ -2236,7 +2273,7 @@ namespace NexusPen
 
         public void ToggleOutlineSelected()
         {
-            if (selected == null || selected.Tool != Tool.Text) return;
+            if (selected == null || !(selected.Tool == Tool.Text || Render.CanOutline(selected.Tool))) return;
             EditSelected();
             selected.Outline = !selected.Outline;
             if (selected.Outline) { selected.OutlineWidth = Cfg.OutlineWidth; selected.OutlineColor = Cfg.OutlineColor; }
@@ -2452,6 +2489,8 @@ namespace NexusPen
             current.Color = CurrentColor;
             current.Width = PenWidth;
             if (Cfg.Chalk && CurrentTool == Tool.Pen) current.Style |= Stroke.Chalk;
+            if (Cfg.LineOutline && Render.CanOutline(CurrentTool)) { current.Outline = true; current.OutlineWidth = Cfg.OutlineWidth; current.OutlineColor = Cfg.OutlineColor; }
+            strokeStartAt = DateTime.Now;
             current.Pts.Add(p);
             if (IsShape(CurrentTool)) current.Pts.Add(p);
             if (IsWet(current)) wetArea = U(wetArea, WetBox(current, -1));
@@ -2588,6 +2627,7 @@ namespace NexusPen
             if (current == null) return;
             Stroke s = current;
             current = null;
+            LogStroke(s);
             lastDot = s; lastDotAt = DateTime.Now;   // voor dubbelklik: de eerste klik kan een puntje zijn
             if (s.Tool == Tool.Laser)
             {
@@ -2608,6 +2648,24 @@ namespace NexusPen
                 lastStrokeAt = DateTime.Now;
             }
             dirty = true;
+        }
+
+        // Per streep een paar getallen voor het gebruik (alleen op deze pc): nooit de plek, de vorm of de tekst
+        DateTime strokeStartAt;
+        void LogStroke(Stroke s)
+        {
+            try
+            {
+                if (!Cfg.Usage || (Cfg.UsageCats & Usage.Strokes) == 0) return;
+                double len = 0;
+                for (int i = 1; i < s.Pts.Count; i++) len += Dist(s.Pts[i - 1], s.Pts[i]);
+                string tool = s.Tool.ToString() + ((s.Style & Stroke.Chalk) != 0 ? "/krijt" : "");
+                int ms = (int)Math.Min(600000, (DateTime.Now - strokeStartAt).TotalMilliseconds);
+                Usage.Log("streep", tool + "|kleur " + ColorIndex + "|dikte " + s.Width.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    + "|" + ms + " ms|" + ((int)Math.Round(len / 10) * 10) + " px|" + (BoardMode == Board.None ? "scherm" : "bord " + BoardMode)
+                    + "|rand " + (s.Outline ? "1" : "0") + (Cfg.Fade ? "|vervaagt" : ""), "");
+            }
+            catch { }
         }
 
         static float Dist(PointF a, PointF b) { float dx = a.X - b.X, dy = a.Y - b.Y; return (float)Math.Sqrt(dx * dx + dy * dy); }

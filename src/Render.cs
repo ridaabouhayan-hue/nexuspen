@@ -262,7 +262,8 @@ namespace NexusPen
         // Het resultaat in 'area' is pixel voor pixel gelijk aan de hele lijn tekenen.
         public static void DrawWet(Graphics g, Stroke s, Rectangle area)
         {
-            if (s.Pts.Count < 2 || (s.Tool != Tool.Pen && s.Tool != Tool.Marker && s.Tool != Tool.Laser)) { Draw(g, s, 1f); return; }
+            // een lijn met rand: in zijn geheel tekenen (stukjes los zouden de rand over de lijn heen leggen)
+            if (s.Pts.Count < 2 || (s.Tool != Tool.Pen && s.Tool != Tool.Marker && s.Tool != Tool.Laser) || s.Outline) { Draw(g, s, 1f); return; }
             float widest = s.Tool == Tool.Marker ? MarkerWidth(s.Width) : s.Tool == Tool.Laser ? LaserWidest(s.Width) : s.Width;
             // stukjes ruim meenemen: het begin en eind van een stuk liggen dan altijd buiten 'area',
             // zodat binnen 'area' de lijn precies zo getekend wordt als de hele lijn
@@ -341,9 +342,20 @@ namespace NexusPen
             using (SolidBrush br = new SolidBrush(c)) g.FillPolygon(br, tri);
         }
 
+        // Welke dingen een rand kunnen krijgen (naast tekst): pen, krijt, lijn, pijl, rechthoek en cirkel.
+        // Niet de markeerstift en de laser: doorzichtig of lichtgevend met een rand ziet er rommelig uit.
+        public static bool CanOutline(Tool t) { return t == Tool.Pen || t == Tool.Line || t == Tool.Arrow || t == Tool.Rect || t == Tool.Ellipse; }
+
         public static float OutlineWidth(Stroke s)
         {
             if (!s.Outline) return 0;
+            if (s.Tool != Tool.Text)
+            {
+                if (!CanOutline(s.Tool)) return 0;
+                // een rand om een lijn: met de lijn mee dikker, net als bij tekst in drie standen
+                float k = s.OutlineWidth == 0 ? 0.22f : s.OutlineWidth == 2 ? 0.55f : 0.35f;
+                return Math.Max(1.5f, s.Width * k + 1f);
+            }
             // dunner dan in 1.2.0: met een dikke rand liepen de letters in elkaar over
             float div = s.OutlineWidth == 0 ? 22f : s.OutlineWidth == 2 ? 10f : 15f;
             return Math.Max(1.2f, s.FontSize / div);
@@ -500,6 +512,7 @@ namespace NexusPen
         {
             if (s.Pts.Count == 0) return;
             PointF a = s.Pts[0], b = s.Pts[s.Pts.Count - 1];
+            if (s.Outline && CanOutline(s.Tool)) DrawLineOutline(g, s, alpha);
             switch (s.Tool)
             {
                 case Tool.Pen:
@@ -521,6 +534,23 @@ namespace NexusPen
                     if (string.IsNullOrEmpty(s.Text)) break;
                     DrawText(g, s);
                     break;
+            }
+        }
+
+        // De rand onder een lijn of vorm: dezelfde vorm, iets breder, in de randkleur
+        static void DrawLineOutline(Graphics g, Stroke s, float alpha)
+        {
+            Color edge = OutlineColorOf(s);
+            if (alpha < 1f) edge = Color.FromArgb(Math.Max(0, Math.Min(255, (int)(255 * alpha))), edge);
+            float w = s.Width + 2 * OutlineWidth(s);
+            PointF a = s.Pts[0], b = s.Pts[s.Pts.Count - 1];
+            switch (s.Tool)
+            {
+                case Tool.Pen: Free(g, s.Pts, edge, w); break;
+                case Tool.Line: using (Pen p = MakePen(edge, w)) g.DrawLine(p, a, b); break;
+                case Tool.Arrow: Arrow(g, a, b, edge, w); break;
+                case Tool.Rect: using (Pen p = MakePen(edge, w)) { RectangleF r = Norm(a, b); g.DrawRectangle(p, r.X, r.Y, r.Width, r.Height); } break;
+                case Tool.Ellipse: using (Pen p = MakePen(edge, w)) g.DrawEllipse(p, Norm(a, b)); break;
             }
         }
 
@@ -574,7 +604,7 @@ namespace NexusPen
                     if (sb.Left < minX) minX = sb.Left; if (sb.Top < minY) minY = sb.Top;
                     if (sb.Right > maxX) maxX = sb.Right; if (sb.Bottom > maxY) maxY = sb.Bottom;
                 }
-            float pad = s.Tool == Tool.Marker ? MarkerWidth(s.Width) / 2 : s.Width / 2;
+            float pad = (s.Tool == Tool.Marker ? MarkerWidth(s.Width) / 2 : s.Width / 2) + OutlineWidth(s) * 1.6f;   // met de rand (een pijlpunt wordt met rand ook groter)
             return RectangleF.FromLTRB(minX - pad, minY - pad, maxX + pad, maxY + pad);
         }
 
