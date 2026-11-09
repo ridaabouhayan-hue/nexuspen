@@ -892,7 +892,7 @@ namespace NexusPen
             }
             y += ((shown + 2) / 3) * (ch + 10 * S) + 10 * S;
             y = Toggle(y, L.T("Rand om tekst"), null, delegate { return c.TextOutline; }, delegate(bool v) { c.TextOutline = v; });
-            y = Toggle(y, L.T("Rand om lijnen en vormen"), L.T("Pen, krijt, lijn, pijl, rechthoek en cirkel. Dikte en kleur zoals bij tekst."), delegate { return c.LineOutline; }, delegate(bool v) { c.LineOutline = v; });
+            y = Toggle(y, L.T("Rand om lijnen en vormen"), L.T("Pen, lijn, pijl, rechthoek en cirkel. Dikte en kleur zoals bij tekst."), delegate { return c.LineOutline; }, delegate(bool v) { c.LineOutline = v; });
             y = Segments(y, L.T("Dikte van de rand"), null, new string[] { L.T("Dun"), L.T("Middel"), L.T("Dik") }, delegate { return c.OutlineWidth; }, delegate(int i) { c.OutlineWidth = i; });
             y = Segments(y, L.T("Randkleur"), null, new string[] { L.T("Zwart"), L.T("Wit"), L.T("Automatisch") }, delegate { return c.OutlineColor; }, delegate(int i) { c.OutlineColor = i; });
             y = Segments(y, L.T("Standaardgrootte"), null, new string[] { "24", "36", "48", "64" }, delegate { int[] v = { 24, 36, 48, 64 }; int b = 1; for (int i = 0; i < 4; i++) if (Math.Abs(v[i] - c.TextSize) < 1) b = i; return b; },

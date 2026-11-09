@@ -262,9 +262,9 @@ namespace NexusPen
         // Het resultaat in 'area' is pixel voor pixel gelijk aan de hele lijn tekenen.
         public static void DrawWet(Graphics g, Stroke s, Rectangle area)
         {
-            // een lijn met rand: in zijn geheel tekenen (stukjes los zouden de rand over de lijn heen leggen)
-            if (s.Pts.Count < 2 || (s.Tool != Tool.Pen && s.Tool != Tool.Marker && s.Tool != Tool.Laser) || s.Outline) { Draw(g, s, 1f); return; }
-            float widest = s.Tool == Tool.Marker ? MarkerWidth(s.Width) : s.Tool == Tool.Laser ? LaserWidest(s.Width) : s.Width;
+            if (s.Pts.Count < 2 || (s.Tool != Tool.Pen && s.Tool != Tool.Marker && s.Tool != Tool.Laser)) { Draw(g, s, 1f); return; }
+            float ow = OutlineWidth(s);
+            float widest = (s.Tool == Tool.Marker ? MarkerWidth(s.Width) : s.Tool == Tool.Laser ? LaserWidest(s.Width) : s.Width) + 2 * ow;
             // stukjes ruim meenemen: het begin en eind van een stuk liggen dan altijd buiten 'area',
             // zodat binnen 'area' de lijn precies zo getekend wordt als de hele lijn
             using (GraphicsPath gp = PartialPath(s.Pts, area, widest + 8))
@@ -273,6 +273,8 @@ namespace NexusPen
                 switch (s.Tool)
                 {
                     case Tool.Pen:
+                        // met rand: eerst de rand van alle stukjes, dan de lijn (net als bij de hele lijn)
+                        if (ow > 0) using (Pen p = MakePen(OutlineColorOf(s), s.Width + 2 * ow)) g.DrawPath(p, gp);
                         if ((s.Style & Stroke.Chalk) != 0) using (Pen p = ChalkPen(s.Color, s.Width)) g.DrawPath(p, gp);
                         else using (Pen p = MakePen(s.Color, s.Width)) g.DrawPath(p, gp);
                         break;
@@ -548,10 +550,25 @@ namespace NexusPen
             {
                 case Tool.Pen: Free(g, s.Pts, edge, w); break;
                 case Tool.Line: using (Pen p = MakePen(edge, w)) g.DrawLine(p, a, b); break;
-                case Tool.Arrow: Arrow(g, a, b, edge, w); break;
+                case Tool.Arrow: ArrowOutline(g, a, b, edge, s.Width, OutlineWidth(s)); break;
                 case Tool.Rect: using (Pen p = MakePen(edge, w)) { RectangleF r = Norm(a, b); g.DrawRectangle(p, r.X, r.Y, r.Width, r.Height); } break;
                 case Tool.Ellipse: using (Pen p = MakePen(edge, w)) g.DrawEllipse(p, Norm(a, b)); break;
             }
+        }
+
+        // Rand om een pijl: om de steel en rondom de punt (dezelfde maten als Arrow)
+        static void ArrowOutline(Graphics g, PointF a, PointF b, Color c, float w, float ow)
+        {
+            float dx = b.X - a.X, dy = b.Y - a.Y;
+            float len = (float)Math.Sqrt(dx * dx + dy * dy);
+            if (len < 2) return;
+            float ux = dx / len, uy = dy / len;
+            float head = Math.Min(len, Math.Max(14f, w * 4f)), hw = head * 0.6f;
+            PointF bp = new PointF(b.X - ux * head, b.Y - uy * head);
+            using (Pen p = MakePen(c, w + 2 * ow)) g.DrawLine(p, a, new PointF(b.X - ux * head * 0.6f, b.Y - uy * head * 0.6f));
+            PointF[] tri = { b, new PointF(bp.X - uy * hw, bp.Y + ux * hw), new PointF(bp.X + uy * hw, bp.Y - ux * hw) };
+            using (SolidBrush br = new SolidBrush(c)) g.FillPolygon(br, tri);
+            using (Pen p = MakePen(c, 2 * ow)) g.DrawPolygon(p, tri);
         }
 
         // Hoogte van een regel tekst

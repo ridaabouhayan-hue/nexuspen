@@ -649,7 +649,7 @@ namespace NexusPen
         Rectangle WetBox(Stroke s, int i)
         {
             float widest = s.Tool == Tool.Marker ? Render.MarkerWidth(s.Width) : s.Tool == Tool.Laser ? Render.LaserWidest(s.Width) : s.Width;
-            float pad = widest / 2 + 3;
+            float pad = widest / 2 + Render.OutlineWidth(s) + 3;
             RectangleF r = i < 0 || s.Pts.Count < 2 ? new RectangleF(s.Pts[0], SizeF.Empty) : Render.SegmentBox(s.Pts, i);
             r.Inflate(pad, pad);
             return Clip(r);
@@ -1566,7 +1566,8 @@ namespace NexusPen
         public void ShowSettings(string page)
         {
             // het bord blijft staan; Instellingen komt er bovenop (met een gewone wijzer)
-            if (DrawMode) SetTool(Tool.Mouse);
+            noGiveBack = true;
+            try { if (DrawMode) SetTool(Tool.Mouse); } finally { noGiveBack = false; }
             Usage.Log("menu", "instellingen", page ?? "");
             if (settingsForm != null && !settingsForm.IsDisposed)
             {
@@ -1626,11 +1627,13 @@ namespace NexusPen
         // Tekenen uit: het programma waarin je zat weer actief maken. Anders had dat programma
         // eerst nog een klik van je nodig voordat je er weer in kon typen of scrollen.
         IntPtr otherWindow;
+        bool noGiveBack;   // Instellingen gaat net open: die krijgt het toetsenbord
         static readonly uint MyPid = (uint)System.Diagnostics.Process.GetCurrentProcess().Id;
         static bool IsOurs(IntPtr h) { uint pid; W.GetWindowThreadProcessId(h, out pid); return pid == MyPid; }
 
         void RememberOtherWindow()
         {
+            otherWindow = IntPtr.Zero;   // geen oud venster van een eerdere keer
             try { IntPtr fg = W.GetForegroundWindow(); if (fg != IntPtr.Zero && !IsOurs(fg)) otherWindow = fg; } catch { }
         }
 
@@ -1638,10 +1641,10 @@ namespace NexusPen
         {
             try
             {
-                IntPtr fg = W.GetForegroundWindow();
-                if (fg != IntPtr.Zero && !IsOurs(fg)) return;   // je zit al in een ander programma
-                // Instellingen, de timer of een melding van NexusPen zelf: die houden het toetsenbord
-                if (fg != IntPtr.Zero && fg != Handle) return;
+                if (noGiveBack) return;
+                // alleen als de tekenlaag zelf nog het actieve venster is (niet als je al elders zit,
+                // of in Instellingen of de timer van NexusPen)
+                if (W.GetForegroundWindow() != Handle) return;
                 IntPtr target = IntPtr.Zero;
                 if (otherWindow != IntPtr.Zero && W.IsWindow(otherWindow) && W.IsWindowVisible(otherWindow)) target = otherWindow;
                 else
@@ -2489,7 +2492,8 @@ namespace NexusPen
             current.Color = CurrentColor;
             current.Width = PenWidth;
             if (Cfg.Chalk && CurrentTool == Tool.Pen) current.Style |= Stroke.Chalk;
-            if (Cfg.LineOutline && Render.CanOutline(CurrentTool)) { current.Outline = true; current.OutlineWidth = Cfg.OutlineWidth; current.OutlineColor = Cfg.OutlineColor; }
+            // rand om lijnen en vormen (niet bij krijt: de rand schijnt door de krijtkorrels)
+            if (Cfg.LineOutline && Render.CanOutline(CurrentTool) && (current.Style & Stroke.Chalk) == 0) { current.Outline = true; current.OutlineWidth = Cfg.OutlineWidth; current.OutlineColor = Cfg.OutlineColor; }
             strokeStartAt = DateTime.Now;
             current.Pts.Add(p);
             if (IsShape(CurrentTool)) current.Pts.Add(p);
@@ -2627,7 +2631,6 @@ namespace NexusPen
             if (current == null) return;
             Stroke s = current;
             current = null;
-            LogStroke(s);
             lastDot = s; lastDotAt = DateTime.Now;   // voor dubbelklik: de eerste klik kan een puntje zijn
             if (s.Tool == Tool.Laser)
             {
@@ -2648,6 +2651,7 @@ namespace NexusPen
                 lastStrokeAt = DateTime.Now;
             }
             dirty = true;
+            LogStroke(s);   // pas na het tekenen: het wegschrijven mag de streep niet ophouden
         }
 
         // Per streep een paar getallen voor het gebruik (alleen op deze pc): nooit de plek, de vorm of de tekst
