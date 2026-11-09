@@ -14,6 +14,7 @@ namespace NexusPen
             V("1.3.12", "9 November 2026",
                 I("tekst", "Three more fonts: Arial, Calibri and Comic Sans"),
                 I("prullenbak", "Delete at the end of your text removes the whole text box"),
+                I("prullenbak", "Only the bin clears everything; Delete alone does not"),
                 I("tekst", "The blinking cursor is black again, white on a dark board")),
             V("1.3.11", "8 November 2026",
                 I("achter", "Send to back, to reach something small under something big"),

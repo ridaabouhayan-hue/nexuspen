@@ -867,9 +867,9 @@ namespace NexusPen
             else if (justUpdated)
                 tray.ShowBalloonTip(4000, "NexusPen", L.F("NexusPen is bijgewerkt naar {0}. Je tekening staat er nog.", Program.Version), ToolTipIcon.Info);
             else if (restoredAfterCrash)
-                tray.ShowBalloonTip(4000, "NexusPen", L.T("Je tekening van de vorige keer is teruggezet, want NexusPen was onverwacht gestopt. Alles wissen kan met de Delete-toets."), ToolTipIcon.Info);
+                tray.ShowBalloonTip(4000, "NexusPen", L.T("Je tekening van de vorige keer is teruggezet, want NexusPen was onverwacht gestopt. Alles wissen kan met de prullenbak."), ToolTipIcon.Info);
             else if (restoredSaved)
-                tray.ShowBalloonTip(4000, "NexusPen", L.T("Je opgeslagen tekening staat er weer. Liever leeg beginnen? Druk op Delete en daarna op Opslaan."), ToolTipIcon.Info);
+                tray.ShowBalloonTip(4000, "NexusPen", L.T("Je opgeslagen tekening staat er weer. Liever leeg beginnen? Klik op de prullenbak en daarna op Opslaan."), ToolTipIcon.Info);
 
             if (Cfg.UpdateCheck && !Program.SelfTest)
                 Updates.CheckLater(20000, delegate(Updates.Info info)
@@ -2673,7 +2673,9 @@ namespace NexusPen
                 case Keys.Back: ed.Backspace(ctrl); break;
                 case Keys.Delete:
                     // Delete aan het eind van de tekst (er staat niets meer achter het streepje): het hele tekstvak weg
-                    if (!ctrl && !shift && !ed.HasSelection && ed.Caret >= ed.Text.Length) { lastEsc = true; DeleteTypingBox(); return true; }
+                    // (alleen bij een nieuwe druk: wie Delete vasthoudt om letters te wissen, verliest niet ineens het hele vak)
+                    if (!ctrl && !shift && !ed.HasSelection && ed.Caret >= ed.Text.Length) { if (!deleteHeld) DeleteTypingBox(); deleteHeld = true; return true; }
+                    deleteHeld = true;
                     ed.Delete(ctrl); break;
                 case Keys.Left: ed.Left(ctrl, shift); break;
                 case Keys.Right: ed.Right(ctrl, shift); break;
@@ -2878,9 +2880,17 @@ namespace NexusPen
             catch (Exception ex) { SafeDrawError(typing, ex); }
         }
 
+        bool deleteHeld;   // Delete wordt nog vastgehouden (de toets herhaalt zichzelf)
+        protected override void OnKeyUp(KeyEventArgs e)
+        {
+            base.OnKeyUp(e);
+            if (e.KeyCode == Keys.Delete) deleteHeld = false;
+        }
+
         protected override void OnKeyDown(KeyEventArgs e)
         {
             base.OnKeyDown(e);
+            if (e.KeyCode == Keys.Delete && deleteHeld && typing == null) { e.Handled = true; return; }   // herhaling van dezelfde Delete na het weghalen van een tekstvak
             if (TypingKey(e)) return;
             if (!DrawMode) return;   // de tekenlaag kreeg per ongeluk het toetsenbord (bijv. na Instellingen sluiten): toetsen zijn dan voor je eigen programma
             // op een bord: Ctrl+plus en Ctrl+min zoomen in en uit, Ctrl+0 terug naar 100%
@@ -2946,7 +2956,7 @@ namespace NexusPen
             int n = Shortcuts.ColorFor(e);
             if (n >= 0) { if (n < ColorCount) SetColor(n); e.Handled = true; return; }
             if (e.Control || e.Alt) return;
-            if (e.KeyCode == Keys.Delete) { ClearAll(); return; }
+            // Delete zonder selectie doet niets: alles in een keer weghalen kan alleen met de prullenbak
             if (e.KeyCode == Keys.Oemplus || e.KeyCode == Keys.Add) SetWidth(PenWidth + (PenWidth < 6 ? 1 : 2));
             if (e.KeyCode == Keys.OemMinus || e.KeyCode == Keys.Subtract) SetWidth(PenWidth - (PenWidth <= 6 ? 1 : 2));
         }

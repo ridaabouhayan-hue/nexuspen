@@ -352,7 +352,7 @@ namespace NexusPen
                     it = Button(r, "undo", Shortcuts.Tip(L.T("Ongedaan maken"), "undo") + ". " + Shortcuts.Tip(L.T("Rechtsklik = opnieuw"), "redo"), delegate { Use(key); o.Undo(); }, null, null);
                     break;
                 case "wis":
-                    it = Button(r, "prullenbak", L.T("Alles wissen") + "  (Delete). " + L.T("Terug met Ctrl+Z"), delegate { Use(key); o.ClearAll(); }, null, null);
+                    it = Button(r, "prullenbak", L.T("Alles wissen") + ". " + L.T("Terug met Ctrl+Z"), delegate { Use(key); o.ClearAll(); }, null, null);
                     break;
                 case "redo":
                     it = Button(r, "redo", Shortcuts.Tip(L.T("Opnieuw"), "redo"), delegate { Use(key); o.Redo(); }, null, null);
