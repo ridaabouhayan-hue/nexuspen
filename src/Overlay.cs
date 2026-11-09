@@ -1426,7 +1426,7 @@ namespace NexusPen
                 if (typing == null || typing.Text != want || ed.Selected != " met") { Program.SelfTestErrors++; Console.Error.WriteLine("Pijltjes of selecteren in de tekst werken niet"); }
                 // tekst met rand in alle lettertypes: geen zwarte vakjes in letters als de t
                 float ty = 40;
-                foreach (string fn in new string[] { "Andika", "Nunito", "Lexend", "Atkinson Hyperlegible", "Patrick Hand", "Segoe UI" })
+                foreach (string fn in new string[] { "Andika", "Nunito", "Lexend", "Atkinson Hyperlegible", "Patrick Hand", "Segoe UI", "Arial", "Calibri", "Comic Sans MS" })
                 {
                     Stroke ts = new Stroke(); ts.Tool = Tool.Text; ts.Text = "testen " + fn; ts.FontName = fn; ts.FontSize = 40;
                     ts.Color = ColorTranslator.FromHtml("#FF8000"); ts.Outline = true; ts.OutlineWidth = 2; ts.OutlineColor = 0;
@@ -2671,7 +2671,10 @@ namespace NexusPen
                     if (ctrl) { CloseTextInput(true); return true; }
                     ed.Insert("\n"); break;
                 case Keys.Back: ed.Backspace(ctrl); break;
-                case Keys.Delete: ed.Delete(ctrl); break;
+                case Keys.Delete:
+                    // Delete aan het eind van de tekst (er staat niets meer achter het streepje): het hele tekstvak weg
+                    if (!ctrl && !shift && !ed.HasSelection && ed.Caret >= ed.Text.Length) { lastEsc = true; DeleteTypingBox(); return true; }
+                    ed.Delete(ctrl); break;
                 case Keys.Left: ed.Left(ctrl, shift); break;
                 case Keys.Right: ed.Right(ctrl, shift); break;
                 case Keys.Up: using (TextLayout lay = new TextLayout(typing)) ed.Vertical(-1, shift, lay); break;
@@ -2863,12 +2866,12 @@ namespace NexusPen
                     }
                     if (caretOn && !ed.HasSelection)
                     {
-                        // gewoon streepje zoals in een tekstverwerker, in de kleur van je tekst (met je rand eromheen als de tekst een rand heeft)
+                        // gewoon streepje zoals in Windows: zwart, op een donker bord wit. Op je gewone scherm
+                        // weet NexusPen niet wat eronder staat: dan zwart met een heel dun wit randje, zodat je hem altijd ziet.
                         RectangleF cr = lay.CaretRect(ed.Caret, Math.Max(2, (float)Math.Round(1.5f * TypingScale)));
-                        // met een randje eromheen (de randkleur van de tekst, anders licht of donker), zodat je hem altijd ziet
-                        Color edge = typing.Outline ? Render.OutlineColorOf(typing) : Theme.Luma(typing.Color) > 0.6 ? Color.FromArgb(160, 0, 0, 0) : Color.FromArgb(200, 255, 255, 255);
-                        using (SolidBrush ob = new SolidBrush(edge)) g.FillRectangle(ob, RectangleF.Inflate(cr, 1, 1));
-                        using (SolidBrush cb = new SolidBrush(Color.FromArgb(255, typing.Color))) g.FillRectangle(cb, cr);
+                        bool darkBoard = BoardMode == Board.Black || BoardMode == Board.Dark;
+                        if (BoardMode == Board.None) g.FillRectangle(Brushes.White, RectangleF.Inflate(cr, 1, 1));
+                        g.FillRectangle(darkBoard ? Brushes.White : Brushes.Black, cr);
                     }
                 }
             }
@@ -3019,6 +3022,21 @@ namespace NexusPen
         }
 
         // Klaar met typen: de tekst komt in de tekening (of terug zoals hij was)
+        // Het tekstvak waarin je typt helemaal weghalen (met Ongedaan maken krijg je het terug)
+        void DeleteTypingBox()
+        {
+            if (typing == null) return;
+            if (typingOld == null)
+            {
+                // nieuwe tekst: eerst bewaren en dan weghalen, zodat Ongedaan maken hem terugbrengt
+                Stroke t = typing;
+                CloseTextInput(true);
+                if (strokes.Contains(t)) { Checkpoint(); strokes.Remove(t); MarkChanged(); Rebuild(); }
+            }
+            else { typing.Text = ""; CloseTextInput(true); }   // bestaande tekst: leeg = weg; de stap voor Ongedaan maken staat er al
+            RenderFrame();
+        }
+
         void CloseTextInput(bool commit)
         {
             if (typing == null) return;

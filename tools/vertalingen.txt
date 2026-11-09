@@ -408,3 +408,6 @@ Knippen | Cut | Couper | Cortar | Recortar | Kes | Вырезать | قص | 剪
 Kopiëren | Copy | Copier | Copiar | Copiar | Kopyala | Копировать | نسخ | 复制
 Plakken | Paste | Coller | Pegar | Colar | Yapıştır | Вставить | لصق | 粘贴
 Alles selecteren | Select all | Tout sélectionner | Seleccionar todo | Selecionar tudo | Tümünü seç | Выделить всё | تحديد الكل | 全选
+Bekend en strak | Familiar and clean | Connue et nette | Conocida y limpia | Conhecida e limpa | Tanıdık ve sade | Привычный и строгий | مألوف وبسيط | 常见且简洁
+Standaard van Word, rustig | Word's default, calm | Police par défaut de Word, calme | La de Word, tranquila | Padrão do Word, calma | Word'ün varsayılanı, sakin | Шрифт Word по умолчанию, спокойный | خط Word الافتراضي، هادئ | Word 默认字体，平和
+Speels, bekend van school | Playful, known from school | Ludique, connue à l'école | Divertida, conocida del colegio | Divertida, conhecida da escola | Eğlenceli, okuldan bilinen | Игривый, знакомый по школе | مرح، معروف من المدرسة | 活泼，学校里常见

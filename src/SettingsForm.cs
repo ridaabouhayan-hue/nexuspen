@@ -18,8 +18,8 @@ namespace NexusPen
         static readonly string[] PageIcons = { "huis", "taal", "kleuren", "rechthoek", "pen", "tekst", "stempel", "bord", "voorlezen", "toetsen", "opslaan", "schermdelen", "grafiek", "muis", "download", "info" };
         // na deze pagina's een dun streepje in de zijbalk: basis, tekenen, bewaren en delen, hulp
         static readonly string[] GroupEnds = { "Werkbalk", "Voorlezen", "Schermdelen" };
-        static readonly string[] FontChoices = { "Segoe UI", "Andika", "Atkinson Hyperlegible", "Lexend", "Nunito", "Patrick Hand" };
-        static readonly string[] FontDescs = { "Standaard van Windows", "Gemaakt voor beginnende lezers en Alfa", "Extra goed leesbaar, ook voor slechtzienden", "Rustig en ruim, prettig bij lange zinnen", "Rond en vriendelijk, de huisstijl van Nexus", "Handschrift, toch goed te lezen" }; // vertaal
+        static readonly string[] FontChoices = { "Segoe UI", "Andika", "Atkinson Hyperlegible", "Lexend", "Nunito", "Patrick Hand", "Arial", "Calibri", "Comic Sans MS" };
+        static readonly string[] FontDescs = { "Standaard van Windows", "Gemaakt voor beginnende lezers en Alfa", "Extra goed leesbaar, ook voor slechtzienden", "Rustig en ruim, prettig bij lange zinnen", "Rond en vriendelijk, de huisstijl van Nexus", "Handschrift, toch goed te lezen", "Bekend en strak", "Standaard van Word, rustig", "Speels, bekend van school" }; // vertaal
 
         Overlay ov;
         List<Item> items = new List<Item>();
@@ -890,7 +890,7 @@ namespace NexusPen
                         g.DrawString(L.T("Ik ga met de trein."), f, b, it.R.X + 10 * S, it.R.Y + 46 * S);
                 });
             }
-            y += 2 * (ch + 10 * S) + 10 * S;
+            y += ((shown + 2) / 3) * (ch + 10 * S) + 10 * S;
             y = Toggle(y, L.T("Rand om tekst"), null, delegate { return c.TextOutline; }, delegate(bool v) { c.TextOutline = v; });
             y = Segments(y, L.T("Dikte van de rand"), null, new string[] { L.T("Dun"), L.T("Middel"), L.T("Dik") }, delegate { return c.OutlineWidth; }, delegate(int i) { c.OutlineWidth = i; });
             y = Segments(y, L.T("Randkleur"), null, new string[] { L.T("Zwart"), L.T("Wit"), L.T("Automatisch") }, delegate { return c.OutlineColor; }, delegate(int i) { c.OutlineColor = i; });
