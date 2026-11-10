@@ -11,6 +11,9 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.17", "10 November 2026",
+                I("geluid", "Five calm timer sounds of a few seconds, and choose how often they play"),
+                I("tekst", "Sharper text in the right-click menu")),
             V("1.3.16", "10 November 2026",
                 I("bord", "The board button opens and closes the board, Esc closes it too"),
                 I("prullenbak", "Delete a page of the board"),

@@ -426,51 +426,79 @@ namespace NexusPen
     }
 
     // ------------------------------------------------------------------ Geluid als de timer klaar is
-    // Alleen geluiden die al in Windows zitten (C:\Windows\Media). Ontbreekt er een, dan het gewone belletje.
+    // Vijf rustige eindsignalen van ongeveer 4,5 seconden (gemaakt met ElevenLabs, zie assets/sounds/LEESMIJ.txt),
+    // ingebouwd in het programma zelf. Herhalen: 1, 2 of 3 keer, of tot je op de timer klikt (hooguit 30 seconden).
     static class TimerSound
     {
-        public static readonly string[] Names = { "Belletje", "Wekker", "Melding", "Gong" }; // vertaal
-        static System.Media.SoundPlayer player;
-        static System.Windows.Forms.Timer stopper;
+        public static readonly string[] Names = { "Klankschaal", "Drie tonen", "Piano", "Harp", "Belletjes" }; // vertaal
+        static readonly string[] Files = { "timer-1-klankschaal.wav", "timer-2-drie-tonen.wav", "timer-3-piano.wav", "timer-4-harp.wav", "timer-5-belletjes.wav" };
+        public static readonly string[] RepeatNames = { "1 keer", "2 keer", "3 keer", "Tot je op de timer klikt" }; // vertaal
+        const int SoundMs = 4600;   // een geluid duurt ongeveer 4,5 seconden
 
-        static string FileFor(int kind)
+        static System.Media.SoundPlayer player;
+        static System.Windows.Forms.Timer again;
+        static int left;
+        static DateTime startedAt;
+        static byte[][] cache = new byte[Files.Length][];
+
+        static byte[] Data(int kind)
         {
-            string dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Media");
-            string[] files = kind == 1 ? new string[] { "Alarm01.wav", "Alarm02.wav" }
-                : kind == 2 ? new string[] { "Windows Notify System Generic.wav", "Windows Notify.wav", "notify.wav" }
-                : kind == 3 ? new string[] { "chimes.wav", "Windows Proximity Notification.wav", "tada.wav" } : new string[0];
-            foreach (string f in files) { string p = System.IO.Path.Combine(dir, f); if (System.IO.File.Exists(p)) return p; }
-            return null;
+            kind = Math.Max(0, Math.Min(Files.Length - 1, kind));
+            if (cache[kind] != null) return cache[kind];
+            using (System.IO.Stream st = typeof(TimerSound).Assembly.GetManifestResourceStream(Files[kind]))
+            {
+                if (st == null) return null;
+                using (System.IO.MemoryStream ms = new System.IO.MemoryStream()) { st.CopyTo(ms); cache[kind] = ms.ToArray(); }
+            }
+            return cache[kind];
         }
 
-        // klaar: het gekozen geluid (de wekker klinkt hooguit 8 seconden, of tot je op de timer klikt)
-        public static void Play(Settings c) { if (c == null || c.TimerMute) return; Play(c.TimerSound, false); }
+        // voor de test: zitten alle geluiden echt in het programma?
+        public static bool AllPresent() { for (int i = 0; i < Files.Length; i++) { byte[] d = Data(i); if (d == null || d.Length < 10000) return false; } return true; }
 
-        public static void Play(int kind, bool preview)
+        // de tijd is om: het gekozen geluid, zo vaak als ingesteld
+        public static void Play(Settings c)
+        {
+            if (c == null || c.TimerMute) return;
+            int times = c.TimerRepeat == 3 ? 100 : c.TimerRepeat + 1;
+            Start(c.TimerSound, times);
+        }
+
+        // voorbeeld in Instellingen of het menu: een keer
+        public static void Play(int kind, bool preview) { Start(kind, 1); }
+
+        static void Start(int kind, int times)
         {
             Stop();
             try
             {
-                string f = FileFor(kind);
-                if (f == null) { System.Media.SystemSounds.Asterisk.Play(); return; }
-                player = new System.Media.SoundPlayer(f);
-                if (kind == 1 && !preview)
+                byte[] d = Data(kind);
+                if (d == null) { System.Media.SystemSounds.Asterisk.Play(); return; }
+                player = new System.Media.SoundPlayer(new System.IO.MemoryStream(d));
+                player.Play();
+                left = times - 1; startedAt = DateTime.Now;
+                if (left > 0)
                 {
-                    player.PlayLooping();
-                    stopper = new System.Windows.Forms.Timer();
-                    stopper.Interval = 8000;
-                    stopper.Tick += delegate { Stop(); };
-                    stopper.Start();
+                    again = new System.Windows.Forms.Timer();
+                    again.Interval = SoundMs;
+                    again.Tick += delegate
+                    {
+                        // nooit langer dan 30 seconden, ook niet bij "tot je klikt"
+                        if (left <= 0 || (DateTime.Now - startedAt).TotalSeconds > 30) { Stop(); return; }
+                        left--;
+                        try { if (player != null) player.Play(); } catch { Stop(); }
+                    };
+                    again.Start();
                 }
-                else player.Play();
             }
             catch (Exception ex) { Log.Error("Timergeluid", ex); try { System.Media.SystemSounds.Asterisk.Play(); } catch { } }
         }
 
         public static void Stop()
         {
-            try { if (stopper != null) { stopper.Stop(); stopper.Dispose(); stopper = null; } } catch { }
+            try { if (again != null) { again.Stop(); again.Dispose(); again = null; } } catch { }
             try { if (player != null) { player.Stop(); player.Dispose(); player = null; } } catch { }
+            left = 0;
         }
     }
 }

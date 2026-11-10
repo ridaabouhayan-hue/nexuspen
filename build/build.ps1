@@ -9,6 +9,7 @@ New-Item -ItemType Directory -Force -Path $out | Out-Null
 
 $src = @(Get-ChildItem (Join-Path $root "src") -Filter *.cs -Recurse | ForEach-Object { $_.FullName })
 $res = @(Get-ChildItem (Join-Path $root "assets\fonts") -Filter *.ttf | ForEach-Object { "/resource:$($_.FullName),$($_.Name)" })
+$res += @(Get-ChildItem (Join-Path $root "assets\sounds") -Filter *.wav | ForEach-Object { "/resource:$($_.FullName),$($_.Name)" })
 $refs = "/r:System.dll", "/r:System.Core.dll", "/r:System.Drawing.dll", "/r:System.Windows.Forms.dll"
 
 Write-Host "NexusPen.exe bouwen..."

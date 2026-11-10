@@ -425,14 +425,9 @@ De andere schermen blijven vrij: daar klik je gewoon in je eigen programma's | T
 Sluit een beamer of tweede scherm aan om te kiezen | Connect a projector or second screen to choose | Branchez un projecteur ou un deuxième écran pour choisir | Conecta un proyector o una segunda pantalla para elegir | Conecte um projetor ou uma segunda tela para escolher | Seçmek için projektör veya ikinci ekran bağla | Подключите проектор или второй экран, чтобы выбрать | وصّل جهاز عرض أو شاشة ثانية للاختيار | 连接投影仪或第二个屏幕后即可选择
 Tekening naar het andere scherm | Drawing to the other screen | Dessin vers l'autre écran | Dibujo a la otra pantalla | Desenho para a outra tela | Çizimi diğer ekrana taşı | Рисунок на другой экран | الرسم إلى الشاشة الأخرى | 绘图移到另一个屏幕
 Geluid als de tijd om is | Sound when time is up | Son à la fin du temps | Sonido al terminar el tiempo | Som quando o tempo acabar | Süre bitince ses | Звук, когда время вышло | الصوت عند انتهاء الوقت | 时间到时的声音
-Je hoort het meteen als voorbeeld. De wekker klinkt tot je op de timer klikt (hooguit 8 seconden). | You hear it right away as an example. The alarm rings until you click the timer (8 seconds at most). | Vous l'entendez tout de suite en exemple. Le réveil sonne jusqu'à ce que vous cliquiez sur le minuteur (8 secondes maximum). | Lo oyes enseguida como ejemplo. La alarma suena hasta que haces clic en el temporizador (8 segundos como máximo). | Você ouve na hora como exemplo. O alarme toca até você clicar no timer (no máximo 8 segundos). | Örnek olarak hemen duyarsın. Alarm, zamanlayıcıya tıklayana kadar çalar (en fazla 8 saniye). | Вы сразу услышите пример. Будильник звенит, пока вы не нажмёте на таймер (не больше 8 секунд). | تسمعه فورًا كمثال. يرن المنبّه حتى تنقر على المؤقت (8 ثوانٍ كحد أقصى). | 会立即播放示例。闹铃会一直响到你点击计时器（最多 8 秒）。
 Geen geluid | No sound | Sans son | Sin sonido | Sem som | Ses yok | Без звука | بلا صوت | 无声音
 Ook met het luidsprekertje in de timer zelf | Also with the speaker button in the timer itself | Aussi avec le bouton haut-parleur du minuteur | También con el botón del altavoz en el temporizador | Também com o botão de alto-falante no próprio timer | Zamanlayıcıdaki hoparlör düğmesiyle de | Также кнопкой динамика в самом таймере | أيضًا بزر السماعة في المؤقت نفسه | 也可以用计时器上的喇叭按钮
 Geluid aan of uit | Sound on or off | Son activé ou désactivé | Sonido sí o no | Som ligado ou desligado | Ses açık veya kapalı | Звук вкл. или выкл. | تشغيل الصوت أو إيقافه | 声音开或关
-Belletje | Small bell | Clochette | Campanita | Sininho | Zil | Колокольчик | جرس صغير | 小铃铛
-Wekker | Alarm clock | Réveil | Despertador | Despertador | Çalar saat | Будильник | منبّه | 闹钟
-Melding | Notification | Notification | Notificación | Notificação | Bildirim | Уведомление | إشعار | 通知
-Gong | Gong | Gong | Gong | Gongo | Gong | Гонг | صنج | 锣声
 Extra dik | Extra thick | Très épais | Extra grueso | Extra grosso | Ekstra kalın | Очень толстый | سميك جدًا | 特粗
 Er staat niets op dit scherm om te verplaatsen | There is nothing on this screen to move | Il n'y a rien à déplacer sur cet écran | No hay nada en esta pantalla para mover | Não há nada nesta tela para mover | Bu ekranda taşınacak bir şey yok | На этом экране нечего переносить | لا يوجد شيء على هذه الشاشة لنقله | 这个屏幕上没有可移动的内容
 Breed en duidelijk, ook op afstand | Wide and clear, also from a distance | Large et claire, même de loin | Ancha y clara, también de lejos | Larga e clara, também de longe | Geniş ve net, uzaktan da | Широкий и чёткий, видно и издалека | عريض وواضح، حتى من بعيد | 宽而清晰，远处也看得清
@@ -447,3 +442,15 @@ Sluiten: op de bordknop klikken, of Esc | Close: click the board button, or Esc 
 Bewaren | Keep | Garder | Conservar | Manter | Sakla | Сохранить | الاحتفاظ | 保留
 Hele scherm (Esc = terug) | Full screen (Esc = back) | Plein écran (Échap = retour) | Pantalla completa (Esc = volver) | Tela cheia (Esc = voltar) | Tam ekran (Esc = geri) | Во весь экран (Esc = назад) | ملء الشاشة (Esc = رجوع) | 全屏（Esc 返回）
 Muisaanwijzer tonen | Show mouse pointer | Afficher le pointeur | Mostrar el puntero | Mostrar o ponteiro | Fare işaretçisini göster | Показывать указатель | إظهار مؤشر الفأرة | 显示鼠标指针
+Rustig, een paar seconden. Je hoort het meteen als voorbeeld. | Calm, a few seconds. You hear it right away as an example. | Calme, quelques secondes. Vous l'entendez tout de suite en exemple. | Tranquilo, unos segundos. Lo oyes enseguida como ejemplo. | Calmo, alguns segundos. Você ouve na hora como exemplo. | Sakin, birkaç saniye. Örnek olarak hemen duyarsın. | Спокойно, несколько секунд. Вы сразу услышите пример. | هادئ، بضع ثوانٍ. تسمعه فورًا كمثال. | 平和，几秒钟。会立即播放示例。
+Hoe vaak | How often | Combien de fois | Cuántas veces | Quantas vezes | Kaç kez | Сколько раз | كم مرة | 次数
+Klik op de timer om het geluid te stoppen | Click the timer to stop the sound | Cliquez sur le minuteur pour arrêter le son | Haz clic en el temporizador para parar el sonido | Clique no timer para parar o som | Sesi durdurmak için zamanlayıcıya tıkla | Нажмите на таймер, чтобы остановить звук | انقر على المؤقت لإيقاف الصوت | 点击计时器停止声音
+Klankschaal | Singing bowl | Bol chantant | Cuenco tibetano | Taça tibetana | Tibet çanağı | Поющая чаша | وعاء الغناء | 颂钵
+Drie tonen | Three tones | Trois notes | Tres tonos | Três tons | Üç ton | Три тона | ثلاث نغمات | 三个音
+Piano | Piano | Piano | Piano | Piano | Piyano | Пианино | بيانو | 钢琴
+Harp | Harp | Harpe | Arpa | Harpa | Arp | Арфа | قيثارة | 竖琴
+Belletjes | Bells | Clochettes | Campanillas | Sininhos | Ziller | Колокольчики | أجراس | 铃铛
+1 keer | Once | 1 fois | 1 vez | 1 vez | 1 kez | 1 раз | مرة واحدة | 1 次
+2 keer | Twice | 2 fois | 2 veces | 2 vezes | 2 kez | 2 раза | مرتان | 2 次
+3 keer | 3 times | 3 fois | 3 veces | 3 vezes | 3 kez | 3 раза | 3 مرات | 3 次
+Tot je op de timer klikt | Until you click the timer | Jusqu'à ce que vous cliquiez sur le minuteur | Hasta que hagas clic en el temporizador | Até você clicar no timer | Zamanlayıcıya tıklayana kadar | Пока не нажмёте на таймер | حتى تنقر على المؤقت | 直到点击计时器

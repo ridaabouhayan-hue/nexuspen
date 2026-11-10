@@ -278,6 +278,9 @@ static class Tests {
         "Rand om een lijn: tekent, en de omtrek groeit mee; markeerstift en laser krijgen geen rand");
     }
 
+    // 15h. Timergeluiden zitten in het programma
+    Check(TimerSound.AllPresent() && TimerSound.Names.Length == 5, "De vijf timergeluiden zitten in het programma");
+
     // 15f. Timer: zelf een tijd typen
     {
       int tTs; bool tA = TimerForm.TryParseTime("5", out tTs) && tTs == 300;

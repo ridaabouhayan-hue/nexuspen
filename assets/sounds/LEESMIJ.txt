@@ -1,0 +1,11 @@
+Timergeluiden van NexusPen
+
+Gemaakt in november 2026 met ElevenLabs Sound Effects (eleven_text_to_sound_v2),
+in het ElevenLabs-account van Rida Abouhayan, voor gebruik in NexusPen.
+Daarna ingekort tot ongeveer 4,5 seconden, even hard gemaakt en omgezet naar wav (22050 Hz, mono, 16 bit).
+
+timer-1-klankschaal.wav  zachte klankschaal
+timer-2-drie-tonen.wav   drie zachte tonen naar beneden
+timer-3-piano.wav        warm piano-akkoord
+timer-4-harp.wav         rustige harp omhoog
+timer-5-belletjes.wav    zachte handbelletjes

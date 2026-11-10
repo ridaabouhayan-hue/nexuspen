@@ -50,7 +50,8 @@ namespace NexusPen
         // tekst
         public string FontName = "Andika";
         public bool TextOutline = true;
-        public int TimerSound = 0;              // 0 belletje, 1 wekker, 2 melding, 3 gong
+        public int TimerSound = 0;              // 0 klankschaal, 1 drie tonen, 2 piano, 3 harp, 4 belletjes
+        public int TimerRepeat = 0;             // 0 een keer, 1 twee keer, 2 drie keer, 3 tot je klikt
         public bool TimerMute;
         public float TimerZoom = 1f;
         public int LastBoard = 1;               // het bord van de vorige keer (1 wit, 2 krijtbord, 3 zwart)
@@ -213,7 +214,8 @@ namespace NexusPen
             if (float.IsNaN(FocusRadius)) FocusRadius = 200;
             FocusRadius = Math.Max(60, Math.Min(700, FocusRadius));
             OutlineWidth = Math.Max(0, Math.Min(2, OutlineWidth));
-            TimerSound = Math.Max(0, Math.Min(3, TimerSound));
+            TimerSound = Math.Max(0, Math.Min(4, TimerSound));
+            TimerRepeat = Math.Max(0, Math.Min(3, TimerRepeat));
             if (float.IsNaN(TimerZoom) || TimerZoom < 0.7f || TimerZoom > 4f) TimerZoom = Math.Max(0.7f, Math.Min(4f, float.IsNaN(TimerZoom) ? 1f : TimerZoom));
             if (FontName == "Comic Sans MS") FontName = "Andika";   // zat in 1.3.12 tot 1.3.15, vervangen door Verdana
             DrawScreen = Math.Max(0, Math.Min(8, DrawScreen));

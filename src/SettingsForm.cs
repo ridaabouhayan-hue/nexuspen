@@ -1269,8 +1269,11 @@ namespace NexusPen
             float y = Heading(contentTop, L.T("Timer"), null);
             string[] names = new string[TimerSound.Names.Length];
             for (int i = 0; i < names.Length; i++) names[i] = L.T(TimerSound.Names[i]);
-            y = Segments(y, L.T("Geluid als de tijd om is"), L.T("Je hoort het meteen als voorbeeld. De wekker klinkt tot je op de timer klikt (hooguit 8 seconden)."), names,
+            y = Segments(y, L.T("Geluid als de tijd om is"), L.T("Rustig, een paar seconden. Je hoort het meteen als voorbeeld."), names,
                 delegate { return c.TimerSound; }, delegate(int i) { c.TimerSound = i; TimerSound.Play(i, true); });
+            string[] reps = new string[TimerSound.RepeatNames.Length];
+            for (int i = 0; i < reps.Length; i++) reps[i] = L.T(TimerSound.RepeatNames[i]);
+            y = Segments(y, L.T("Hoe vaak"), L.T("Klik op de timer om het geluid te stoppen"), reps, delegate { return c.TimerRepeat; }, delegate(int i) { c.TimerRepeat = i; });
             y = Toggle(y, L.T("Geen geluid"), L.T("Ook met het luidsprekertje in de timer zelf"), delegate { return c.TimerMute; }, delegate(bool v) { c.TimerMute = v; if (v) TimerSound.Stop(); });
         }
 
