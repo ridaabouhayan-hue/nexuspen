@@ -47,6 +47,9 @@ namespace NexusPen
             if (full) ExitFull();
             S = baseS * ov.Cfg.TimerZoom;
             Rebuild();
+            Rectangle wz = Screen.FromPoint(at).WorkingArea;
+            float fz = Math.Min(wz.Width * 0.95f / Width, wz.Height * 0.95f / Height);
+            if (fz < 1f) { S *= fz; Rebuild(); }
             if (!Visible)
             {
                 Rectangle wa = Screen.FromPoint(at).WorkingArea;
@@ -118,32 +121,45 @@ namespace NexusPen
         void SetZoom(float z, Point anchor)
         {
             z = Math.Max(0.7f, Math.Min(4f, z));
-            ov.Cfg.TimerZoom = z;
+            Rectangle wa = Screen.FromPoint(anchor).WorkingArea;
             S = baseS * z;
             Rebuild();
-            Rectangle wa = Screen.FromPoint(anchor).WorkingArea;
+            // nooit groter dan het scherm (anders valt de sluitknop eraf)
+            float fit = Math.Min(wa.Width * 0.95f / Width, wa.Height * 0.95f / Height);
+            if (fit < 1f) { z *= fit; S = baseS * z; Rebuild(); }
+            ov.Cfg.TimerZoom = z;
             Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, anchor.X)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, anchor.Y)));
         }
 
         protected override void OnMouseWheel(MouseEventArgs e)
         {
-            if (full) return;
+            if (full || Editing) return;
             SetZoom(ov.Cfg.TimerZoom * (e.Delta > 0 ? 1.1f : 1 / 1.1f), Location);
-            ov.Cfg.Save();
+            saveLater.Stop(); saveLater.Start();   // een keer bewaren als je klaar bent met draaien
         }
 
+        System.Windows.Forms.Timer saveTimer;
+        System.Windows.Forms.Timer saveLater
+        {
+            get
+            {
+                if (saveTimer == null) { saveTimer = new System.Windows.Forms.Timer(); saveTimer.Interval = 800; saveTimer.Tick += delegate { saveTimer.Stop(); ov.Cfg.Save(); }; }
+                return saveTimer;
+            }
+        }
         bool resizing; int resizeFromX; float resizeFromZoom, resizeFromW;
-        bool InCorner(Point p) { return !full && p.X > ClientSize.Width - 18 * S && p.Y > ClientSize.Height - 18 * S; }
+        bool InCorner(Point p) { return !full && p.X > ClientSize.Width - 10 * S && p.Y > ClientSize.Height - 10 * S; }
 
         protected override bool OnPress(MouseEventArgs e)
         {
-            if (e.Button != MouseButtons.Left || !InCorner(e.Location)) return false;
+            if (e.Button != MouseButtons.Left || !InCorner(e.Location) || Editing) return false;
             resizing = true; resizeFromX = Control.MousePosition.X; resizeFromZoom = ov.Cfg.TimerZoom; resizeFromW = Width; Capture = true;
             return true;
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
+            if (resizing && (Control.MouseButtons & MouseButtons.Left) == 0) { resizing = false; ov.Cfg.Save(); }   // knop losgelaten buiten het venster
             if (resizing)
             {
                 float w = Math.Max(40, resizeFromW + Control.MousePosition.X - resizeFromX);
@@ -153,6 +169,12 @@ namespace NexusPen
             base.OnMouseMove(e);
             if (InCorner(e.Location)) Cursor = Cursors.SizeNWSE;
             else if (hover == null) Cursor = Cursors.SizeAll;   // overal waar geen knop zit: slepen
+        }
+
+        protected override void OnMouseCaptureChanged(EventArgs e)
+        {
+            base.OnMouseCaptureChanged(e);
+            if (resizing) { resizing = false; ov.Cfg.Save(); }
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
@@ -181,6 +203,7 @@ namespace NexusPen
 
         void EnterFull()
         {
+            if (Editing && editFinish != null) editFinish(true);
             beforeFull = Location; full = true;
             FitFull();
             Usage.Log("timer", "volledig scherm", "");

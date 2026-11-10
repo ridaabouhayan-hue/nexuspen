@@ -1884,7 +1884,7 @@ namespace NexusPen
         {
             if (followLoupe != null && !followLoupe.IsDisposed) return;
             if (!Loupe.Available) return;
-            try { followLoupe = new Loupe(this, true, Control.MousePosition); followLoupe.Show(); Usage.Log("vergrootglas", "aan", ""); }
+            try { followLoupe = new Loupe(this, true, Control.MousePosition); followLoupe.Show(); Usage.Log("vergrootglas", "aan", ""); UpdateCursor(); }
             catch (Exception ex) { Log.Error("Vergrootglas tonen", ex); followLoupe = null; }
         }
 
@@ -2151,8 +2151,14 @@ namespace NexusPen
         public void CloseBoard()
         {
             if (BoardMode == Board.None) return;
+            bool clear = Cfg.BoardClearOnClose && HasBoardDrawing();
+            if (clear)
+            {
+                // eerst bewaren als "vorige", zodat Vorige tekening terugzetten (Instellingen > Opslaan) het bord terugbrengt
+                try { StoreActive(); SaveNow(); StrokeStore.ArchiveBoard(); } catch (Exception ex) { Log.Error("Bord bewaren voor wissen", ex); }
+            }
             SetBoard(Board.None);
-            if (Cfg.BoardClearOnClose)
+            if (clear)
             {
                 pages.Clear(); pages.Add(new List<Stroke>()); pageIndex = 0;
                 MarkChanged();
@@ -2160,12 +2166,20 @@ namespace NexusPen
             Usage.Log("bord", "dicht", Cfg.BoardClearOnClose ? "wissen" : "bewaren");
         }
 
+        bool HasBoardDrawing() { foreach (List<Stroke> pg in pages) if (pg.Count > 0) return true; return strokes.Count > 0 && BoardMode != Board.None; }
+
         // De pagina waar je op staat weghalen (er blijft altijd minstens een pagina)
         public void DeletePage()
         {
             if (BoardMode == Board.None) return;
             CloseTextInput(true); Deselect();
-            if (strokes.Count > 0 && MessageBox.Show(L.T("Deze pagina met alles wat erop staat verwijderen?"), "NexusPen", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            if (strokes.Count > 0)
+            {
+                // de vraag boven de tekenlaag (met de tekenlaag als eigenaar), en daarna kijken of alles nog hetzelfde is
+                Board keepBoard = BoardMode; int keepIndex = pageIndex, keepCount = pages.Count; List<Stroke> keepList = strokes;
+                if (MessageBox.Show(this, L.T("Deze pagina met alles wat erop staat verwijderen?"), "NexusPen", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                if (BoardMode != keepBoard || pageIndex != keepIndex || pages.Count != keepCount || strokes != keepList) return;   // intussen bord dicht of andere pagina
+            }
             if (pages.Count <= 1) { strokes.Clear(); undo.Clear(); redo.Clear(); }
             else
             {
@@ -2306,7 +2320,7 @@ namespace NexusPen
                     }
                     case Tool.Loupe:
                         // vergrootglas zonder muisaanwijzer: het glas laat al zien waar je bent
-                        c = Cfg.LoupeCursor ? Cursors.Default : ToolCursor.For("leeg", delegate { return new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb); });
+                        c = Cfg.LoupeCursor || followLoupe == null || followLoupe.IsDisposed ? Cursors.Default : ToolCursor.For("leeg", delegate { return new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb); });
                         break;
                     case Tool.Select: case Tool.Focus: case Tool.Mouse: c = Cursors.Default; break;
                 }
