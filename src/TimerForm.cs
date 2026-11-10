@@ -35,7 +35,8 @@ namespace NexusPen
         protected override void OnVisibleChanged(EventArgs e)
         {
             base.OnVisibleChanged(e);
-            if (!Visible && editFinish != null) editFinish(false);   // timer weg (kruisje of inklappen): het invulvak ook
+            if (!Visible && editFinish != null) editFinish(false);
+            if (!Visible) TimerSound.Stop();   // timer weg (knop in de balk, kruisje, inklappen): geluid ook stil   // timer weg (kruisje of inklappen): het invulvak ook
             if (ov.Bar != null) ov.Bar.Refresh2();
         }
 
@@ -241,7 +242,8 @@ namespace NexusPen
                 if (leftMs <= 0)
                 {
                     leftMs = 0; running = false; done = true; doneAt = now;
-                    TimerSound.Play(ov.Cfg);
+                    // zie je de timer niet, dan maar een keer (er is niets om op te klikken om hem te stoppen)
+                    if (Visible) TimerSound.Play(ov.Cfg); else if (!ov.Cfg.TimerMute) TimerSound.Play(ov.Cfg.TimerSound, true);
                     Usage.Log("timer", "klaar", "");
                 }
             }
