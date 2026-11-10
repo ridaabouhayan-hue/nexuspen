@@ -1255,7 +1255,7 @@ namespace NexusPen
             if (n >= 2) opts.Add(n == 2 ? L.T("Ander scherm") : L.F("Scherm {0}", 2));
             for (int i = 3; i <= Math.Min(4, n); i++) opts.Add(L.F("Scherm {0}", i));
             y = Segments(y, L.T("Tekenen en bord op"), n > 1 ? L.T("De andere schermen blijven vrij: daar klik je gewoon in je eigen programma's") : L.T("Sluit een beamer of tweede scherm aan om te kiezen"),
-                opts.ToArray(), delegate { return Math.Min(opts.Count - 1, c.DrawScreen); }, delegate(int i) { c.DrawScreen = i; });
+                opts.ToArray(), delegate { return c.DrawScreen > n || c.DrawScreen >= opts.Count ? 0 : c.DrawScreen; }, delegate(int i) { c.DrawScreen = i; });
             if (n > 1) { Button(contentX, y + 6 * S, L.T("Tekening naar het andere scherm"), "naarscherm", delegate { ov.MoveDrawingToOtherScreen(); }, false); y += 56 * S; }
         }
 

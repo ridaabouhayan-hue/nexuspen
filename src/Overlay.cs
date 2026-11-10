@@ -215,8 +215,11 @@ namespace NexusPen
                 int before = monitors != null ? CountUnique(monitors) : 1;
                 monitors = W.MonitorRects(); monitorsOrdered = null;
                 // net uitgebreid naar een tweede scherm, en er staat iets getekend: aanbieden om het naar de beamer te zetten
-                if (CountUnique(monitors) > before && CountUnique(monitors) >= 2 && HasDrawing && toolbar != null && !Program.SelfTest)
+                if (CountUnique(monitors) > before && CountUnique(monitors) >= 2 && HasDrawing && toolbar != null && !Program.SelfTest && !offeredMove)
+                {
+                    offeredMove = true;   // een keer per keer opstarten (na de slaapstand komt het tweede scherm vaak even weg en terug)
                     toolbar.ShowToastAction(L.T("Tweede scherm erbij. Je tekening daarheen zetten?"), L.T("Verplaatsen"), "naarscherm", delegate { MoveDrawingToOtherScreen(); });
+                }
                 Log.Info("Schermen veranderd: " + vs + " > " + now + " (" + monitors.Count + " scherm(en))");
                 vs = now;
                 // rechtstreeks via Windows: WinForms rekent bij verschillende schalen soms om, dan dekte de laag maar een deel
@@ -231,6 +234,7 @@ namespace NexusPen
             catch (Exception ex) { Log.Error("Schermen aanpassen", ex); }
         }
         List<Rectangle> monitors;   // de schermen bij de laatste wissel (voor het bord per scherm)
+        bool offeredMove;
         static int CountUnique(List<Rectangle> l) { List<Rectangle> u = new List<Rectangle>(); foreach (Rectangle r in l) if (!u.Contains(r)) u.Add(r); return u.Count; }
 
         Color Background()
@@ -251,6 +255,16 @@ namespace NexusPen
             using (SolidBrush clear = new SolidBrush(Color.FromArgb(0, 0, 0, 0))) g.FillRectangle(clear, r);
             Rectangle both = Rectangle.Intersect(r, act);
             if (both.Width > 0 && both.Height > 0) using (SolidBrush b = new SolidBrush(Background())) g.FillRectangle(b, both);
+        }
+
+        void ClipActive(Graphics g) { Rectangle a = ActiveArea(); if (a.Width > 0) g.SetClip(a, CombineMode.Intersect); }
+
+        // de muis vasthouden op het tekenscherm (met ingedrukte knop kom je anders op het vrije scherm)
+        PointF ClampActive(PointF p)
+        {
+            Rectangle a = ActiveArea();
+            if (a.Width <= 0) return p;
+            return new PointF(Math.Max(a.Left, Math.Min(a.Right - 1, p.X)), Math.Max(a.Top, Math.Min(a.Bottom - 1, p.Y)));
         }
 
         // Schermen op volgorde: het hoofdscherm eerst, dan van links naar rechts
@@ -278,6 +292,7 @@ namespace NexusPen
             return m;
         }
         List<Rectangle> monitorsOrdered;
+        int lastDrawScreen = -1;
         public void ScreensChoiceChanged() { monitorsOrdered = null; Rebuild(); RenderFrame(); }
 
         // Tekening naar het andere scherm: alles wat op het scherm van de werkbalk staat, past precies op het andere scherm
@@ -291,7 +306,9 @@ namespace NexusPen
                 Point barAt = toolbar != null ? new Point(toolbar.Left + toolbar.Width / 2, toolbar.Top + toolbar.Height / 2) : Control.MousePosition;
                 int from = 0;
                 for (int i = 0; i < mons.Count; i++) if (mons[i].Contains(barAt)) from = i;
-                int to = Cfg.DrawScreen > 0 && Cfg.DrawScreen - 1 != from && Cfg.DrawScreen <= mons.Count ? Cfg.DrawScreen - 1 : (from + 1) % mons.Count;
+                bool oneScreen = Cfg.DrawScreen > 0 && Cfg.DrawScreen <= mons.Count;
+                if (oneScreen) from = Cfg.DrawScreen - 1;   // tekenen op een scherm: daar staat de tekening
+                int to = (from + 1) % mons.Count;
                 Rectangle src = mons[from], dst = mons[to];
                 src.Offset(-vs.X, -vs.Y); dst.Offset(-vs.X, -vs.Y);
                 float k = Math.Min((float)dst.Width / src.Width, (float)dst.Height / src.Height);
@@ -306,10 +323,17 @@ namespace NexusPen
                     s.Width *= k; if (s.FontSize > 0) s.FontSize *= k;
                     return s;
                 };
-                Checkpoint();
-                for (int i = 0; i < strokes.Count; i++) strokes[i] = move(strokes[i]);
+                List<Stroke> moved = new List<Stroke>(strokes.Count);
+                int count = 0;
+                foreach (Stroke st in strokes) { Stroke m2 = move(st); if (m2 != st) count++; moved.Add(m2); }
                 if (BoardMode != Board.None)
-                    foreach (List<Stroke> pg in pages) if (pg != strokes) for (int i = 0; i < pg.Count; i++) pg[i] = move(pg[i]);
+                    for (int pi = 0; pi < pages.Count; pi++)
+                        if (pi != pageIndex) for (int i = 0; i < pages[pi].Count; i++) { Stroke m2 = move(pages[pi][i]); if (m2 != pages[pi][i]) count++; pages[pi][i] = m2; }
+                if (count == 0) { if (toolbar != null) toolbar.ShowToast(L.T("Er staat niets op dit scherm om te verplaatsen"), "", null, "info"); return; }
+                Checkpoint();
+                strokes.Clear(); strokes.AddRange(moved);
+                // tekende je op een scherm: dan teken je voortaan op het scherm waar de tekening nu staat
+                if (oneScreen) { Cfg.DrawScreen = to + 1; Cfg.Save(); monitorsOrdered = null; RefreshSettingsWindow(); }
                 Usage.Log("menu", "naar-ander-scherm", "");
                 Rebuild(); RenderFrame();
                 if (toolbar != null) toolbar.ShowToast(L.T("Je tekening staat nu op het andere scherm"), "", null, "vink");
@@ -328,6 +352,7 @@ namespace NexusPen
                 FillBackground(g, new Rectangle(0, 0, committed.Width, committed.Height));
                 g.CompositingMode = CompositingMode.SourceOver;
                 Render.Setup(g);
+                ClipActive(g);
                 if (DrawMode && BoardMode != Board.None) DrawBoard(g);
                 if (ShowStrokesNow)
                     foreach (Stroke s in strokes)
@@ -350,6 +375,7 @@ namespace NexusPen
                 FillBackground(g, r);
                 g.CompositingMode = CompositingMode.SourceOver;
                 Render.Setup(g);
+                ClipActive(g);
                 if (DrawMode && BoardMode != Board.None) DrawBoard(g);
                 if (ShowStrokesNow)
                     foreach (Stroke s in strokes)
@@ -448,7 +474,7 @@ namespace NexusPen
 
         void CommitToLayer(Stroke s)
         {
-            using (Graphics g = Graphics.FromImage(committed)) { Render.Setup(g); SafeDraw(g, s, 1f); }
+            using (Graphics g = Graphics.FromImage(committed)) { Render.Setup(g); ClipActive(g); SafeDraw(g, s, 1f); }
             pendingDirty = U(pendingDirty, StrokeBounds(s));
             dirty = true;
         }
@@ -862,6 +888,7 @@ namespace NexusPen
                 {
                     g.SetClip(area);
                     Render.Setup(g);
+                    ClipActive(g);   // tekenen alleen op een scherm: ook spotlicht en lijnen in de maak niet op het vrije scherm
                     DateTime now = DateTime.Now;
                     foreach (Stroke s in lasers)
                     {
@@ -1124,6 +1151,7 @@ namespace NexusPen
         DateTime updateShownAt;
 
         // Instellingen opnieuw opbouwen als de balk ergens anders is veranderd
+        public void RefreshTimer() { if (lesTimer != null && !lesTimer.IsDisposed && lesTimer.Visible) lesTimer.Invalidate(); }
         public void RefreshSettingsWindow() { if (settingsForm != null && !settingsForm.IsDisposed) settingsForm.Rebuild(); }
 
         void OnBalloonClicked(object sender, EventArgs e)
@@ -1733,8 +1761,8 @@ namespace NexusPen
                 W.HideFromCapture(settingsForm.Handle, Cfg.HideFromCapture);
                 settingsForm.Invalidate();
             }
-            monitorsOrdered = null;
-            if (DrawMode) Rebuild();   // ook voor "tekenen alleen op een scherm"
+            if (Cfg.DrawScreen != lastDrawScreen) { lastDrawScreen = Cfg.DrawScreen; monitorsOrdered = null; Rebuild(); }   // tekenen alleen op een scherm: aan, uit of ander scherm
+            else if (DrawMode && BoardMode != Board.None) Rebuild();
             if (selected != null) dirty = true;
             if (FocusOn) { fullDirty = true; dirty = true; }   // bijvoorbeeld spotlicht rond of rechthoek
             UpdateCursor();
@@ -2646,7 +2674,7 @@ namespace NexusPen
             if (CurrentTool == Tool.Stamp) { float sc = ScreenScale; if (Math.Abs(sc - lastCursorScale) > 0.01f) { lastCursorScale = sc; UpdateCursor(); } }
             if (typing != null && TextMouseMove(e)) return;
             if (inputAt < 0) inputAt = Perf.Now;
-            PointF p = e.Location;
+            PointF p = ClampActive(e.Location);
             if (CurrentTool == Tool.Focus) { focusAt = p; dirty = true; inputAt = -1; return; }   // spotlicht: groot vlak, de timer is snel genoeg
             if (erasing) { EraseAt(p); return; }
             if (resizing && selected != null)

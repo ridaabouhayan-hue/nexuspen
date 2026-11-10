@@ -765,14 +765,14 @@ namespace NexusPen
                     return true;
                 }
                 case "kleur":
-                    m.AddCheck(L.T("Fel"), o.PaletteIndex == 0, delegate { o.SetPalette(0); Refresh2(); });
-                    m.AddCheck(L.T("Zacht"), o.PaletteIndex == 1, delegate { o.SetPalette(1); Refresh2(); });
+                    m.AddCheck(L.T("Fel"), o.PaletteIndex == 0, delegate { o.SetPalette(0); c.Save(); Refresh2(); o.RefreshSettingsWindow(); });
+                    m.AddCheck(L.T("Zacht"), o.PaletteIndex == 1, delegate { o.SetPalette(1); c.Save(); Refresh2(); o.RefreshSettingsWindow(); });
                     return true;
                 case "stempel":
                     for (int i = 0; i < Render.StampKinds.Length; i++)
                     {
                         int idx = i;
-                        m.AddCheck(L.T(Render.StampName(Render.StampKinds[i])), c.StampKind == idx, delegate { c.StampKind = idx; c.Save(); o.SetTool(Tool.Stamp); });
+                        m.AddCheck(L.T(Render.StampName(Render.StampKinds[i])), c.StampKind == idx, delegate { c.StampKind = idx; c.Save(); o.SetTool(Tool.Stamp); o.RefreshSettingsWindow(); });
                     }
                     return true;
                 case "bord":
@@ -786,7 +786,7 @@ namespace NexusPen
                     for (int i = 0; i < bgs.Length; i++)
                     {
                         int idx = i;
-                        m.AddCheck(bgs[i], c.BoardBg == idx, delegate { c.BoardBg = idx; c.Save(); if (o.BoardMode == Board.None) o.SetBoard(Board.White); else o.Rebuild(); });
+                        m.AddCheck(bgs[i], c.BoardBg == idx, delegate { c.BoardBg = idx; c.Save(); if (o.BoardMode == Board.None) o.SetBoard(Board.White); else o.Rebuild(); o.RefreshSettingsWindow(); });
                     }
                     return true;
                 }
@@ -794,9 +794,9 @@ namespace NexusPen
                     for (int i = 0; i < TimerSound.Names.Length; i++)
                     {
                         int idx = i;
-                        m.AddCheck(L.T(TimerSound.Names[i]), c.TimerSound == idx && !c.TimerMute, delegate { c.TimerSound = idx; c.TimerMute = false; c.Save(); TimerSound.Play(idx, true); o.RefreshSettingsWindow(); });
+                        m.AddCheck(L.T(TimerSound.Names[i]), c.TimerSound == idx && !c.TimerMute, delegate { c.TimerSound = idx; c.TimerMute = false; c.Save(); TimerSound.Play(idx, true); o.RefreshSettingsWindow(); o.RefreshTimer(); });
                     }
-                    m.AddCheck(L.T("Geen geluid"), c.TimerMute, delegate { c.TimerMute = !c.TimerMute; if (c.TimerMute) TimerSound.Stop(); c.Save(); o.RefreshSettingsWindow(); });
+                    m.AddCheck(L.T("Geen geluid"), c.TimerMute, delegate { c.TimerMute = !c.TimerMute; if (c.TimerMute) TimerSound.Stop(); c.Save(); o.RefreshSettingsWindow(); o.RefreshTimer(); });
                     return true;
                 case "foto":
                     m.Add(L.T("Map openen"), delegate

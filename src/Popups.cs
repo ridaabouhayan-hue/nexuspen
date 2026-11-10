@@ -744,7 +744,7 @@ namespace NexusPen
 
         public Toast(Overlay o) : base(o)
         {
-            hideTimer.Interval = 4500; hideTimer.Tick += delegate { hideTimer.Stop(); Hide(); };
+            hideTimer.Interval = 4500; hideTimer.Tick += delegate { hideTimer.Stop(); Hide(); action = null; };
             Owner = o;   // altijd boven de tekenlaag en het bord, anders zie je de melding niet
         }
 
@@ -805,7 +805,7 @@ namespace NexusPen
                 {
                     // Arabisch: één zin, van rechts naar links (anders komt het tweede deel eerst)
                     using (StringFormat sf = new StringFormat(StringFormatFlags.DirectionRightToLeft | StringFormatFlags.NoWrap))
-                        g.DrawString((text + " " + bold).Trim(), f, b, new RectangleF(x, 0, ClientSize.Width - x - 8 * S - (folder != null ? TextWidth(L.T("Map openen"), 13) + 46 * S : 0), ClientSize.Height), sf);
+                        g.DrawString((text + " " + bold).Trim(), f, b, new RectangleF(x, 0, ClientSize.Width - x - 8 * S - (folder != null ? TextWidth(L.T("Map openen"), 13) + 46 * S : action != null ? TextWidth(actionLabel, 13) + 46 * S : 0), ClientSize.Height), sf);
                     return;
                 }
                 g.DrawString(text, f, b, x, y);

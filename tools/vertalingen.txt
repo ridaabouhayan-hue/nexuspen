@@ -436,3 +436,4 @@ Wekker | Alarm clock | Réveil | Despertador | Despertador | Çalar saat | Бу�
 Melding | Notification | Notification | Notificación | Notificação | Bildirim | Уведомление | إشعار | 通知
 Gong | Gong | Gong | Gong | Gongo | Gong | Гонг | صنج | 锣声
 Extra dik | Extra thick | Très épais | Extra grueso | Extra grosso | Ekstra kalın | Очень толстый | سميك جدًا | 特粗
+Er staat niets op dit scherm om te verplaatsen | There is nothing on this screen to move | Il n'y a rien à déplacer sur cet écran | No hay nada en esta pantalla para mover | Não há nada nesta tela para mover | Bu ekranda taşınacak bir şey yok | На этом экране нечего переносить | لا يوجد شيء على هذه الشاشة لنقله | 这个屏幕上没有可移动的内容
