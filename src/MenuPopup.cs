@@ -60,6 +60,8 @@ namespace NexusPen
                 it.Paint = delegate(Graphics g, Item item, bool hv)
                 {
                     Theme t = T;
+                    // de achtergrond van het menu is helemaal dicht: dan kan de scherpe ClearType-tekst van Windows (zoals in Verkenner)
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
                     if (hv && e.Click != null) using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(item.R, 7 * S)) g.FillPath(b, gp);
                     if (e.HasCheck && e.Check)
                     {
@@ -73,7 +75,6 @@ namespace NexusPen
                         using (StringFormat sf = new StringFormat(StringFormatFlags.NoWrap))
                         {
                             sf.LineAlignment = StringAlignment.Center; sf.Trimming = StringTrimming.EllipsisCharacter;
-                            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
                             g.DrawString(e.Text, f, b, new RectangleF(tx, item.R.Y, item.R.Right - tx - TextPad * S, item.R.Height), sf);
                         }
                     }
