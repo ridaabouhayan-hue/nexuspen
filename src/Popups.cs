@@ -370,6 +370,7 @@ namespace NexusPen
             x += 52 * S + 6 * S;
             Chip(null, "rechts", Color.Empty, L.T("Volgende pagina"), null, delegate { o.NextPage(); Rebuild(); });
             Chip(null, "plus", Color.Empty, L.T("Nieuwe pagina"), null, delegate { o.NewPage(); Rebuild(); });
+            Chip(null, "prullenbak", Color.Empty, L.T("Deze pagina verwijderen"), null, delegate { o.DeletePage(); if (!IsDisposed) Rebuild(); });
             Finish();
         }
 

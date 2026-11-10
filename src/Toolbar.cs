@@ -359,7 +359,7 @@ namespace NexusPen
                     break;
                 case "bord":
                     it = Button(r, "bord", Shortcuts.Tip(L.T("Bord: whiteboard of krijtbord, met lijnen en pagina's"), "bord"),
-                        delegate { Use(key); TogglePopup(ref boardPopup, key); }, null, delegate { return o.BoardMode != Board.None && o.DrawMode; });
+                        delegate { Use(key); ClosePopups(); StopHoverOpen(); hoverKey = key; o.ToggleBoard(); }, null, delegate { return o.BoardMode != Board.None && o.DrawMode; });
                     break;
                 case "foto":
                     it = Button(r, "foto", Shortcuts.Tip(L.T("Schermafbeelding, naar Afbeeldingen\\NexusPen en het klembord"), "foto"),
@@ -700,6 +700,8 @@ namespace NexusPen
                     m.AddCheck(L.F("{0} keer zo groot", z), Math.Abs(ov.Cfg.LoupeZoom - z) < 0.01f, delegate { ov.SetLoupeZoom(z); });
                 }
                 m.AddSeparator();
+                m.AddCheck(L.T("Muisaanwijzer tonen"), ov.Cfg.LoupeCursor, delegate { ov.Cfg.LoupeCursor = !ov.Cfg.LoupeCursor; ov.Cfg.Save(); ov.ApplySettings(); });
+                m.AddSeparator();
             }
             if (it.Key == "focus")
             {
@@ -743,7 +745,7 @@ namespace NexusPen
                     {
                         string fn = fn0;
                         if (fn != "Segoe UI" && !Fonts.Has(fn)) continue;
-                        m.AddCheck(fn, Render.FontOrDefault(c.FontName) == fn || (fn == "Segoe UI" && string.IsNullOrEmpty(c.FontName)), delegate { c.FontName = fn; save(); o.SetTool(Tool.Text); });
+                        m.AddCheckFont(fn, fn, Render.FontOrDefault(c.FontName) == fn || (fn == "Segoe UI" && string.IsNullOrEmpty(c.FontName)), delegate { c.FontName = fn; save(); o.SetTool(Tool.Text); });
                     }
                     m.AddSeparator();
                     m.AddCheck(L.T("Rand om tekst"), c.TextOutline, delegate { c.TextOutline = !c.TextOutline; save(); });

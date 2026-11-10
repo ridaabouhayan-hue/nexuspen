@@ -576,15 +576,17 @@ namespace NexusPen
             bool esc = rawEsc && !timerTyping;   // de Esc van het timer-invulvak is niet voor de tekenlaag
             // Esc: eerst een open venstertje van de balk dicht, dan pas terug naar de muis
             if (esc && !lastEsc && MenuPopup.IsOpen) { MenuPopup.CloseOpen(); lastEsc = true; return; }   // eerst een open menu
+            if (esc && !lastEsc && lesTimer != null && !lesTimer.IsDisposed && lesTimer.Visible && lesTimer.IsFull) { lesTimer.ExitFull(); lastEsc = true; return; }   // timer op het hele scherm: terug
             if (esc && !lastEsc && toolbar != null && toolbar.AnyPopupOpen) { toolbar.ClosePopups(); lastEsc = true; return; }
             if (esc && !lastEsc && DrawMode && typing != null) { CloseTextInput(true); lastEsc = true; return; }   // ook als het toetsenbord ergens anders zat
             if (esc && !lastEsc && DrawMode && pinnedLoupes.Count > 0) { CloseAllLoupes(); lastEsc = true; return; }   // dan de vergrootglazen (alleen als je met NexusPen werkt)
             if (esc && !lastEsc && DrawMode && typing == null)
             {
-                // Esc: eerst de selectie weg, dan een gewone wijzer. Daarna doet Esc niets meer:
-                // alles verbergen gaat alleen met inklappen (het logo), alles weghalen alleen met de prullenbak.
+                // Esc: eerst de selectie weg, dan een gewone wijzer, dan het bord dicht (net als op de bordknop klikken).
+                // Alles verbergen gaat alleen met inklappen (het logo), alles weghalen alleen met de prullenbak.
                 if (selected != null) Deselect();
                 else if (CurrentTool != Tool.Mouse) SetTool(Tool.Mouse);
+                else if (BoardMode != Board.None) CloseBoard();
             }
             lastEsc = esc || (timerTyping && rawEsc);   // dezelfde ingedrukte Esc telt na het sluiten van het vakje niet nog een keer
 
@@ -1589,7 +1591,7 @@ namespace NexusPen
                 if (typing == null || typing.Text != want || ed.Selected != " met") { Program.SelfTestErrors++; Console.Error.WriteLine("Pijltjes of selecteren in de tekst werken niet"); }
                 // tekst met rand in alle lettertypes: geen zwarte vakjes in letters als de t
                 float ty = 40;
-                foreach (string fn in new string[] { "Andika", "Nunito", "Lexend", "Atkinson Hyperlegible", "Patrick Hand", "Segoe UI", "Arial", "Calibri", "Comic Sans MS" })
+                foreach (string fn in new string[] { "Andika", "Nunito", "Lexend", "Atkinson Hyperlegible", "Patrick Hand", "Segoe UI", "Arial", "Calibri", "Verdana" })
                 {
                     Stroke ts = new Stroke(); ts.Tool = Tool.Text; ts.Text = "testen " + fn; ts.FontName = fn; ts.FontSize = 40;
                     ts.Color = ColorTranslator.FromHtml("#FF8000"); ts.Outline = true; ts.OutlineWidth = 2; ts.OutlineColor = 0;
@@ -2127,6 +2129,7 @@ namespace NexusPen
             else if (!wasScreen && b == Board.None) { undo.Clear(); redo.Clear(); undo.AddRange(screenUndo); redo.AddRange(screenRedo); }
             else if (!wasScreen && b != Board.None && b != BoardMode) { /* zelfde pagina, andere kleur: geschiedenis blijft */ }
             BoardMode = b;
+            if (b != Board.None) Cfg.LastBoard = (int)b;   // de bordknop opent de volgende keer dit bord
             strokes = b == Board.None ? screenStrokes : pages[pageIndex];
             if (byUser) Usage.Log("bord", b.ToString(), "");
             // een bord kiezen zet geen tekengereedschap aan: je komt op Selecteren en kiest zelf wat je nodig hebt
@@ -2134,6 +2137,45 @@ namespace NexusPen
             Rebuild();
             RefreshUi();
             MouseOffBoard();
+        }
+
+        // De bordknop: staat er een bord, dan gaat het dicht; anders opent het bord van de vorige keer (of wat je in Instellingen koos)
+        public void ToggleBoard()
+        {
+            if (BoardMode != Board.None && DrawMode) { CloseBoard(); return; }
+            int k = Cfg.BoardOpenAs > 0 ? Cfg.BoardOpenAs : Cfg.LastBoard;
+            SetBoard(k == 2 ? Board.Black : k == 3 ? Board.Dark : Board.White);
+        }
+
+        // Bord dicht, terug naar het gewone scherm. Wat erop staat blijft bewaard, tenzij je in Instellingen "wissen" koos.
+        public void CloseBoard()
+        {
+            if (BoardMode == Board.None) return;
+            SetBoard(Board.None);
+            if (Cfg.BoardClearOnClose)
+            {
+                pages.Clear(); pages.Add(new List<Stroke>()); pageIndex = 0;
+                MarkChanged();
+            }
+            Usage.Log("bord", "dicht", Cfg.BoardClearOnClose ? "wissen" : "bewaren");
+        }
+
+        // De pagina waar je op staat weghalen (er blijft altijd minstens een pagina)
+        public void DeletePage()
+        {
+            if (BoardMode == Board.None) return;
+            CloseTextInput(true); Deselect();
+            if (strokes.Count > 0 && MessageBox.Show(L.T("Deze pagina met alles wat erop staat verwijderen?"), "NexusPen", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            if (pages.Count <= 1) { strokes.Clear(); undo.Clear(); redo.Clear(); }
+            else
+            {
+                pages.RemoveAt(pageIndex);
+                pageIndex = Math.Max(0, Math.Min(pages.Count - 1, pageIndex));
+                strokes = pages[pageIndex];
+                undo.Clear(); redo.Clear();
+            }
+            MarkChanged(); Rebuild(); RefreshUi();
+            Usage.Log("bord", "pagina weg", "");
         }
 
         public void CycleBoard() { SetBoard(BoardMode == Board.None ? Board.White : BoardMode == Board.White ? Board.Black : BoardMode == Board.Black ? Board.Dark : Board.None); }
@@ -2262,7 +2304,11 @@ namespace NexusPen
                         c = ToolCursor.For("stempel|" + st.Text + "|" + st.FontSize, delegate { return ToolCursor.Stamp(st); });
                         break;
                     }
-                    case Tool.Select: case Tool.Focus: case Tool.Loupe: case Tool.Mouse: c = Cursors.Default; break;
+                    case Tool.Loupe:
+                        // vergrootglas zonder muisaanwijzer: het glas laat al zien waar je bent
+                        c = Cfg.LoupeCursor ? Cursors.Default : ToolCursor.For("leeg", delegate { return new Bitmap(32, 32, System.Drawing.Imaging.PixelFormat.Format32bppArgb); });
+                        break;
+                    case Tool.Select: case Tool.Focus: case Tool.Mouse: c = Cursors.Default; break;
                 }
             }
             catch (Exception ex) { Log.Error("Cursor", ex); }
@@ -3170,7 +3216,7 @@ namespace NexusPen
                     case "stempel": SetTool(Tool.Stamp); break;
                     case "focus": ToggleFocus(); break;
                     case "loep": ToggleLoupe(); break;
-                    case "bord": CycleBoard(); break;
+                    case "bord": ToggleBoard(); break;
                     case "foto": Screenshot(); break;
                     case "undo": Undo(); break;
                     case "redo": Redo(); break;

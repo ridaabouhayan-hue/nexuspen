@@ -18,8 +18,8 @@ namespace NexusPen
         static readonly string[] PageIcons = { "huis", "taal", "kleuren", "rechthoek", "pen", "tekst", "stempel", "bord", "timer", "voorlezen", "toetsen", "opslaan", "schermdelen", "grafiek", "muis", "download", "info" };
         // na deze pagina's een dun streepje in de zijbalk: basis, tekenen, bewaren en delen, hulp
         static readonly string[] GroupEnds = { "Werkbalk", "Voorlezen", "Schermdelen" };
-        public static readonly string[] FontChoices = { "Segoe UI", "Andika", "Atkinson Hyperlegible", "Lexend", "Nunito", "Patrick Hand", "Arial", "Calibri", "Comic Sans MS" };
-        static readonly string[] FontDescs = { "Standaard van Windows", "Gemaakt voor beginnende lezers en Alfa", "Extra goed leesbaar, ook voor slechtzienden", "Rustig en ruim, prettig bij lange zinnen", "Rond en vriendelijk, de huisstijl van Nexus", "Handschrift, toch goed te lezen", "Bekend en strak", "Standaard van Word, rustig", "Speels, bekend van school" }; // vertaal
+        public static readonly string[] FontChoices = { "Segoe UI", "Andika", "Atkinson Hyperlegible", "Lexend", "Nunito", "Patrick Hand", "Arial", "Calibri", "Verdana" };
+        static readonly string[] FontDescs = { "Standaard van Windows", "Gemaakt voor beginnende lezers en Alfa", "Extra goed leesbaar, ook voor slechtzienden", "Rustig en ruim, prettig bij lange zinnen", "Rond en vriendelijk, de huisstijl van Nexus", "Handschrift, toch goed te lezen", "Bekend en strak", "Standaard van Word, rustig", "Breed en duidelijk, ook op afstand" }; // vertaal
 
         Overlay ov;
         List<Item> items = new List<Item>();
@@ -790,6 +790,7 @@ namespace NexusPen
             y = Toggle(y, L.T("Vervagen"), null, delegate { return c.Fade; }, delegate(bool v) { c.Fade = v; BuildItems(); });
             if (c.Fade) y = Segments(y, L.T("Hoe lang blijft het staan?"), null, new string[] { "3 s", "5 s", "7 s", "12 s" }, delegate { return Array.IndexOf(Settings.FadeChoices, c.FadeSeconds); }, delegate(int i) { c.FadeSeconds = Settings.FadeChoices[i]; });
             y = Segments(y, L.T("Laserpen"), null, new string[] { L.T("Snel weg"), L.T("Langzaam"), L.T("Blijft staan") }, delegate { return c.LaserMode; }, delegate(int i) { c.LaserMode = i; });
+            y = Toggle(y, L.T("Muisaanwijzer bij het vergrootglas"), L.T("Uit: alleen het glas laat zien waar je bent"), delegate { return c.LoupeCursor; }, delegate(bool v) { c.LoupeCursor = v; });
         }
 
         // ---- je eigen kleurenlijst aanpassen (voor de set die nu aan staat: fel of zacht)
@@ -980,6 +981,8 @@ namespace NexusPen
             float[] zs = { 0.6f, 1f, 2f, 4f };
             y = Segments(y, L.T("Grootte van lijnen en ruitjes"), null, new string[] { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") },
                 delegate { int b = -1; for (int i = 0; i < zs.Length; i++) if (Math.Abs(zs[i] - c.BoardZoom) < 0.05f) b = i; return b; }, delegate(int i) { c.BoardZoom = zs[i]; });
+            y = Segments(y, L.T("De bordknop opent"), null, new string[] { L.T("Zoals de vorige keer"), L.T("Whiteboard"), L.T("Krijtbord"), L.T("Zwart bord") }, delegate { return c.BoardOpenAs; }, delegate(int i) { c.BoardOpenAs = i; });
+            y = Segments(y, L.T("Wat er op het bord staat als je het sluit"), L.T("Sluiten: op de bordknop klikken, of Esc"), new string[] { L.T("Bewaren"), L.T("Wissen") }, delegate { return c.BoardClearOnClose ? 1 : 0; }, delegate(int i) { c.BoardClearOnClose = i == 1; });
         }
 
         void BuildSoon()

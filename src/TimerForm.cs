@@ -12,7 +12,7 @@ namespace NexusPen
     {
         int setSeconds = 5 * 60;          // de gekozen tijd
         double leftMs = 5 * 60 * 1000;    // wat er nog over is
-        bool running, big, done;
+        bool running, done;
         DateTime doneAt;
         readonly System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();   // niet van de Windows-klok afhankelijk
         double lastTick;
@@ -44,7 +44,8 @@ namespace NexusPen
         public void ShowNear(Point at)
         {
             baseS = Math.Max(1f, W.UiScaleAt(at));
-            S = big ? baseS * 2.2f : baseS;
+            if (full) ExitFull();
+            S = baseS * ov.Cfg.TimerZoom;
             Rebuild();
             if (!Visible)
             {
@@ -87,7 +88,8 @@ namespace NexusPen
         {
             Point keep = Location;
             baseS = Math.Max(1f, W.UiScaleAt(keep));
-            S = big ? baseS * 2.2f : baseS;
+            if (full) { FitFull(); return; }
+            S = baseS * ov.Cfg.TimerZoom;
             Rebuild();
             Location = keep;
         }
@@ -112,14 +114,97 @@ namespace NexusPen
             Invalidate();
         }
 
-        void ToggleBig()
+        // ---- groter en kleiner: muiswiel boven de timer, of het hoekje rechtsonder slepen
+        void SetZoom(float z, Point anchor)
         {
-            big = !big;
-            Point keep = Location;
-            S = big ? baseS * 2.2f : baseS;
+            z = Math.Max(0.7f, Math.Min(4f, z));
+            ov.Cfg.TimerZoom = z;
+            S = baseS * z;
             Rebuild();
-            Rectangle wa = Screen.FromPoint(keep).WorkingArea;
-            Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, keep.X)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, keep.Y)));
+            Rectangle wa = Screen.FromPoint(anchor).WorkingArea;
+            Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, anchor.X)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, anchor.Y)));
+        }
+
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            if (full) return;
+            SetZoom(ov.Cfg.TimerZoom * (e.Delta > 0 ? 1.1f : 1 / 1.1f), Location);
+            ov.Cfg.Save();
+        }
+
+        bool resizing; int resizeFromX; float resizeFromZoom, resizeFromW;
+        bool InCorner(Point p) { return !full && p.X > ClientSize.Width - 18 * S && p.Y > ClientSize.Height - 18 * S; }
+
+        protected override bool OnPress(MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left || !InCorner(e.Location)) return false;
+            resizing = true; resizeFromX = Control.MousePosition.X; resizeFromZoom = ov.Cfg.TimerZoom; resizeFromW = Width; Capture = true;
+            return true;
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            if (resizing)
+            {
+                float w = Math.Max(40, resizeFromW + Control.MousePosition.X - resizeFromX);
+                SetZoom(resizeFromZoom * w / resizeFromW, Location);
+                return;
+            }
+            base.OnMouseMove(e);
+            if (InCorner(e.Location)) Cursor = Cursors.SizeNWSE;
+            else if (hover == null) Cursor = Cursors.SizeAll;   // overal waar geen knop zit: slepen
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            if (resizing) { resizing = false; Capture = false; ov.Cfg.Save(); return; }
+            base.OnMouseUp(e);
+        }
+
+        // het hoekje om groter of kleiner te slepen: twee schuine streepjes
+        protected override void PaintExtra(Graphics g)
+        {
+            if (full) return;
+            float x = ClientSize.Width - 5 * S, y = ClientSize.Height - 5 * S;
+            using (Pen p = new Pen(Color.FromArgb(120, T.Muted), 1.3f * S))
+            {
+                g.DrawLine(p, x - 8 * S, y, x, y - 8 * S);
+                g.DrawLine(p, x - 4 * S, y, x, y - 4 * S);
+            }
+        }
+
+        // ---- het hele scherm: grote cijfers voor de hele groep. Esc of dezelfde knop: terug
+        bool full; Point beforeFull;
+        public bool IsFull { get { return full; } }
+
+        void ToggleBig() { if (full) ExitFull(); else EnterFull(); }
+
+        void EnterFull()
+        {
+            beforeFull = Location; full = true;
+            FitFull();
+            Usage.Log("timer", "volledig scherm", "");
+        }
+
+        void FitFull()
+        {
+            Rectangle sb = Screen.FromPoint(new Point(Left + Width / 2, Top + Height / 2)).Bounds;
+            if (full && beforeFull != Point.Empty) sb = Screen.FromPoint(beforeFull).Bounds;
+            S = baseS; Rebuild();
+            float k = Math.Min(sb.Width * 0.94f / Width, sb.Height * 0.9f / Height);
+            S = baseS * Math.Max(1f, k);
+            Rebuild();
+            Location = new Point(sb.Left + (sb.Width - Width) / 2, sb.Top + (sb.Height - Height) / 2);
+        }
+
+        public void ExitFull()
+        {
+            if (!full) return;
+            full = false;
+            S = baseS * ov.Cfg.TimerZoom;
+            Rebuild();
+            Rectangle wa = Screen.FromPoint(beforeFull).WorkingArea;
+            Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, beforeFull.X)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, beforeFull.Y)));
         }
 
         void Step()
@@ -167,13 +252,13 @@ namespace NexusPen
             Item reset = Add(new RectangleF(x, by, btn, btn), L.T("Opnieuw beginnen"), delegate { Reset(); });
             reset.Paint = delegate(Graphics g, Item it, bool h) { PaintIconButton(g, it, h, "terugzetten", false); };
             x += btn + gap;
-            Item grow = Add(new RectangleF(x, by, btn, btn), L.T("Groot of klein"), delegate { ToggleBig(); });
-            grow.Paint = delegate(Graphics g, Item it, bool h) { PaintIconButton(g, it, h, "groter", false); };
+            Item grow = Add(new RectangleF(x, by, btn, btn), L.T("Hele scherm (Esc = terug)"), delegate { ToggleBig(); });
+            grow.Paint = delegate(Graphics g, Item it, bool h) { PaintIconButton(g, it, h, full ? "volterug" : "vol", false); };
             x += btn + gap;
             Item mute = Add(new RectangleF(x, by, btn, btn), L.T("Geluid aan of uit"), delegate { ov.Cfg.TimerMute = !ov.Cfg.TimerMute; if (ov.Cfg.TimerMute) TimerSound.Stop(); ov.Cfg.Save(); });
             mute.Paint = delegate(Graphics g, Item it, bool h) { PaintIconButton(g, it, h, ov.Cfg.TimerMute ? "geluiduit" : "geluid", false); };
             x += btn + gap;
-            Item close = Add(new RectangleF(x, by, btn, btn), L.T("Timer sluiten"), delegate { running = false; clock.Stop(); TimerSound.Stop(); Hide(); });
+            Item close = Add(new RectangleF(x, by, btn, btn), L.T("Timer sluiten"), delegate { running = false; clock.Stop(); TimerSound.Stop(); ExitFull(); Hide(); });
             close.Paint = delegate(Graphics g, Item it, bool h) { PaintIconButton(g, it, h, "kruis", false); };
             x += btn;
             float w = x + pad;
@@ -308,16 +393,10 @@ namespace NexusPen
             Label(g, text, it.R, on ? t.Text : t.Muted, 12, true, StringAlignment.Center);
         }
 
-        protected override void OnMouseMove(MouseEventArgs e)
-        {
-            base.OnMouseMove(e);
-            if (hover == null) Cursor = Cursors.SizeAll;   // overal waar geen knop zit: slepen
-        }
-
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             // niet echt sluiten (dan blijft de tijd bewaard), alleen verbergen
-            if (e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; running = false; clock.Stop(); Hide(); return; }
+            if (e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; running = false; clock.Stop(); ExitFull(); Hide(); return; }
             clock.Stop(); clock.Dispose();
             base.OnFormClosing(e);
         }

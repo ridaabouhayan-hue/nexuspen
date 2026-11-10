@@ -51,7 +51,12 @@ namespace NexusPen
         public string FontName = "Andika";
         public bool TextOutline = true;
         public int TimerSound = 0;              // 0 belletje, 1 wekker, 2 melding, 3 gong
-        public bool TimerMute;                  // timer zonder geluid
+        public bool TimerMute;
+        public float TimerZoom = 1f;
+        public int LastBoard = 1;               // het bord van de vorige keer (1 wit, 2 krijtbord, 3 zwart)
+        public int BoardOpenAs = 0;             // bordknop opent: 0 zoals de vorige keer, anders 1 wit, 2 krijtbord, 3 zwart
+        public bool BoardClearOnClose;          // bij sluiten van het bord: wat erop staat wissen (anders bewaren)
+        public bool LoupeCursor = true;         // muisaanwijzer in het vergrootglas            // hoe groot de timer is (muiswiel of hoekje slepen)                  // timer zonder geluid
         public int DrawScreen = 0;              // 0 alle schermen, anders scherm nummer (1 = eerste, 2 = tweede, ...)
         public bool LineOutline;                // rand om lijnen en vormen (pen, krijt, lijn, pijl, rechthoek, cirkel)
         public bool UsageV2;                    // eenmalig: strepen bijhouden erbij (vanaf 1.3.13)
@@ -209,6 +214,8 @@ namespace NexusPen
             FocusRadius = Math.Max(60, Math.Min(700, FocusRadius));
             OutlineWidth = Math.Max(0, Math.Min(2, OutlineWidth));
             TimerSound = Math.Max(0, Math.Min(3, TimerSound));
+            if (float.IsNaN(TimerZoom) || TimerZoom < 0.7f || TimerZoom > 4f) TimerZoom = Math.Max(0.7f, Math.Min(4f, float.IsNaN(TimerZoom) ? 1f : TimerZoom));
+            if (FontName == "Comic Sans MS") FontName = "Andika";   // zat in 1.3.12 tot 1.3.15, vervangen door Verdana
             DrawScreen = Math.Max(0, Math.Min(8, DrawScreen));
             OutlineColor = Math.Max(0, Math.Min(2, OutlineColor));
             TextSize = Math.Max(12, Math.Min(300, TextSize));
@@ -216,6 +223,7 @@ namespace NexusPen
             StampSize = Math.Max(0, Math.Min(2, StampSize));
             StampNext = Math.Max(1, Math.Min(999, StampNext));
             BoardBg = Math.Max(0, Math.Min(3, BoardBg));
+            LastBoard = Math.Max(1, Math.Min(3, LastBoard)); BoardOpenAs = Math.Max(0, Math.Min(3, BoardOpenAs));
             KeepDrawing = Math.Max(0, Math.Min(2, KeepDrawing));
             ShortcutMode = Math.Max(0, Math.Min(2, ShortcutMode));
             ShortenAt = Math.Max(0, ShortenAt);

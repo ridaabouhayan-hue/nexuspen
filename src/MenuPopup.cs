@@ -11,7 +11,7 @@ namespace NexusPen
     // onder de muis, een rustig vinkje. Sluit bij een klik ergens anders of met Esc.
     class MenuPopup : BarForm
     {
-        class Entry { public string Text, Hint; public Action Click; public bool Check, HasCheck, Sep; }
+        class Entry { public string Text, Hint, Font; public Action Click; public bool Check, HasCheck, Sep; }
 
         readonly List<Entry> entries = new List<Entry>();
         readonly System.Windows.Forms.Timer watch = new System.Windows.Forms.Timer();
@@ -30,6 +30,9 @@ namespace NexusPen
         public void AddCheck(string text, bool on, Action click) { Entry e = new Entry(); e.Text = text; e.Click = click; e.HasCheck = true; e.Check = on; entries.Add(e); }
         // met de sneltoets rechts in de regel, zoals in Windows (Kopiëren   Ctrl+C); click null = grijs
         public void Add(string text, string hint, Action click) { Entry e = new Entry(); e.Text = text; e.Hint = hint; e.Click = click; entries.Add(e); }
+        // een keuze die in zijn eigen lettertype staat (zo zie je hoe het eruitziet)
+        public void AddCheckFont(string text, string font, bool on, Action click) { AddCheck(text, on, click); entries[entries.Count - 1].Font = font; }
+
         public void AddSeparator() { Entry e = new Entry(); e.Sep = true; entries.Add(e); }
 
         // Maten (in pixels bij 100%): rand 6, regel 36, tekst 12 van het vlakje, scheidingslijn 9
@@ -42,7 +45,7 @@ namespace NexusPen
             float textX = Pad + TextPad + (checks ? CheckW : 0);
             float maxW = 0;
             float hintW = 0;
-            foreach (Entry e in entries) if (!e.Sep) maxW = Math.Max(maxW, TextWidthPlain(e.Text, 14));
+            foreach (Entry e in entries) if (!e.Sep) maxW = Math.Max(maxW, e.Font != null ? TextWidthFont(e.Text, e.Font, 15) : TextWidthPlain(e.Text, 14));
             foreach (Entry e in entries) if (!e.Sep && e.Hint != null) hintW = Math.Max(hintW, TextWidthPlain(e.Hint, 13));
             if (hintW > 0) maxW += hintW + 28 * S;
             float w = Math.Max(180 * S, textX * S + maxW + (TextPad + Pad + 6) * S);
@@ -63,7 +66,18 @@ namespace NexusPen
                         float cs = 16 * S;
                         Icons.Draw(g, "vink", new RectangleF(item.R.X + TextPad * S - 2 * S, item.R.Y + (item.R.Height - cs) / 2, cs, cs), cs, t.Accent, 2.2f);
                     }
-                    Label(g, e.Text, new RectangleF(tx, item.R.Y, item.R.Right - tx - TextPad * S, item.R.Height), e.Click != null ? t.Text : t.Muted, 14, false, StringAlignment.Near);
+                    if (e.Font != null)
+                    {
+                        using (Font f = Fonts.Make(e.Font, 15 * S, FontStyle.Regular))
+                        using (SolidBrush b = new SolidBrush(t.Text))
+                        using (StringFormat sf = new StringFormat(StringFormatFlags.NoWrap))
+                        {
+                            sf.LineAlignment = StringAlignment.Center; sf.Trimming = StringTrimming.EllipsisCharacter;
+                            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                            g.DrawString(e.Text, f, b, new RectangleF(tx, item.R.Y, item.R.Right - tx - TextPad * S, item.R.Height), sf);
+                        }
+                    }
+                    else Label(g, e.Text, new RectangleF(tx, item.R.Y, item.R.Right - tx - TextPad * S, item.R.Height), e.Click != null ? t.Text : t.Muted, 14, false, StringAlignment.Near);
                     if (e.Hint != null) Label(g, e.Hint, new RectangleF(tx, item.R.Y, item.R.Right - tx - TextPad * S, item.R.Height), t.Muted, 13, false, StringAlignment.Far);
                 };
                 y += RowH * S;
@@ -76,6 +90,12 @@ namespace NexusPen
         {
             float one = Math.Max(1, Px(S));
             using (SolidBrush b = new SolidBrush(T.Sep)) g.FillRectangle(b, Px(it.R.X + (Pad + 8) * S), Px(it.R.Y + it.R.Height / 2), Px(it.R.Width - (Pad + 8) * 2 * S), one);
+        }
+
+        float TextWidthFont(string text, string font, float px)
+        {
+            using (Font f = Fonts.Make(font, px * S, FontStyle.Regular))
+            using (Graphics g = CreateGraphics()) return g.MeasureString(text ?? "", f).Width + 4 * S;
         }
 
         float TextWidthPlain(string text, float px)

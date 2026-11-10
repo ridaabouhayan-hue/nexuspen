@@ -118,6 +118,6 @@ namespace NexusPen
             }
         }
 
-        public const string Version = "1.3.15";
+        public const string Version = "1.3.16";
     }
 }
