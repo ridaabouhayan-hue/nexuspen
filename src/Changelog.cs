@@ -11,6 +11,11 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.15", "10 November 2026",
+                I("naarscherm", "Move your drawing to the projector, and draw on one screen only"),
+                I("geluid", "Timer: choose a sound, or turn it off in the timer itself"),
+                I("muis", "Right-click a button for its options"),
+                I("info", "Settings: no floating tips where the text is already there")),
             V("1.3.14", "10 November 2026",
                 I("rechthoek", "Duplicating or extending your screen: NexusPen covers every screen again"),
                 I("bord", "The board has its own lines and zoom on each screen")),

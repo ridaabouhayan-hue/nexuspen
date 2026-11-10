@@ -50,6 +50,9 @@ namespace NexusPen
         // tekst
         public string FontName = "Andika";
         public bool TextOutline = true;
+        public int TimerSound = 0;              // 0 belletje, 1 wekker, 2 melding, 3 gong
+        public bool TimerMute;                  // timer zonder geluid
+        public int DrawScreen = 0;              // 0 alle schermen, anders scherm nummer (1 = eerste, 2 = tweede, ...)
         public bool LineOutline;                // rand om lijnen en vormen (pen, krijt, lijn, pijl, rechthoek, cirkel)
         public bool UsageV2;                    // eenmalig: strepen bijhouden erbij (vanaf 1.3.13)
         public int OutlineWidth = 1, OutlineColor = 0;   // dun, middel, dik / zwart, wit, automatisch
@@ -205,6 +208,8 @@ namespace NexusPen
             if (float.IsNaN(FocusRadius)) FocusRadius = 200;
             FocusRadius = Math.Max(60, Math.Min(700, FocusRadius));
             OutlineWidth = Math.Max(0, Math.Min(2, OutlineWidth));
+            TimerSound = Math.Max(0, Math.Min(3, TimerSound));
+            DrawScreen = Math.Max(0, Math.Min(8, DrawScreen));
             OutlineColor = Math.Max(0, Math.Min(2, OutlineColor));
             TextSize = Math.Max(12, Math.Min(300, TextSize));
             StampKind = Math.Max(0, Math.Min(Render.StampKinds.Length - 1, StampKind));

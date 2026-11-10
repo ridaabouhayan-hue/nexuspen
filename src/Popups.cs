@@ -732,6 +732,15 @@ namespace NexusPen
     {
         System.Windows.Forms.Timer hideTimer = new System.Windows.Forms.Timer();
         string text = "", bold = "", folder, icon = "info";
+        string actionLabel, actionIcon; Action action; bool withAction;   // een knop in de melding (bijv. "Verplaatsen")
+
+        public void ShowAction(string t, string b, string label, string ic, Action click)
+        {
+            withAction = true;
+            try { actionLabel = label; actionIcon = ic; action = click; ShowMessage(t, b, null, "info"); }
+            finally { withAction = false; }
+            hideTimer.Stop(); hideTimer.Interval = 9000; hideTimer.Start();   // even langer: je moet kunnen kiezen
+        }
 
         public Toast(Overlay o) : base(o)
         {
@@ -741,6 +750,7 @@ namespace NexusPen
 
         public void ShowMessage(string t, string b, string dir, string ic)
         {
+            if (!withAction) { actionLabel = null; action = null; hideTimer.Interval = 4500; }
             text = t; bold = b ?? ""; folder = dir; icon = ic ?? "info";
             Rebuild();
             Rectangle wa = Screen.FromPoint(Control.MousePosition).WorkingArea;
@@ -753,7 +763,14 @@ namespace NexusPen
         protected override void Build()
         {
             float tw = TextWidth(text + " " + bold, 13) + 60 * S;
-            float bw = folder != null ? TextWidth(L.T("Map openen"), 13) + 46 * S : 0;
+            float bw = folder != null ? TextWidth(L.T("Map openen"), 13) + 46 * S : action != null ? TextWidth(actionLabel, 13) + 46 * S : 0;
+            if (action != null && folder == null)
+            {
+                Action a = action;
+                Item act = Add(new RectangleF(tw, 9 * S, bw, 32 * S), actionLabel, delegate { Hide(); action = null; try { a(); } catch (Exception ex) { Log.Error("Melding-knop", ex); } });
+                string lab = actionLabel, ico = actionIcon;
+                act.Paint = delegate(Graphics g, Item item, bool hv) { PaintChip(g, item.R, false, hv, lab, ico, Color.Empty); };
+            }
             float w = tw + bw + 16 * S, h = 50 * S;
             if (folder != null)
             {

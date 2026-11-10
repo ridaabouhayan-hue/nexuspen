@@ -102,6 +102,9 @@ namespace NexusPen
             Invalidate();
         }
 
+        // een klik op de timer zet een wekker die nog klinkt stil
+        protected override void OnMouseDown(MouseEventArgs e) { TimerSound.Stop(); base.OnMouseDown(e); }
+
         void Reset()
         {
             running = false; done = false; clock.Stop();
@@ -130,7 +133,7 @@ namespace NexusPen
                 if (leftMs <= 0)
                 {
                     leftMs = 0; running = false; done = true; doneAt = now;
-                    try { System.Media.SystemSounds.Asterisk.Play(); } catch { }
+                    TimerSound.Play(ov.Cfg);
                     Usage.Log("timer", "klaar", "");
                 }
             }
@@ -167,7 +170,10 @@ namespace NexusPen
             Item grow = Add(new RectangleF(x, by, btn, btn), L.T("Groot of klein"), delegate { ToggleBig(); });
             grow.Paint = delegate(Graphics g, Item it, bool h) { PaintIconButton(g, it, h, "groter", false); };
             x += btn + gap;
-            Item close = Add(new RectangleF(x, by, btn, btn), L.T("Timer sluiten"), delegate { running = false; clock.Stop(); Hide(); });
+            Item mute = Add(new RectangleF(x, by, btn, btn), L.T("Geluid aan of uit"), delegate { ov.Cfg.TimerMute = !ov.Cfg.TimerMute; if (ov.Cfg.TimerMute) TimerSound.Stop(); ov.Cfg.Save(); });
+            mute.Paint = delegate(Graphics g, Item it, bool h) { PaintIconButton(g, it, h, ov.Cfg.TimerMute ? "geluiduit" : "geluid", false); };
+            x += btn + gap;
+            Item close = Add(new RectangleF(x, by, btn, btn), L.T("Timer sluiten"), delegate { running = false; clock.Stop(); TimerSound.Stop(); Hide(); });
             close.Paint = delegate(Graphics g, Item it, bool h) { PaintIconButton(g, it, h, "kruis", false); };
             x += btn;
             float w = x + pad;
@@ -314,6 +320,55 @@ namespace NexusPen
             if (e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; running = false; clock.Stop(); Hide(); return; }
             clock.Stop(); clock.Dispose();
             base.OnFormClosing(e);
+        }
+    }
+
+    // ------------------------------------------------------------------ Geluid als de timer klaar is
+    // Alleen geluiden die al in Windows zitten (C:\Windows\Media). Ontbreekt er een, dan het gewone belletje.
+    static class TimerSound
+    {
+        public static readonly string[] Names = { "Belletje", "Wekker", "Melding", "Gong" }; // vertaal
+        static System.Media.SoundPlayer player;
+        static System.Windows.Forms.Timer stopper;
+
+        static string FileFor(int kind)
+        {
+            string dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Media");
+            string[] files = kind == 1 ? new string[] { "Alarm01.wav", "Alarm02.wav" }
+                : kind == 2 ? new string[] { "Windows Notify System Generic.wav", "Windows Notify.wav", "notify.wav" }
+                : kind == 3 ? new string[] { "chimes.wav", "Windows Proximity Notification.wav", "tada.wav" } : new string[0];
+            foreach (string f in files) { string p = System.IO.Path.Combine(dir, f); if (System.IO.File.Exists(p)) return p; }
+            return null;
+        }
+
+        // klaar: het gekozen geluid (de wekker klinkt hooguit 8 seconden, of tot je op de timer klikt)
+        public static void Play(Settings c) { if (c == null || c.TimerMute) return; Play(c.TimerSound, false); }
+
+        public static void Play(int kind, bool preview)
+        {
+            Stop();
+            try
+            {
+                string f = FileFor(kind);
+                if (f == null) { System.Media.SystemSounds.Asterisk.Play(); return; }
+                player = new System.Media.SoundPlayer(f);
+                if (kind == 1 && !preview)
+                {
+                    player.PlayLooping();
+                    stopper = new System.Windows.Forms.Timer();
+                    stopper.Interval = 8000;
+                    stopper.Tick += delegate { Stop(); };
+                    stopper.Start();
+                }
+                else player.Play();
+            }
+            catch (Exception ex) { Log.Error("Timergeluid", ex); try { System.Media.SystemSounds.Asterisk.Play(); } catch { } }
+        }
+
+        public static void Stop()
+        {
+            try { if (stopper != null) { stopper.Stop(); stopper.Dispose(); stopper = null; } } catch { }
+            try { if (player != null) { player.Stop(); player.Dispose(); player = null; } } catch { }
         }
     }
 }

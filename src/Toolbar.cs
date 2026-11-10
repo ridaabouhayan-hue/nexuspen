@@ -707,9 +707,118 @@ namespace NexusPen
                 m.AddCheck(L.T("Rechthoek (om te lezen)"), ov.Cfg.FocusShape == 1, delegate { ov.SetFocusShape(1); });
                 m.AddSeparator();
             }
+            if (AddToolMenu(m, it.Key)) m.AddSeparator();
             if (it.Key != "instellingen") m.Add(L.T("Verbergen uit de balk"), delegate { HideKey(it.Key); });
             m.Add(L.T("Werkbalk aanpassen..."), delegate { ov.ShowSettings("Werkbalk"); });
             m.ShowAt(vertical ? PointToScreen(new Point((int)it.R.Right + (int)(4 * S), (int)it.R.Y)) : PointToScreen(new Point((int)it.R.X, (int)(it.R.Bottom + 4 * S))));
+        }
+
+        // Rechtermuisknop op een knop: de keuzes die bij die knop horen, meteen te zetten
+        bool AddToolMenu(MenuPopup m, string key)
+        {
+            Overlay o = ov; Settings c = o.Cfg;
+            Action save = delegate { c.Save(); o.ApplySettings(); Refresh2(); o.RefreshSettingsWindow(); };
+            switch (key)
+            {
+                case "pen": case "krijt":
+                    m.AddCheck(L.T("Krijt"), c.Chalk, delegate { c.Chalk = !c.Chalk; save(); o.SetTool(Tool.Pen); });
+                    m.AddCheck(L.T("Rand om lijnen en vormen"), c.LineOutline, delegate { c.LineOutline = !c.LineOutline; save(); });
+                    m.AddSeparator();
+                    AddWidths(m, Tool.Pen, new float[] { 2, 4, 8, 14 });
+                    return true;
+                case "markeer":
+                    AddWidths(m, Tool.Marker, new float[] { 3, 6, 10, 16 });
+                    return true;
+                case "laser":
+                {
+                    string[] names = { L.T("Snel weg"), L.T("Langzaam"), L.T("Blijft staan") };
+                    for (int i = 0; i < 3; i++) { int idx = i; m.AddCheck(names[i], c.LaserMode == idx, delegate { c.LaserMode = idx; save(); o.SetTool(Tool.Laser); }); }
+                    return true;
+                }
+                case "vormen": case "lijn": case "pijl": case "rechthoek": case "cirkel":
+                    m.AddCheck(L.T("Rand om lijnen en vormen"), c.LineOutline, delegate { c.LineOutline = !c.LineOutline; save(); });
+                    return true;
+                case "tekst":
+                    foreach (string fn0 in SettingsForm.FontChoices)
+                    {
+                        string fn = fn0;
+                        if (fn != "Segoe UI" && !Fonts.Has(fn)) continue;
+                        m.AddCheck(fn, Render.FontOrDefault(c.FontName) == fn || (fn == "Segoe UI" && string.IsNullOrEmpty(c.FontName)), delegate { c.FontName = fn; save(); o.SetTool(Tool.Text); });
+                    }
+                    m.AddSeparator();
+                    m.AddCheck(L.T("Rand om tekst"), c.TextOutline, delegate { c.TextOutline = !c.TextOutline; save(); });
+                    m.AddSeparator();
+                    foreach (int sz0 in new int[] { 24, 36, 48, 64 })
+                    {
+                        int sz = sz0;
+                        m.AddCheck(L.T("Standaardgrootte") + " " + sz, Math.Abs(c.TextSize - sz) < 1, delegate { c.TextSize = sz; save(); o.SetTool(Tool.Text); });
+                    }
+                    return true;
+                case "gum":
+                {
+                    string[] names = { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") };
+                    for (int i = 0; i < EraserPopup.Widths.Length; i++)
+                    {
+                        float w = EraserPopup.Widths[i];
+                        m.AddCheck(names[i], o.CurrentTool == Tool.Eraser && Math.Abs(o.PenWidth - w) < 0.5f, delegate { o.SetTool(Tool.Eraser); o.SetWidth(w); });
+                    }
+                    return true;
+                }
+                case "kleur":
+                    m.AddCheck(L.T("Fel"), o.PaletteIndex == 0, delegate { o.SetPalette(0); Refresh2(); });
+                    m.AddCheck(L.T("Zacht"), o.PaletteIndex == 1, delegate { o.SetPalette(1); Refresh2(); });
+                    return true;
+                case "stempel":
+                    for (int i = 0; i < Render.StampKinds.Length; i++)
+                    {
+                        int idx = i;
+                        m.AddCheck(L.T(Render.StampName(Render.StampKinds[i])), c.StampKind == idx, delegate { c.StampKind = idx; c.Save(); o.SetTool(Tool.Stamp); });
+                    }
+                    return true;
+                case "bord":
+                {
+                    m.AddCheck(L.T("Scherm"), o.BoardMode == Board.None, delegate { o.SetBoard(Board.None); });
+                    m.AddCheck(L.T("Whiteboard"), o.BoardMode == Board.White, delegate { o.SetBoard(Board.White); });
+                    m.AddCheck(L.T("Krijtbord"), o.BoardMode == Board.Black, delegate { o.SetBoard(Board.Black); });
+                    m.AddCheck(L.T("Zwart bord"), o.BoardMode == Board.Dark, delegate { o.SetBoard(Board.Dark); });
+                    m.AddSeparator();
+                    string[] bgs = { L.T("Leeg"), L.T("Schrijflijnen"), L.T("Ruitjes"), L.T("Lijntjes") };
+                    for (int i = 0; i < bgs.Length; i++)
+                    {
+                        int idx = i;
+                        m.AddCheck(bgs[i], c.BoardBg == idx, delegate { c.BoardBg = idx; c.Save(); if (o.BoardMode == Board.None) o.SetBoard(Board.White); else o.Rebuild(); });
+                    }
+                    return true;
+                }
+                case "timer":
+                    for (int i = 0; i < TimerSound.Names.Length; i++)
+                    {
+                        int idx = i;
+                        m.AddCheck(L.T(TimerSound.Names[i]), c.TimerSound == idx && !c.TimerMute, delegate { c.TimerSound = idx; c.TimerMute = false; c.Save(); TimerSound.Play(idx, true); o.RefreshSettingsWindow(); });
+                    }
+                    m.AddCheck(L.T("Geen geluid"), c.TimerMute, delegate { c.TimerMute = !c.TimerMute; if (c.TimerMute) TimerSound.Stop(); c.Save(); o.RefreshSettingsWindow(); });
+                    return true;
+                case "foto":
+                    m.Add(L.T("Map openen"), delegate
+                    {
+                        try { System.IO.Directory.CreateDirectory(Overlay.ScreenshotDir); System.Diagnostics.Process.Start(SettingsForm.Explorer, "\"" + Overlay.ScreenshotDir + "\""); } catch (Exception ex) { Log.Error("Map openen", ex); }
+                    });
+                    return true;
+            }
+            return false;
+        }
+
+        // vier vaste diktes voor een gereedschap (zelfde als het schuifje in het kleurvenster)
+        void AddWidths(MenuPopup m, Tool t, float[] ws)
+        {
+            Overlay o = ov;
+            string[] names = { L.T("Dun"), L.T("Normaal"), L.T("Dik"), L.T("Extra dik") };
+            for (int i = 0; i < ws.Length; i++)
+            {
+                float w = ws[i];
+                bool on = Math.Abs((o.CurrentTool == t ? o.PenWidth : o.Cfg.WidthFor(t, o.PenWidth)) - w) < 0.5f;
+                m.AddCheck(names[i], on, delegate { o.SetTool(t); o.SetWidth(w); });
+            }
         }
 
         public void ShowLogoMenu(Point at)
@@ -717,6 +826,7 @@ namespace NexusPen
             MenuPopup m = new MenuPopup(ov);
             m.Add(collapsed ? L.T("Uitklappen") : L.T("Inklappen"), delegate { if (collapsed) ov.ExpandAll(); else ov.CollapseAll(); });
             m.Add(L.T("Instellingen"), delegate { ov.ShowSettings(null); });
+            if (Overlay.OrderedMonitors().Count > 1) m.Add(L.T("Tekening naar het andere scherm"), delegate { ov.MoveDrawingToOtherScreen(); });
             m.AddSeparator();
             m.Add(L.T("NexusPen afsluiten"), delegate { ov.AskQuit(); });
             m.ShowAt(at);
@@ -997,6 +1107,14 @@ namespace NexusPen
             // alleen beloven dat de tekening terugkomt als dat ook zo is
             bool back = ov.Cfg.KeepDrawing != 0 && ov.HasDrawing;
             ShowToast(back ? L.T("Opgeslagen. Je tekening en instellingen staan er de volgende keer weer.") : L.T("Opgeslagen."), "", null, "vink");
+        }
+
+        public void ShowToastAction(string text, string label, string icon, Action click)
+        {
+            if (collapsed) return;
+            if (toast == null || toast.IsDisposed) toast = new Toast(ov);
+            toast.S = W.UiScaleAt(Location);
+            toast.ShowAction(text, "", label, icon, click);
         }
 
         public void ShowToast(string text, string bold, string folder, string icon)

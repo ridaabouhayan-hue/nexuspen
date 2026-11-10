@@ -13,12 +13,12 @@ namespace NexusPen
     // ------------------------------------------------------------------ Instellingen (eigen tekenwerk, volgt het thema, alle teksten vertaald)
     class SettingsForm : Form
     {
-        public static readonly string[] PageIds = { "Algemeen", "Taal", "Uiterlijk", "Werkbalk", "Pen", "Tekst", "Stempels", "Bord", "Voorlezen", "Sneltoetsen", "Opslaan", "Schermdelen", "Gebruik", "Knoppen", "Bijwerken", "Hulp" };
-        static readonly string[] PageNames = { "Algemeen", "Taal", "Uiterlijk", "Werkbalk", "Pen en kleuren", "Tekst", "Stempels", "Bord en achtergrond", "Voorlezen", "Sneltoetsen", "Opslaan", "Schermdelen", "Gebruik", "Wat doet elke knop", "Bijwerken", "Hulp en foutlog" }; // vertaal
-        static readonly string[] PageIcons = { "huis", "taal", "kleuren", "rechthoek", "pen", "tekst", "stempel", "bord", "voorlezen", "toetsen", "opslaan", "schermdelen", "grafiek", "muis", "download", "info" };
+        public static readonly string[] PageIds = { "Algemeen", "Taal", "Uiterlijk", "Werkbalk", "Pen", "Tekst", "Stempels", "Bord", "Timer", "Voorlezen", "Sneltoetsen", "Opslaan", "Schermdelen", "Gebruik", "Knoppen", "Bijwerken", "Hulp" };
+        static readonly string[] PageNames = { "Algemeen", "Taal", "Uiterlijk", "Werkbalk", "Pen en kleuren", "Tekst", "Stempels", "Bord en achtergrond", "Timer", "Voorlezen", "Sneltoetsen", "Opslaan", "Schermdelen", "Gebruik", "Wat doet elke knop", "Bijwerken", "Hulp en foutlog" }; // vertaal
+        static readonly string[] PageIcons = { "huis", "taal", "kleuren", "rechthoek", "pen", "tekst", "stempel", "bord", "timer", "voorlezen", "toetsen", "opslaan", "schermdelen", "grafiek", "muis", "download", "info" };
         // na deze pagina's een dun streepje in de zijbalk: basis, tekenen, bewaren en delen, hulp
         static readonly string[] GroupEnds = { "Werkbalk", "Voorlezen", "Schermdelen" };
-        static readonly string[] FontChoices = { "Segoe UI", "Andika", "Atkinson Hyperlegible", "Lexend", "Nunito", "Patrick Hand", "Arial", "Calibri", "Comic Sans MS" };
+        public static readonly string[] FontChoices = { "Segoe UI", "Andika", "Atkinson Hyperlegible", "Lexend", "Nunito", "Patrick Hand", "Arial", "Calibri", "Comic Sans MS" };
         static readonly string[] FontDescs = { "Standaard van Windows", "Gemaakt voor beginnende lezers en Alfa", "Extra goed leesbaar, ook voor slechtzienden", "Rustig en ruim, prettig bij lange zinnen", "Rond en vriendelijk, de huisstijl van Nexus", "Handschrift, toch goed te lezen", "Bekend en strak", "Standaard van Word, rustig", "Speels, bekend van school" }; // vertaal
 
         Overlay ov;
@@ -395,6 +395,7 @@ namespace NexusPen
                 case "Tekst": BuildText(); break;
                 case "Stempels": BuildStamps(); break;
                 case "Bord": BuildBoard(); break;
+                case "Timer": BuildTimer(); break;
                 case "Voorlezen": BuildSoon(); break;
                 case "Sneltoetsen": BuildKeys(); break;
                 case "Opslaan": BuildSave(); break;
@@ -1248,6 +1249,26 @@ namespace NexusPen
             Settings c = Cfg;
             float y = Heading(contentTop, L.T("Schermdelen"), null);
             y = Toggle(y, L.T("Werkbalk verbergen bij schermdelen"), L.T("Cursisten zien in Zoom of Teams je tekeningen wel, maar de werkbalk niet"), delegate { return c.HideFromCapture; }, delegate(bool v) { c.HideFromCapture = v; });
+            // met een beamer of tweede scherm: tekenen en het bord alleen op een scherm, de andere schermen blijven vrij
+            int n = Math.Max(1, Overlay.OrderedMonitors().Count);
+            List<string> opts = new List<string>(); opts.Add(L.T("Alle schermen")); opts.Add(L.T("Hoofdscherm"));
+            if (n >= 2) opts.Add(n == 2 ? L.T("Ander scherm") : L.F("Scherm {0}", 2));
+            for (int i = 3; i <= Math.Min(4, n); i++) opts.Add(L.F("Scherm {0}", i));
+            y = Segments(y, L.T("Tekenen en bord op"), n > 1 ? L.T("De andere schermen blijven vrij: daar klik je gewoon in je eigen programma's") : L.T("Sluit een beamer of tweede scherm aan om te kiezen"),
+                opts.ToArray(), delegate { return Math.Min(opts.Count - 1, c.DrawScreen); }, delegate(int i) { c.DrawScreen = i; });
+            if (n > 1) { Button(contentX, y + 6 * S, L.T("Tekening naar het andere scherm"), "naarscherm", delegate { ov.MoveDrawingToOtherScreen(); }, false); y += 56 * S; }
+        }
+
+        // ---- Timer
+        void BuildTimer()
+        {
+            Settings c = Cfg;
+            float y = Heading(contentTop, L.T("Timer"), null);
+            string[] names = new string[TimerSound.Names.Length];
+            for (int i = 0; i < names.Length; i++) names[i] = L.T(TimerSound.Names[i]);
+            y = Segments(y, L.T("Geluid als de tijd om is"), L.T("Je hoort het meteen als voorbeeld. De wekker klinkt tot je op de timer klikt (hooguit 8 seconden)."), names,
+                delegate { return c.TimerSound; }, delegate(int i) { c.TimerSound = i; TimerSound.Play(i, true); });
+            y = Toggle(y, L.T("Geen geluid"), L.T("Ook met het luidsprekertje in de timer zelf"), delegate { return c.TimerMute; }, delegate(bool v) { c.TimerMute = v; if (v) TimerSound.Stop(); });
         }
 
         // ---- Gebruik
@@ -1697,7 +1718,9 @@ namespace NexusPen
             {
                 hover = it;
                 Invalidate();
-                if (it != null && it.Tip != null) tip.Show(it.Tip, this, (int)it.R.X, (int)(it.R.Bottom + 6 * S), 2500); else tip.Hide(this);
+                // alleen bij kleine knopjes met alleen een icoontje: bij al het andere staat de uitleg er al
+                bool small = it != null && it.R.Width <= 56 * S && it.R.Height <= 56 * S;
+                if (it != null && it.Tip != null && small) tip.Show(it.Tip, this, (int)it.R.X, (int)(it.R.Bottom + 6 * S), 2500); else tip.Hide(this);
             }
             Cursor = it != null ? (it.Key != null ? Cursors.SizeAll : Cursors.Hand) : Cursors.Default;
         }
