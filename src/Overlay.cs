@@ -181,6 +181,8 @@ namespace NexusPen
 
         bool displayChangePending;
 
+        // Schermen veranderd (dupliceren, uitbreiden, een beamer erbij of eraf, andere resolutie of schaal).
+        // Windows doet dat in een paar stappen; daarom meteen kijken en daarna nog twee keer, als alles klaar is.
         void OnDisplayChanged(object sender, EventArgs e)
         {
             if (!IsHandleCreated || displayChangePending) return;
@@ -188,13 +190,39 @@ namespace NexusPen
             BeginInvoke((MethodInvoker)delegate
             {
                 displayChangePending = false;
-                vs = SystemInformation.VirtualScreen;
-                Bounds = vs;
-                SetupBuffers();
-                Rebuild();
-                if (toolbar != null) toolbar.EnsureOnScreen();
+                FitToScreens(true);
+                foreach (int ms in new int[] { 700, 2500 })
+                {
+                    System.Windows.Forms.Timer t = new System.Windows.Forms.Timer();
+                    t.Interval = ms;
+                    t.Tick += delegate { t.Stop(); t.Dispose(); if (!IsDisposed) FitToScreens(false); };
+                    t.Start();
+                }
             });
         }
+
+        // De tekenlaag precies over alle schermen leggen (alleen als er iets anders is, of als het moet)
+        void FitToScreens(bool force)
+        {
+            try
+            {
+                Rectangle now = SystemInformation.VirtualScreen;
+                W.RECT wr; bool rectOk = W.GetWindowRect(Handle, out wr);
+                bool windowOff = rectOk && (wr.Left != now.X || wr.Top != now.Y || wr.Right - wr.Left != now.Width || wr.Bottom - wr.Top != now.Height);
+                bool sizeChanged = now != vs || committed == null || committed.Width != now.Width || committed.Height != now.Height;
+                if (!force && !sizeChanged && !windowOff) return;
+                Log.Info("Schermen veranderd: " + vs + " > " + now + " (" + Screen.AllScreens.Length + " scherm(en))");
+                vs = now;
+                // rechtstreeks via Windows: WinForms rekent bij verschillende schalen soms om, dan dekte de laag maar een deel
+                W.SetWindowPos(Handle, W.HWND_TOPMOST, vs.X, vs.Y, vs.Width, vs.Height, W.SWP_NOACTIVATE);
+                if (sizeChanged) SetupBuffers();
+                Rebuild();
+                RenderFrame();
+                if (toolbar != null) toolbar.EnsureOnScreen();
+            }
+            catch (Exception ex) { Log.Error("Schermen aanpassen", ex); }
+        }
+        DateTime lastScreenCheck = DateTime.MinValue;
 
         Color Background()
         {
@@ -252,7 +280,7 @@ namespace NexusPen
         {
             if (committed == null) return Rectangle.Empty;
             int w = committed.Width, h = committed.Height;
-            float s = W.DpiScaleAt(new Point(vs.X + w / 2, vs.Y + h / 2));
+            float s = W.DpiScaleAt(new Point(vs.X + w - 10, vs.Y + h - 10));   // dezelfde schaal als het regeltje zelf (scherm rechtsonder)
             Rectangle wa = Screen.FromPoint(new Point(vs.X + w - 10, vs.Y + h - 10)).WorkingArea;
             int right = (int)Math.Ceiling(wa.Right - vs.X - 22 * s) + 4, bottom = (int)Math.Ceiling(wa.Bottom - vs.Y - 12 * s) + 4;
             int bw = (int)(900 * s), bh = (int)(40 * s);
@@ -266,50 +294,71 @@ namespace NexusPen
             bool chalk = BoardMode == Board.Black || BoardMode == Board.Dark;
             Color blue = chalk ? Color.FromArgb(70, 255, 255, 255) : Color.FromArgb(110, 120, 160, 220);
             Color red = chalk ? Color.FromArgb(120, 247, 215, 116) : Color.FromArgb(150, 220, 80, 80);
-            float s = W.DpiScaleAt(new Point(vs.X + w / 2, vs.Y + h / 2));
-            float margin = 120 * s;
             float z = Math.Max(Settings.MinZoom, Math.Min(Settings.MaxZoom, Cfg.BoardZoom));
-            using (Pen pb = new Pen(blue, 1.2f * s * Math.Max(1f, z * 0.8f)))
-            using (Pen pr = new Pen(red, 1.6f * s * Math.Max(1f, z * 0.8f)))
+            // Elk scherm zijn eigen lijnen, in zijn eigen schaal en met zijn eigen randen. Vroeger was het
+            // een groot vlak over alle schermen samen: dan klopte het op het ene scherm wel en op het andere niet.
+            Screen[] screens;
+            try { screens = Screen.AllScreens; } catch { screens = new Screen[0]; }
+            List<Rectangle> areas = new List<Rectangle>();
+            foreach (Screen sc in screens)
             {
-                if (Cfg.BoardBg == 1)
-                {
-                    float step = 32 * s * z;
-                    float y0 = 190 * s;
-                    // heel ver ingezoomd: past er geen groep onder de balk, zet er dan een in het midden
-                    if (y0 + step * 3 >= h - 40 * s) y0 = Math.Max(10 * s, (h - step * 3) / 2);
-                    for (float y = y0; y + step * 3 < h - 10 * s; y += step * 5)
-                    {
-                        g.DrawLine(pb, margin, y, w - margin, y);
-                        g.DrawLine(pb, margin, y + step, w - margin, y + step);
-                        g.DrawLine(pr, margin, y + step * 2, w - margin, y + step * 2);
-                        g.DrawLine(pb, margin, y + step * 3, w - margin, y + step * 3);
-                    }
-                }
-                else if (Cfg.BoardBg == 2)
-                {
-                    float step = 32 * s * z;
-                    using (Pen pg = new Pen(Color.FromArgb(chalk ? 40 : 70, blue), 1f))
-                    {
-                        for (float x = 0; x < w; x += step) g.DrawLine(pg, x, 0, x, h);
-                        for (float y = 0; y < h; y += step) g.DrawLine(pg, 0, y, w, y);
-                    }
-                }
-                else if (Cfg.BoardBg == 3)
-                {
-                    float step = 44 * s * z;
-                    for (float y = 150 * s; y < h - 30 * s; y += step) g.DrawLine(pb, margin, y, w - margin, y);
-                }
+                Rectangle b = sc.Bounds; b.Offset(-vs.X, -vs.Y);
+                b.Intersect(new Rectangle(0, 0, w, h));
+                if (b.Width > 0 && b.Height > 0 && !areas.Contains(b)) areas.Add(b);   // gedupliceerd: hetzelfde vlak maar een keer
             }
+            if (areas.Count == 0) areas.Add(new Rectangle(0, 0, w, h));
+            GraphicsState keep = g.Save();
+            foreach (Rectangle b in areas)
+            {
+                float s = W.DpiScaleAt(new Point(vs.X + b.X + b.Width / 2, vs.Y + b.Y + b.Height / 2));
+                float margin = 120 * s, L0 = b.Left + margin, R0 = b.Right - margin;
+                g.SetClip(b, CombineMode.Intersect);
+                using (Pen pb = new Pen(blue, 1.2f * s * Math.Max(1f, z * 0.8f)))
+                using (Pen pr = new Pen(red, 1.6f * s * Math.Max(1f, z * 0.8f)))
+                {
+                    if (Cfg.BoardBg == 1)
+                    {
+                        float step = 32 * s * z;
+                        float y0 = b.Top + 190 * s;
+                        // heel ver ingezoomd: past er geen groep onder de balk, zet er dan een in het midden
+                        if (y0 + step * 3 >= b.Bottom - 40 * s) y0 = b.Top + Math.Max(10 * s, (b.Height - step * 3) / 2);
+                        for (float y = y0; y + step * 3 < b.Bottom - 10 * s; y += step * 5)
+                        {
+                            g.DrawLine(pb, L0, y, R0, y);
+                            g.DrawLine(pb, L0, y + step, R0, y + step);
+                            g.DrawLine(pr, L0, y + step * 2, R0, y + step * 2);
+                            g.DrawLine(pb, L0, y + step * 3, R0, y + step * 3);
+                        }
+                    }
+                    else if (Cfg.BoardBg == 2)
+                    {
+                        float step = 32 * s * z;
+                        using (Pen pg = new Pen(Color.FromArgb(chalk ? 40 : 70, blue), 1f))
+                        {
+                            for (float x = b.Left; x < b.Right; x += step) g.DrawLine(pg, x, b.Top, x, b.Bottom);
+                            for (float y = b.Top; y < b.Bottom; y += step) g.DrawLine(pg, b.Left, y, b.Right, y);
+                        }
+                    }
+                    else if (Cfg.BoardBg == 3)
+                    {
+                        float step = 44 * s * z;
+                        for (float y = b.Top + 150 * s; y < b.Bottom - 30 * s; y += step) g.DrawLine(pb, L0, y, R0, y);
+                    }
+                }
+                g.Restore(keep); keep = g.Save();
+            }
+            g.Restore(keep);
+            float s0 = W.DpiScaleAt(new Point(vs.X + w - 10, vs.Y + h - 10));
             string info = (autoSavedAt == DateTime.MinValue ? L.T("Automatisch bewaren staat aan") : L.T("Automatisch bewaard") + " · " + autoSavedAt.ToString("HH:mm"))
                 + " · " + L.F("pagina {0} van {1}", pageIndex + 1, pages.Count);
-            using (Font f = Fonts.Make(UiFont.Name, 12 * s, FontStyle.Regular))
+            float s1 = s0;
+            using (Font f = Fonts.Make(UiFont.Name, 12 * s1, FontStyle.Regular))
             using (SolidBrush b = new SolidBrush(chalk ? Color.FromArgb(150, 230, 240, 230) : Color.FromArgb(150, 60, 60, 66)))
             using (StringFormat sf = new StringFormat())
             {
                 sf.Alignment = StringAlignment.Far; sf.LineAlignment = StringAlignment.Far;
                 Rectangle wa = Screen.FromPoint(new Point(vs.X + w - 10, vs.Y + h - 10)).WorkingArea;
-                g.DrawString(info, f, b, new RectangleF(0, 0, wa.Right - vs.X - 22 * s, wa.Bottom - vs.Y - 12 * s), sf);
+                g.DrawString(info, f, b, new RectangleF(0, 0, wa.Right - vs.X - 22 * s1, wa.Bottom - vs.Y - 12 * s1), sf);
             }
         }
 
@@ -435,6 +484,8 @@ namespace NexusPen
             if ((DateTime.Now - lastTopAt).TotalMilliseconds > 900 && IsHandleCreated && !W.OtherTopmostInFront())
             {
                 lastTopAt = DateTime.Now;
+                // vangnet: is het scherm veranderd zonder dat Windows het meldde? Dan alsnog passend maken
+                if (IsHandleCreated && Visible && SystemInformation.VirtualScreen != vs) FitToScreens(false);
                 if (Visible) W.KeepOnTop(Handle);
                 if (toolbar != null) toolbar.KeepAllOnTop();
                 KeepExtrasOnTop();
@@ -1547,7 +1598,7 @@ namespace NexusPen
             {
                 W.SetCursor(overlayCursor.Handle); m.Result = new IntPtr(1); return;
             }
-            if (m.Msg == W.WM_DPICHANGED) { m.Result = IntPtr.Zero; return; } // de tekenlaag zelf nooit laten schalen
+            if (m.Msg == W.WM_DPICHANGED) { m.Result = IntPtr.Zero; BeginInvoke((MethodInvoker)delegate { FitToScreens(false); }); return; } // de tekenlaag zelf nooit laten schalen, wel weer passend maken
             if (m.Msg == W.WM_TABLET_QUERYSYSTEMGESTURESTATUS) { m.Result = new IntPtr(W.TABLET_FLAGS); return; }
             if (m.Msg == W.WM_DISPLAYCHANGE) OnDisplayChanged(this, EventArgs.Empty);
             if (m.Msg == W.WM_HOTKEY)

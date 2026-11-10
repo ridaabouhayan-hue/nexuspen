@@ -102,6 +102,7 @@ namespace NexusPen
         }
 
         [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
+        [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT r);
         [StructLayout(LayoutKind.Sequential)]
         public struct UPDATELAYEREDWINDOWINFO
         {
