@@ -211,18 +211,21 @@ namespace NexusPen
                 bool windowOff = rectOk && (wr.Left != now.X || wr.Top != now.Y || wr.Right - wr.Left != now.Width || wr.Bottom - wr.Top != now.Height);
                 bool sizeChanged = now != vs || committed == null || committed.Width != now.Width || committed.Height != now.Height;
                 if (!force && !sizeChanged && !windowOff) return;
-                Log.Info("Schermen veranderd: " + vs + " > " + now + " (" + Screen.AllScreens.Length + " scherm(en))");
+                monitors = W.MonitorRects();
+                Log.Info("Schermen veranderd: " + vs + " > " + now + " (" + monitors.Count + " scherm(en))");
                 vs = now;
                 // rechtstreeks via Windows: WinForms rekent bij verschillende schalen soms om, dan dekte de laag maar een deel
-                W.SetWindowPos(Handle, W.HWND_TOPMOST, vs.X, vs.Y, vs.Width, vs.Height, W.SWP_NOACTIVATE);
+                // (de volgorde laten zoals hij is: de balk en de venstertjes blijven boven de tekenlaag)
+                W.SetWindowPos(Handle, IntPtr.Zero, vs.X, vs.Y, vs.Width, vs.Height, W.SWP_NOACTIVATE | W.SWP_NOZORDER);
                 if (sizeChanged) SetupBuffers();
                 Rebuild();
                 RenderFrame();
-                if (toolbar != null) toolbar.EnsureOnScreen();
+                if (toolbar != null) { toolbar.EnsureOnScreen(); toolbar.KeepAllOnTop(); }
+                KeepExtrasOnTop();
             }
             catch (Exception ex) { Log.Error("Schermen aanpassen", ex); }
         }
-        DateTime lastScreenCheck = DateTime.MinValue;
+        List<Rectangle> monitors;   // de schermen bij de laatste wissel (voor het bord per scherm)
 
         Color Background()
         {
@@ -297,12 +300,11 @@ namespace NexusPen
             float z = Math.Max(Settings.MinZoom, Math.Min(Settings.MaxZoom, Cfg.BoardZoom));
             // Elk scherm zijn eigen lijnen, in zijn eigen schaal en met zijn eigen randen. Vroeger was het
             // een groot vlak over alle schermen samen: dan klopte het op het ene scherm wel en op het andere niet.
-            Screen[] screens;
-            try { screens = Screen.AllScreens; } catch { screens = new Screen[0]; }
+            if (monitors == null || monitors.Count == 0) monitors = W.MonitorRects();
             List<Rectangle> areas = new List<Rectangle>();
-            foreach (Screen sc in screens)
+            foreach (Rectangle mon in monitors)
             {
-                Rectangle b = sc.Bounds; b.Offset(-vs.X, -vs.Y);
+                Rectangle b = mon; b.Offset(-vs.X, -vs.Y);
                 b.Intersect(new Rectangle(0, 0, w, h));
                 if (b.Width > 0 && b.Height > 0 && !areas.Contains(b)) areas.Add(b);   // gedupliceerd: hetzelfde vlak maar een keer
             }
@@ -351,14 +353,13 @@ namespace NexusPen
             float s0 = W.DpiScaleAt(new Point(vs.X + w - 10, vs.Y + h - 10));
             string info = (autoSavedAt == DateTime.MinValue ? L.T("Automatisch bewaren staat aan") : L.T("Automatisch bewaard") + " · " + autoSavedAt.ToString("HH:mm"))
                 + " · " + L.F("pagina {0} van {1}", pageIndex + 1, pages.Count);
-            float s1 = s0;
-            using (Font f = Fonts.Make(UiFont.Name, 12 * s1, FontStyle.Regular))
+            using (Font f = Fonts.Make(UiFont.Name, 12 * s0, FontStyle.Regular))
             using (SolidBrush b = new SolidBrush(chalk ? Color.FromArgb(150, 230, 240, 230) : Color.FromArgb(150, 60, 60, 66)))
             using (StringFormat sf = new StringFormat())
             {
                 sf.Alignment = StringAlignment.Far; sf.LineAlignment = StringAlignment.Far;
                 Rectangle wa = Screen.FromPoint(new Point(vs.X + w - 10, vs.Y + h - 10)).WorkingArea;
-                g.DrawString(info, f, b, new RectangleF(0, 0, wa.Right - vs.X - 22 * s1, wa.Bottom - vs.Y - 12 * s1), sf);
+                g.DrawString(info, f, b, new RectangleF(0, 0, wa.Right - vs.X - 22 * s0, wa.Bottom - vs.Y - 12 * s0), sf);
             }
         }
 

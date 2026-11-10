@@ -23,7 +23,7 @@ namespace NexusPen
             WM_HOTKEY = 0x0312, WM_NCLBUTTONDOWN = 0xA1, HTCAPTION = 2, ULW_ALPHA = 2,
             MOD_CONTROL = 2, MOD_SHIFT = 4, MOD_NOREPEAT = 0x4000,
             WM_DPICHANGED = 0x02E0, WM_DISPLAYCHANGE = 0x007E, WM_TABLET_QUERYSYSTEMGESTURESTATUS = 0x02CC,
-            SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOACTIVATE = 0x10, VK_ESCAPE = 0x1B;
+            SWP_NOSIZE = 0x1, SWP_NOMOVE = 0x2, SWP_NOZORDER = 0x4, SWP_NOACTIVATE = 0x10, VK_ESCAPE = 0x1B;
         // Windows Ink: geen 'lang drukken = rechtermuisklik', geen tikrondjes, geen flicks
         public const int TABLET_FLAGS = 0x00000001 | 0x00000008 | 0x00000010 | 0x00010000;
         public static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
@@ -103,6 +103,17 @@ namespace NexusPen
 
         [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
         [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT r);
+        delegate bool MonitorEnumProc(IntPtr hMon, IntPtr hdc, ref RECT r, IntPtr data);
+        [DllImport("user32.dll")] static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr clip, MonitorEnumProc cb, IntPtr data);
+
+        // De schermen zoals Windows ze nu ziet (Screen.AllScreens onthoudt een oude lijst tot Windows een wissel meldt)
+        public static List<Rectangle> MonitorRects()
+        {
+            List<Rectangle> list = new List<Rectangle>();
+            try { EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, delegate(IntPtr m, IntPtr d, ref RECT r, IntPtr x) { list.Add(Rectangle.FromLTRB(r.Left, r.Top, r.Right, r.Bottom)); return true; }, IntPtr.Zero); }
+            catch { }
+            return list;
+        }
         [StructLayout(LayoutKind.Sequential)]
         public struct UPDATELAYEREDWINDOWINFO
         {
