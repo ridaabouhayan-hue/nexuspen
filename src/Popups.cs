@@ -735,6 +735,9 @@ namespace NexusPen
         string text = "", bold = "", folder, icon = "info";
         string actionLabel, actionIcon; Action action; bool withAction;   // een knop in de melding (bijv. "Verplaatsen")
 
+        public bool HasAction(Action a) { return a != null && action == a && Visible; }
+        public void KeepOpen() { hideTimer.Stop(); }   // blijft staan tot hij klaar is (bijv. Grootte aanpassen)
+
         public void ShowAction(string t, string b, string label, string ic, Action click)
         {
             withAction = true;

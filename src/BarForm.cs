@@ -35,7 +35,8 @@ namespace NexusPen
         protected Item hover;
         protected ToolTip tip = new ToolTip();
         public float S = 1;
-        protected virtual float ExtraScale { get { return 1f; } }   // de werkbalk: je eigen grootte erbij
+        protected virtual float ExtraScale { get { return 1f; } }
+        protected virtual void AfterDpiChange() { }   // de werkbalk: je eigen grootte erbij
         protected bool draggable;
         protected Point moveStart, moveMouse;
         protected bool vertical;
@@ -107,6 +108,7 @@ namespace NexusPen
                 S = d * W.ScreenFactorAt(new Point((r.Left + r.Right) / 2, (r.Top + r.Bottom) / 2), d) * ExtraScale;
                 Location = new Point(r.Left, r.Top);
                 Rebuild();
+                AfterDpiChange();
                 // tijdens het slepen naar een scherm met een andere schaal: opnieuw meten vanaf hier
                 moveStart = Location; moveMouse = Control.MousePosition;
                 m.Result = IntPtr.Zero;

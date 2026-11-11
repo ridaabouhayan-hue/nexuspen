@@ -150,6 +150,7 @@ namespace NexusPen
             if (ov.Cfg.ToolbarX != -1 || ov.Cfg.ToolbarY != -1) Location = new Point(ov.Cfg.ToolbarX, ov.Cfg.ToolbarY);
             else ResetPosition();
             EnsureOnScreen();
+            FitBarToScreen();
             LocationChanged += delegate { if (Visible) { ov.Cfg.ToolbarX = Left; ov.Cfg.ToolbarY = Top; } ClosePopups(); };
         }
 
@@ -199,6 +200,7 @@ namespace NexusPen
             Rebuild();
             Location = keep;
             EnsureOnScreen();
+            FitBarToScreen();
             ApplyCaptureSetting();
             foreach (BarForm f in new BarForm[] { lipje, tile, miniBar, widthTip, toast, colorPopup, shapePopup, stampPopup, boardPopup, eraserPopup, overflowPopup })
                 if (f != null && !f.IsDisposed) { f.ApplyCaptureSetting(); f.S = S; }
@@ -419,16 +421,20 @@ namespace NexusPen
 
         // ---- Grootte aanpassen: alleen als je het zelf aanzet (logo-menu of Instellingen), dan kan het niet per ongeluk
         protected override float ExtraScale { get { return ov.Cfg.BarZoom; } }
+        Action sizingDone;
         bool sizing, sizingDrag; float sizingFrom, sizingLen; Point sizingAt;
         public bool Sizing { get { return sizing; } }
 
         public void StartSizing()
         {
-            if (collapsed) return;
-            ClosePopups(); HideMiniBar();
+            if (collapsed || docked || !Visible) return;
+            ClosePopups(); HideMiniBar(); StopHoverOpen();
             sizing = true; sizingFrom = ov.Cfg.BarZoom;
+            clickWasDown = true;   // de klik waarmee je dit aanzette (in een menu of Instellingen) telt niet als "ergens anders"
             Invalidate();
-            ShowToastAction(L.T("Sleep aan de balk of draai aan het muiswiel. Esc = terug."), L.T("Klaar"), "vink", delegate { StopSizing(true); });
+            sizingDone = delegate { StopSizing(true); };
+            ShowToastAction(L.T("Sleep aan de balk of draai aan het muiswiel. Esc = terug."), L.T("Klaar"), "vink", sizingDone);
+            if (toast != null && !toast.IsDisposed) toast.KeepOpen();
             Usage.Log("menu", "grootte-aanpassen", "");
         }
 
@@ -438,8 +444,10 @@ namespace NexusPen
             sizing = false; sizingDrag = false; Capture = false;
             if (!keep) SetBarZoom(sizingFrom);
             ov.Cfg.Save();
-            if (toast != null && !toast.IsDisposed) toast.Hide();
+            if (toast != null && !toast.IsDisposed && toast.HasAction(sizingDone)) toast.Hide();   // alleen onze eigen melding
+            sizingDone = null;
             Invalidate();
+            ov.RefreshSettingsWindow();
         }
 
         public void ResetBarZoom() { SetBarZoom(1f); ov.Cfg.Save(); }
@@ -449,16 +457,31 @@ namespace NexusPen
             Point keep = Location;
             z = Math.Max(0.6f, Math.Min(2.5f, z));
             float baseS = W.UiScaleAt(new Point(keep.X + 10, keep.Y + 10));
+            if (Math.Abs(baseS * z - S) < S * 0.004f) return;   // te klein verschil: niet opnieuw tekenen
             ov.Cfg.BarZoom = z; S = baseS * z;
             Rebuild();
-            // nooit groter dan het scherm
-            Rectangle wa = Screen.FromPoint(new Point(keep.X + 10, keep.Y + 10)).WorkingArea;
-            float fit = Math.Min(wa.Width * 0.98f / Width, wa.Height * 0.98f / Height);
-            if (fit < 1f) { ov.Cfg.BarZoom = z * fit; S = baseS * ov.Cfg.BarZoom; Rebuild(); }
             Location = keep;
-            EnsureOnScreen();
-            Invalidate();
+            FitBarToScreen();
         }
+
+        // De balk past altijd op het scherm: zo nodig kleiner, en helemaal binnen de rand
+        public void FitBarToScreen()
+        {
+            if (collapsed || docked) return;
+            Point c = new Point(Left + 10, Top + 10);
+            Rectangle wa = Screen.FromPoint(c).WorkingArea;
+            float fit = Math.Min(wa.Width * 0.98f / Math.Max(1, Width), wa.Height * 0.98f / Math.Max(1, Height));
+            if (fit < 1f)
+            {
+                ov.Cfg.BarZoom = Math.Max(0.6f, ov.Cfg.BarZoom * fit);
+                S = W.UiScaleAt(c) * ov.Cfg.BarZoom;
+                Point k = Location; Rebuild(); Location = k;
+            }
+            int x = Math.Max(wa.Left, Math.Min(wa.Right - Width, Left)), y = Math.Max(wa.Top, Math.Min(wa.Bottom - Height, Top));
+            if (x != Left || y != Top) Location = new Point(x, y);
+        }
+
+        protected override void AfterDpiChange() { FitBarToScreen(); }
 
         protected override void OnMouseWheel(MouseEventArgs e)
         {
@@ -1213,6 +1236,7 @@ namespace NexusPen
         // ---- wegschuiven naar de rand: de tekeningen blijven staan
         void DockAway()
         {
+            StopSizing(true);
             ClosePopups();
             HideMiniBar();
             docked = true;
@@ -1250,6 +1274,7 @@ namespace NexusPen
         // ---- inklappen: alles weg, alleen het logo blijft
         public void ShowCollapsed()
         {
+            StopSizing(true);
             collapsed = true;
             ClosePopups(); HideMiniBar();
             if (widthTip != null) widthTip.Hide();

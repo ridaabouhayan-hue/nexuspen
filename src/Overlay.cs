@@ -228,7 +228,7 @@ namespace NexusPen
                 if (sizeChanged) SetupBuffers();
                 Rebuild();
                 RenderFrame();
-                if (toolbar != null) { toolbar.EnsureOnScreen(); toolbar.KeepAllOnTop(); }
+                if (toolbar != null) { toolbar.EnsureOnScreen(); toolbar.FitBarToScreen(); toolbar.KeepAllOnTop(); }
                 KeepExtrasOnTop();
             }
             catch (Exception ex) { Log.Error("Schermen aanpassen", ex); }
@@ -614,7 +614,7 @@ namespace NexusPen
 
             // Rustig aan als er niets gebeurt: minder vaak wakker worden spaart de batterij
             // (niet met een open venstertje van de balk: dan moet een korte klik ergens anders gezien worden)
-            bool idle = !DrawMode && lasers.Count == 0 && fading.Count == 0 && !dirty && !needSave && !(toolbar != null && toolbar.AnyPopupOpen);
+            bool idle = !DrawMode && lasers.Count == 0 && fading.Count == 0 && !dirty && !needSave && !(toolbar != null && (toolbar.AnyPopupOpen || toolbar.Sizing));
             int want = idle ? 100 : 15;
             if (timer.Interval != want) timer.Interval = want;
         }
