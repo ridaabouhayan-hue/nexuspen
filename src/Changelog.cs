@@ -11,6 +11,8 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.18", "11 November 2026",
+                I("groter", "Make the toolbar any size you like, only after you turn on Change size")),
             V("1.3.17", "10 November 2026",
                 I("geluid", "Five calm timer sounds of a few seconds, and choose how often they play"),
                 I("tekst", "Sharper text in the right-click menu")),

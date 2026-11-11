@@ -500,6 +500,12 @@ namespace NexusPen
             }
             y += (Theme.Order.Length + 1) / 2 * (th + 6 * S) + 8 * S;
             y = Segments(y, L.T("Grootte van de knoppen"), null, new string[] { L.T("Klein"), L.T("Normaal"), L.T("Groot") }, delegate { return c.SizeIndex; }, delegate(int i) { c.SizeIndex = i; });
+            {
+                float bx = contentX;
+                bx += Button(bx, y + 4 * S, L.T("Grootte aanpassen"), "groter", delegate { if (ov.Bar != null) ov.Bar.StartSizing(); }, false) + 8 * S;
+                if (Math.Abs(c.BarZoom - 1f) > 0.01f) Button(bx, y + 4 * S, L.T("Terug naar normaal"), "terugzetten", delegate { if (ov.Bar != null) ov.Bar.ResetBarZoom(); BuildItems(); Invalidate(); }, false);
+                y += 54 * S;
+            }
             y = Segments(y, L.T("Gekozen knop"), L.T("Rustig valt minder op tijdens de les"), new string[] { L.T("Rustig"), L.T("Accentkleur") }, delegate { return c.ActiveStyle; }, delegate(int i) { c.ActiveStyle = i; });
             y = Segments(y, L.T("Hoeken"), null, new string[] { L.T("Rond"), L.T("Strak") }, delegate { return c.Square ? 1 : 0; }, delegate(int i) { c.Square = i == 1; });
             y = Segments(y, L.T("Doorzichtigheid"), null, new string[] { L.T("Dekkend"), "90%", "80%" }, delegate { return c.OpacityIndex; }, delegate(int i) { c.OpacityIndex = i; });

@@ -54,6 +54,7 @@ namespace NexusPen
         public int TimerRepeat = 0;             // 0 een keer, 1 twee keer, 2 drie keer, 3 tot je klikt
         public bool TimerMute;
         public float TimerZoom = 1f;
+        public float BarZoom = 1f;              // eigen grootte van de werkbalk (Grootte aanpassen via het logo)
         public int LastBoard = 1;               // het bord van de vorige keer (1 wit, 2 krijtbord, 3 zwart)
         public int BoardOpenAs = 0;             // bordknop opent: 0 zoals de vorige keer, anders 1 wit, 2 krijtbord, 3 zwart
         public bool BoardClearOnClose;          // bij sluiten van het bord: wat erop staat wissen (anders bewaren)
@@ -216,6 +217,7 @@ namespace NexusPen
             OutlineWidth = Math.Max(0, Math.Min(2, OutlineWidth));
             TimerSound = Math.Max(0, Math.Min(4, TimerSound));
             TimerRepeat = Math.Max(0, Math.Min(3, TimerRepeat));
+            if (float.IsNaN(BarZoom) || BarZoom < 0.6f || BarZoom > 2.5f) BarZoom = float.IsNaN(BarZoom) ? 1f : Math.Max(0.6f, Math.Min(2.5f, BarZoom));
             if (float.IsNaN(TimerZoom) || TimerZoom < 0.7f || TimerZoom > 4f) TimerZoom = Math.Max(0.7f, Math.Min(4f, float.IsNaN(TimerZoom) ? 1f : TimerZoom));
             if (FontName == "Comic Sans MS") FontName = "Andika";   // zat in 1.3.12 tot 1.3.15, vervangen door Verdana
             DrawScreen = Math.Max(0, Math.Min(8, DrawScreen));

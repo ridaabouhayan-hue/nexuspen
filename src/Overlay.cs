@@ -576,6 +576,7 @@ namespace NexusPen
             bool esc = rawEsc && !timerTyping;   // de Esc van het timer-invulvak is niet voor de tekenlaag
             // Esc: eerst een open venstertje van de balk dicht, dan pas terug naar de muis
             if (esc && !lastEsc && MenuPopup.IsOpen) { MenuPopup.CloseOpen(); lastEsc = true; return; }   // eerst een open menu
+            if (esc && !lastEsc && toolbar != null && toolbar.Sizing) { toolbar.StopSizing(false); lastEsc = true; return; }   // grootte aanpassen: terug zoals het was
             if (esc && !lastEsc && lesTimer != null && !lesTimer.IsDisposed && lesTimer.Visible && lesTimer.IsFull) { lesTimer.ExitFull(); lastEsc = true; return; }   // timer op het hele scherm: terug
             if (esc && !lastEsc && toolbar != null && toolbar.AnyPopupOpen) { toolbar.ClosePopups(); lastEsc = true; return; }
             if (esc && !lastEsc && DrawMode && typing != null) { CloseTextInput(true); lastEsc = true; return; }   // ook als het toetsenbord ergens anders zat

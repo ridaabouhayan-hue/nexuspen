@@ -454,3 +454,7 @@ Belletjes | Bells | Clochettes | Campanillas | Sininhos | Ziller | Колоко�
 2 keer | Twice | 2 fois | 2 veces | 2 vezes | 2 kez | 2 раза | مرتان | 2 次
 3 keer | 3 times | 3 fois | 3 veces | 3 vezes | 3 kez | 3 раза | 3 مرات | 3 次
 Tot je op de timer klikt | Until you click the timer | Jusqu'à ce que vous cliquiez sur le minuteur | Hasta que hagas clic en el temporizador | Até você clicar no timer | Zamanlayıcıya tıklayana kadar | Пока не нажмёте на таймер | حتى تنقر على المؤقت | 直到点击计时器
+Grootte aanpassen | Change size | Modifier la taille | Cambiar tamaño | Alterar tamanho | Boyutu değiştir | Изменить размер | تغيير الحجم | 调整大小
+Terug naar normaal | Back to normal | Revenir à la normale | Volver a lo normal | Voltar ao normal | Normale dön | Вернуть обычный | العودة إلى الوضع العادي | 恢复正常
+Sleep aan de balk of draai aan het muiswiel. Esc = terug. | Drag the toolbar or turn the mouse wheel. Esc = back. | Faites glisser la barre ou tournez la molette. Échap = retour. | Arrastra la barra o gira la rueda del ratón. Esc = volver. | Arraste a barra ou gire a roda do mouse. Esc = voltar. | Çubuğu sürükle veya fare tekerleğini çevir. Esc = geri. | Потяните панель или покрутите колёсико мыши. Esc = назад. | اسحب الشريط أو أدر عجلة الفأرة. Esc = رجوع. | 拖动工具栏或滚动鼠标滚轮。Esc 返回。
+Klaar | Done | Terminé | Listo | Pronto | Tamam | Готово | تم | 完成

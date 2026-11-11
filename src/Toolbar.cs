@@ -125,7 +125,7 @@ namespace NexusPen
             Point start = (ov.Cfg.ToolbarX != -1 || ov.Cfg.ToolbarY != -1)
                 ? new Point(ov.Cfg.ToolbarX + 20, ov.Cfg.ToolbarY + 20)
                 : new Point(Screen.PrimaryScreen.WorkingArea.Left + 40, Screen.PrimaryScreen.WorkingArea.Top + 40);
-            S = W.UiScaleAt(start);
+            S = W.UiScaleAt(start) * ov.Cfg.BarZoom;
             vertical = ov.Cfg.Vertical;
             BarAlpha = OpacityValue;
             // vanaf 1.2.6 staat krijt niet meer standaard in de balk: stond krijt nog aan van de krijtknop, dan weer gewone pen
@@ -408,6 +408,62 @@ namespace NexusPen
         {
             using (SolidBrush b = new SolidBrush(T.Sep)) foreach (Item s in seps) g.FillRectangle(b, s.R);
             if (handleItem != null) PaintHandle(g, handleItem, hoverHandle || shortening);
+            if (sizing)
+            {
+                // grootte aanpassen: een rand in de accentkleur en een hoekje om aan te slepen
+                using (Pen p = new Pen(T.Accent, 2.5f * S)) using (GraphicsPath gp = Svg.RoundRect(new RectangleF(1.5f * S, 1.5f * S, ClientSize.Width - 3 * S, ClientSize.Height - 3 * S), 10 * S)) g.DrawPath(p, gp);
+                float x = ClientSize.Width - 6 * S, y = ClientSize.Height - 6 * S;
+                using (Pen p = new Pen(T.Accent, 2f * S)) { g.DrawLine(p, x - 12 * S, y, x, y - 12 * S); g.DrawLine(p, x - 6 * S, y, x, y - 6 * S); }
+            }
+        }
+
+        // ---- Grootte aanpassen: alleen als je het zelf aanzet (logo-menu of Instellingen), dan kan het niet per ongeluk
+        protected override float ExtraScale { get { return ov.Cfg.BarZoom; } }
+        bool sizing, sizingDrag; float sizingFrom, sizingLen; Point sizingAt;
+        public bool Sizing { get { return sizing; } }
+
+        public void StartSizing()
+        {
+            if (collapsed) return;
+            ClosePopups(); HideMiniBar();
+            sizing = true; sizingFrom = ov.Cfg.BarZoom;
+            Invalidate();
+            ShowToastAction(L.T("Sleep aan de balk of draai aan het muiswiel. Esc = terug."), L.T("Klaar"), "vink", delegate { StopSizing(true); });
+            Usage.Log("menu", "grootte-aanpassen", "");
+        }
+
+        public void StopSizing(bool keep)
+        {
+            if (!sizing) return;
+            sizing = false; sizingDrag = false; Capture = false;
+            if (!keep) SetBarZoom(sizingFrom);
+            ov.Cfg.Save();
+            if (toast != null && !toast.IsDisposed) toast.Hide();
+            Invalidate();
+        }
+
+        public void ResetBarZoom() { SetBarZoom(1f); ov.Cfg.Save(); }
+
+        void SetBarZoom(float z)
+        {
+            Point keep = Location;
+            z = Math.Max(0.6f, Math.Min(2.5f, z));
+            float baseS = W.UiScaleAt(new Point(keep.X + 10, keep.Y + 10));
+            ov.Cfg.BarZoom = z; S = baseS * z;
+            Rebuild();
+            // nooit groter dan het scherm
+            Rectangle wa = Screen.FromPoint(new Point(keep.X + 10, keep.Y + 10)).WorkingArea;
+            float fit = Math.Min(wa.Width * 0.98f / Width, wa.Height * 0.98f / Height);
+            if (fit < 1f) { ov.Cfg.BarZoom = z * fit; S = baseS * ov.Cfg.BarZoom; Rebuild(); }
+            Location = keep;
+            EnsureOnScreen();
+            Invalidate();
+        }
+
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            if (sizing) { SetBarZoom(ov.Cfg.BarZoom * (e.Delta > 0 ? 1.06f : 1 / 1.06f)); return; }
+            base.OnMouseWheel(e);
         }
 
 
@@ -533,6 +589,12 @@ namespace NexusPen
         protected override bool OnPress(MouseEventArgs e)
         {
             MenuPopup.CloseOpen();   // een klik op de balk sluit een open menu
+            // grootte aanpassen: overal op de balk slepen maakt hem groter of kleiner (knoppen doen dan even niets)
+            if (sizing)
+            {
+                if (e.Button == MouseButtons.Left) { sizingDrag = true; sizingAt = Control.MousePosition; sizingLen = vertical ? Height : Width; sizingFrom2 = ov.Cfg.BarZoom; Capture = true; }
+                return true;
+            }
             // het logo: klikken = inklappen, slepen = de balk verplaatsen
             if (e.Button == MouseButtons.Left && logoItem != null && logoItem.R.Contains(e.Location))
             {
@@ -627,8 +689,21 @@ namespace NexusPen
             ov.RefreshSettingsWindow();
         }
 
+        float sizingFrom2;
         protected override void OnMouseMove(MouseEventArgs e)
         {
+            if (sizing)
+            {
+                Cursor = Cursors.SizeNWSE;
+                if (sizingDrag && (Control.MouseButtons & MouseButtons.Left) == 0) { sizingDrag = false; Capture = false; }
+                if (sizingDrag)
+                {
+                    Point m = Control.MousePosition;
+                    float d = vertical ? m.Y - sizingAt.Y : m.X - sizingAt.X;
+                    SetBarZoom(sizingFrom2 * Math.Max(40, sizingLen + d) / sizingLen);
+                }
+                return;
+            }
             if (dragging) { DragMove(); Cursor = Cursors.SizeAll; return; }
             if (logoDown)
             {
@@ -663,6 +738,7 @@ namespace NexusPen
 
         protected override void OnMouseUp(MouseEventArgs e)
         {
+            if (sizing) { sizingDrag = false; Capture = false; return; }
             base.OnMouseUp(e);
             if (dragging) { Capture = false; if (dragging) EndDrag(); return; }
             if (logoDown) { logoDown = false; Capture = false; if (logoItem != null && logoItem.R.Contains(e.Location)) ov.CollapseAll(); return; }
@@ -828,6 +904,7 @@ namespace NexusPen
             MenuPopup m = new MenuPopup(ov);
             m.Add(collapsed ? L.T("Uitklappen") : L.T("Inklappen"), delegate { if (collapsed) ov.ExpandAll(); else ov.CollapseAll(); });
             m.Add(L.T("Instellingen"), delegate { ov.ShowSettings(null); });
+            if (!collapsed) m.Add(L.T("Grootte aanpassen"), delegate { StartSizing(); });
             if (Overlay.OrderedMonitors().Count > 1) m.Add(L.T("Tekening naar het andere scherm"), delegate { ov.MoveDrawingToOtherScreen(); });
             m.AddSeparator();
             m.Add(L.T("NexusPen afsluiten"), delegate { ov.AskQuit(); });
@@ -928,6 +1005,12 @@ namespace NexusPen
         public void WatchClickElsewhere()
         {
             bool down = (W.GetAsyncKeyState(0x01) & 0x8000) != 0 || (W.GetAsyncKeyState(0x02) & 0x8000) != 0;
+            if (down && !clickWasDown && sizing)
+            {
+                Point m = Control.MousePosition;
+                bool onToast = toast != null && !toast.IsDisposed && toast.Visible && toast.Bounds.Contains(m);
+                if (!Bounds.Contains(m) && !onToast) StopSizing(true);   // ergens anders geklikt: klaar
+            }
             if (down && !clickWasDown && AnyPopupOpen)
             {
                 try
