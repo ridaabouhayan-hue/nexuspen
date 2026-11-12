@@ -628,6 +628,7 @@ namespace NexusPen
             // Automatisch bewaren, 1,5 seconde na de laatste wijziging
             if (needSave && (DateTime.Now - changedAt).TotalMilliseconds > 1500) SaveNow();
 
+            CheckHold();
             // knipperend streepje tijdens het typen
             if (typing != null && (DateTime.Now - caretAt).TotalMilliseconds > 530) { caretOn = !caretOn; caretAt = DateTime.Now; dirty = true; }
 
@@ -3151,20 +3152,42 @@ namespace NexusPen
                 {
                     // op geselecteerde woorden gedrukt: slepen = die woorden verplaatsen (zoals in Word)
                     textDrag = 4; textDragFrom = p; textDropIdx = -1; Capture = true;
+                    StartHold(p);
                     return true;
                 }
                 if (e.Clicks >= 2) ed.SelectWordAt(idx);
                 else ed.PlaceAt(idx, (Control.ModifierKeys & Keys.Shift) != 0);
                 textDrag = e.Clicks >= 2 ? 0 : 1; Capture = textDrag != 0;
+                if (textDrag == 1) StartHold(p);
                 TypingChanged();
                 return true;
             }
             return false;
         }
 
+        // Ingedrukt houden in de tekst (een halve seconde stil): dan verplaats je het hele tekstvak, zonder de rand te pakken.
+        // Meteen bewegen = gewoon selecteren of woorden slepen, zoals altijd.
+        bool holdPending; DateTime holdAt; PointF holdFrom;
+        const int HoldMs = 450;
+        void StartHold(PointF p) { holdPending = true; holdAt = DateTime.Now; holdFrom = p; }
+
+        // in de Tick: lang genoeg stil ingedrukt? dan wordt het verplaatsen
+        void CheckHold()
+        {
+            if (!holdPending) return;
+            if (typing == null || (Control.MouseButtons & MouseButtons.Left) == 0 || (textDrag != 1 && textDrag != 4)) { holdPending = false; return; }
+            if ((DateTime.Now - holdAt).TotalMilliseconds < HoldMs) return;
+            holdPending = false;
+            if (textDrag == 1 && ed.HasSelection) ed.PlaceAt(ed.Caret, false);   // een klein beetje geselecteerd door trillen: weg
+            textDrag = 2; textDropIdx = -1; textDragFrom = holdFrom; textPtFrom = typing.Pts[0];
+            SetOverlayCursor(Cursors.SizeAll);
+            TypingChanged();
+        }
+
         bool TextMouseMove(MouseEventArgs e)
         {
             PointF p = e.Location;
+            if (holdPending && Dist2(p, holdFrom) > 25) holdPending = false;   // bewogen voor de halve seconde om was: gewoon selecteren
             if (textDrag == 1)
             {
                 int idx;
