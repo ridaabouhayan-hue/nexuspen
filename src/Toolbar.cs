@@ -932,6 +932,7 @@ namespace NexusPen
         {
             MenuPopup m = new MenuPopup(ov);
             if (logoItem != null && Visible) m.Anchor = RectangleToScreen(Rectangle.Round(logoItem.R));
+            else if (collapsed && tile != null && tile.Visible) m.Anchor = tile.Bounds;   // ingeklapt: het logo-tegeltje
             m.Add(collapsed ? L.T("Uitklappen") : L.T("Inklappen"), delegate { if (collapsed) ov.ExpandAll(); else ov.CollapseAll(); });
             m.Add(L.T("Instellingen"), delegate { ov.ShowSettings(null); });
             if (!collapsed) m.Add(L.T("Grootte aanpassen"), delegate { StartSizing(); });

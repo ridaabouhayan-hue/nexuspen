@@ -125,6 +125,7 @@ namespace NexusPen
             if (y + Height > wa.Bottom) y = Math.Max(wa.Top, at.Y - Height);
             Location = new Point(x, y);
             armed = false;
+            if (Anchor.IsEmpty) Anchor = new Rectangle(Control.MousePosition, Size.Empty);   // geen knop: dan het punt waar je klikte
             Show();
             watch.Start();
         }
@@ -148,10 +149,11 @@ namespace NexusPen
             Point m = Control.MousePosition;
             Rectangle near = Rectangle.Inflate(Bounds, (int)(16 * S), (int)(16 * S));
             bool over = near.Contains(m) || (!Anchor.IsEmpty && Rectangle.Inflate(Anchor, (int)(6 * S), (int)(6 * S)).Contains(m));
-            if (over || down) awayTicks = 0;
-            else if (++awayTicks * watch.Interval >= 650) Close();
+            if (over || down) awaySince = -1;
+            else if (awaySince < 0) awaySince = Environment.TickCount;
+            else if (Environment.TickCount - awaySince >= 650) Close();
         }
-        int awayTicks;
+        int awaySince = -1;
         public Rectangle Anchor;   // de knop waar het menu bij hoort (op het scherm): daar mag de muis ook zijn
 
         protected override void OnMouseMove(MouseEventArgs e)
