@@ -301,7 +301,7 @@ namespace NexusPen
         public void ToggleOneScreen()
         {
             List<Rectangle> mons = OrderedMonitors();
-            if (Cfg.DrawScreen > 0 || mons.Count < 2) Cfg.DrawScreen = 0;
+            if (OneScreenOn || mons.Count < 2) Cfg.DrawScreen = 0;
             else
             {
                 Point barAt = toolbar != null ? new Point(toolbar.Left + toolbar.Width / 2, toolbar.Top + toolbar.Height / 2) : Control.MousePosition;
@@ -2995,13 +2995,17 @@ namespace NexusPen
                 case Keys.V: if (ctrl) PasteText(); else handled = false; break;
                 case Keys.Z:
                     if (!ctrl) { handled = false; break; }
-                    if (shift) { ed.Redo(); break; }
-                    if (ed.Undo()) break;
+                    if (shift) { RedoInTyping(); break; }
+                    if (ed.Undo()) { zHeld = true; break; }
                     // niets meer terug te zetten in deze tekst: dan verder terug, zoals in Word.
                     // (bijv. net ergens anders geklikt met Tekst: dan staat er een leeg nieuw vakje, en dat telt niet mee)
+                    // Alleen bij een nieuwe druk: Ctrl+Z vasthouden schiet niet door naar eerdere tekeningen.
+                    if (zHeld) break;
+                    zHeld = true;
+                    e.Handled = true; e.SuppressKeyPress = true;
                     UndoPastTyping();
                     return true;
-                case Keys.Y: if (ctrl) ed.Redo(); else handled = false; break;
+                case Keys.Y: if (ctrl) RedoInTyping(); else handled = false; break;
                 case Keys.Oemplus: case Keys.Add: if (ctrl) WheelText(120); else handled = false; break;
                 case Keys.OemMinus: case Keys.Subtract: if (ctrl) WheelText(-120); else handled = false; break;
                 default: handled = false; break;
@@ -3198,6 +3202,7 @@ namespace NexusPen
         {
             base.OnKeyUp(e);
             if (e.KeyCode == Keys.Delete) deleteHeld = false;
+            if (e.KeyCode == Keys.Z || e.KeyCode == Keys.ControlKey) zHeld = false;
         }
 
         protected override void OnKeyDown(KeyEventArgs e)
@@ -3345,6 +3350,14 @@ namespace NexusPen
         }
 
         // Klaar met typen: de tekst komt in de tekening (of terug zoals hij was)
+        bool zHeld;   // Ctrl+Z wordt vastgehouden
+        // Ctrl+Y: eerst binnen de tekst; in een leeg nieuw vakje de stap daarvoor opnieuw doen (spiegel van Ctrl+Z)
+        void RedoInTyping()
+        {
+            if (ed.Redo()) return;
+            if (typingOld == null && (string.IsNullOrEmpty(typing.Text) || typing.Text.Trim().Length == 0)) { CloseTextInput(false); Redo(); RenderFrame(); }
+        }
+
         // Ctrl+Z terwijl er in de tekst niets meer terug te zetten is: het vakje sluiten en de stap daarvoor ongedaan maken
         void UndoPastTyping()
         {
