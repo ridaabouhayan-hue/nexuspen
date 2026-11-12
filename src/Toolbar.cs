@@ -811,6 +811,7 @@ namespace NexusPen
             if (AddToolMenu(m, it.Key)) m.AddSeparator();
             if (it.Key != "instellingen") m.Add(L.T("Verbergen uit de balk"), delegate { HideKey(it.Key); });
             m.Add(L.T("Werkbalk aanpassen..."), delegate { ov.ShowSettings("Werkbalk"); });
+            m.Anchor = RectangleToScreen(Rectangle.Round(it.R));
             m.ShowAt(vertical ? PointToScreen(new Point((int)it.R.Right + (int)(4 * S), (int)it.R.Y)) : PointToScreen(new Point((int)it.R.X, (int)(it.R.Bottom + 4 * S))));
         }
 
@@ -930,6 +931,7 @@ namespace NexusPen
         public void ShowLogoMenu(Point at)
         {
             MenuPopup m = new MenuPopup(ov);
+            if (logoItem != null && Visible) m.Anchor = RectangleToScreen(Rectangle.Round(logoItem.R));
             m.Add(collapsed ? L.T("Uitklappen") : L.T("Inklappen"), delegate { if (collapsed) ov.ExpandAll(); else ov.CollapseAll(); });
             m.Add(L.T("Instellingen"), delegate { ov.ShowSettings(null); });
             if (!collapsed) m.Add(L.T("Grootte aanpassen"), delegate { StartSizing(); });

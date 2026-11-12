@@ -11,6 +11,8 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.22", "12 November 2026",
+                I("muis", "A menu closes by itself shortly after your mouse leaves it")),
             V("1.3.21", "12 November 2026",
                 I("verplaats", "While typing: press and hold in the text for half a second, then drag to move it")),
             V("1.3.20", "12 November 2026",

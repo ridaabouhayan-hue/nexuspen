@@ -142,8 +142,17 @@ namespace NexusPen
             if (!down && !tapped) { armed = true; }
             else if (armed && !Bounds.Contains(Control.MousePosition)) { Close(); return; }
             else if (!down) armed = true;
-            if ((W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0) Close();
+            if ((W.GetAsyncKeyState(W.VK_ESCAPE) & 0x8000) != 0) { Close(); return; }
+            // Muis weg van het menu (en van de knop waar het bij hoort)? Dan na ruim een halve seconde vanzelf dicht.
+            // Niet meteen: zo kun je rustig schuin naar een regel bewegen, of even over de rand schieten.
+            Point m = Control.MousePosition;
+            Rectangle near = Rectangle.Inflate(Bounds, (int)(16 * S), (int)(16 * S));
+            bool over = near.Contains(m) || (!Anchor.IsEmpty && Rectangle.Inflate(Anchor, (int)(6 * S), (int)(6 * S)).Contains(m));
+            if (over || down) awayTicks = 0;
+            else if (++awayTicks * watch.Interval >= 650) Close();
         }
+        int awayTicks;
+        public Rectangle Anchor;   // de knop waar het menu bij hoort (op het scherm): daar mag de muis ook zijn
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
