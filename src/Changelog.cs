@@ -11,6 +11,8 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.20", "12 November 2026",
+                I("terugzetten", "Undo and redo are kept for the screen and for every board page, also when you switch or close the board")),
             V("1.3.19", "12 November 2026",
                 I("terugzetten", "Ctrl+Z while typing goes back word by word, and further back when the text has nothing left"),
                 I("naarscherm", "Board only on the other screen: one click in the board window")),

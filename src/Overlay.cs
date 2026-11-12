@@ -766,6 +766,7 @@ namespace NexusPen
                 bool empty = true;
                 foreach (List<Stroke> pg in pages) if (pg.Count > 0) empty = false;
                 if (empty) pages = prevPages; else pages.AddRange(prevPages);
+                pageHist.Clear();
                 if (pageIndex >= pages.Count) pageIndex = 0;
             }
             strokes = BoardMode == Board.None ? screenStrokes : pages[pageIndex];
@@ -1299,6 +1300,21 @@ namespace NexusPen
                                 if (!(afterUndo == before - 1 && afterRedo == before)) { Program.SelfTestErrors++; Console.Error.WriteLine("Ongedaan maken of opnieuw werkt niet: " + r); }
                             }
                             strokes.Clear(); undo.Clear(); redo.Clear(); Rebuild(); SetTool(Tool.Mouse);
+                            {
+                                // Opnieuw blijft bewaard als je van pagina wisselt of het bord dicht en weer open doet
+                                SetBoard(Board.White);
+                                Stroke ts = new Stroke(); ts.Tool = Tool.Pen; ts.Color = Color.Red; ts.Width = 4; ts.Pts.Add(new PointF(100, 100)); ts.Pts.Add(new PointF(200, 150));
+                                Checkpoint(); strokes.Add(ts); StoreActive();
+                                Undo();
+                                NewPage(); PrevPage();
+                                SetBoard(Board.None); SetBoard(Board.White);
+                                Redo();
+                                bool ok = strokes.Contains(ts);
+                                Console.WriteLine("Opnieuw na pagina en bord wisselen: " + ok);
+                                if (!ok) { Program.SelfTestErrors++; Console.Error.WriteLine("Opnieuw gaat verloren bij wisselen van pagina of bord"); }
+                                SetBoard(Board.None);
+                                pages.Clear(); pages.Add(new List<Stroke>()); pageIndex = 0; pageHist.Clear(); undo.Clear(); redo.Clear(); Rebuild();
+                            }
                             break;
                         case 18:
                             // zwart bord, een lijn die zichzelf kruist, en de neon-laser (nog ingedrukt)
@@ -2145,10 +2161,11 @@ namespace NexusPen
             StoreActive();
             Deselect();
             bool wasScreen = BoardMode == Board.None;
-            if (wasScreen && b != Board.None) { screenUndo = new List<List<Stroke>>(undo); screenRedo = new List<List<Stroke>>(redo); undo.Clear(); redo.Clear(); }
-            else if (!wasScreen && b == Board.None) { undo.Clear(); redo.Clear(); undo.AddRange(screenUndo); redo.AddRange(screenRedo); }
-            else if (!wasScreen && b != Board.None && b != BoardMode) { /* zelfde pagina, andere kleur: geschiedenis blijft */ }
+            // scherm en elke bordpagina hebben hun eigen Ongedaan maken en Opnieuw: bij wisselen bewaren en terugzetten
+            bool switching = wasScreen != (b == Board.None);
+            if (switching) SaveHist();
             BoardMode = b;
+            if (switching) LoadHist();
             if (b != Board.None) Cfg.LastBoard = (int)b;   // de bordknop opent de volgende keer dit bord
             strokes = b == Board.None ? screenStrokes : pages[pageIndex];
             if (byUser) Usage.Log("bord", b.ToString(), "");
@@ -2180,7 +2197,7 @@ namespace NexusPen
             SetBoard(Board.None);
             if (clear)
             {
-                pages.Clear(); pages.Add(new List<Stroke>()); pageIndex = 0;
+                pages.Clear(); pages.Add(new List<Stroke>()); pageIndex = 0; pageHist.Clear();
                 MarkChanged();
             }
             Usage.Log("bord", "dicht", Cfg.BoardClearOnClose ? "wissen" : "bewaren");
@@ -2200,13 +2217,15 @@ namespace NexusPen
                 if (MessageBox.Show(this, L.T("Deze pagina met alles wat erop staat verwijderen?"), "NexusPen", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
                 if (BoardMode != keepBoard || pageIndex != keepIndex || pages.Count != keepCount || strokes != keepList) return;   // intussen bord dicht of andere pagina
             }
-            if (pages.Count <= 1) { strokes.Clear(); undo.Clear(); redo.Clear(); }
+            if (pages.Count <= 1) { strokes.Clear(); undo.Clear(); redo.Clear(); pageHist.Clear(); }
             else
             {
+                pageHist.Remove(pageIndex);
+                ShiftHist(pageIndex + 1, -1);
                 pages.RemoveAt(pageIndex);
                 pageIndex = Math.Max(0, Math.Min(pages.Count - 1, pageIndex));
                 strokes = pages[pageIndex];
-                undo.Clear(); redo.Clear();
+                LoadHist();
             }
             MarkChanged(); Rebuild(); RefreshUi();
             Usage.Log("bord", "pagina weg", "");
@@ -2234,9 +2253,10 @@ namespace NexusPen
             CloseTextInput(true);
             if (BoardMode == Board.None) { SetBoard(Board.White); }
             StoreActive();
+            SaveHist();
             pageIndex = Math.Max(0, Math.Min(pages.Count - 1, i));
             strokes = pages[pageIndex];
-            undo.Clear(); redo.Clear();
+            LoadHist();   // elke pagina zijn eigen Ongedaan maken en Opnieuw
             Deselect();
             MarkChanged();
             Rebuild();
@@ -2245,7 +2265,38 @@ namespace NexusPen
 
         public void PrevPage() { GoToPage(pageIndex - 1); }
         public void NextPage() { GoToPage(pageIndex + 1); }
-        public void NewPage() { StoreActive(); pages.Insert(pageIndex + 1, new List<Stroke>()); GoToPage(pageIndex + 1); }
+        public void NewPage() { StoreActive(); SaveHist(); ShiftHist(pageIndex + 1, 1); pages.Insert(pageIndex + 1, new List<Stroke>()); GoToPage(pageIndex + 1); }
+
+        // ---- geschiedenis per plek: het scherm, en elke bordpagina apart
+        class History { public List<List<Stroke>> U = new List<List<Stroke>>(), R = new List<List<Stroke>>(); }
+        Dictionary<int, History> pageHist = new Dictionary<int, History>();
+
+        void SaveHist()
+        {
+            if (BoardMode == Board.None) { screenUndo = new List<List<Stroke>>(undo); screenRedo = new List<List<Stroke>>(redo); return; }
+            History h = new History(); h.U.AddRange(undo); h.R.AddRange(redo);
+            pageHist[pageIndex] = h;
+        }
+
+        void LoadHist()
+        {
+            undo.Clear(); redo.Clear();
+            if (BoardMode == Board.None) { undo.AddRange(screenUndo); redo.AddRange(screenRedo); return; }
+            History h;
+            if (pageHist.TryGetValue(pageIndex, out h)) { undo.AddRange(h.U); redo.AddRange(h.R); }
+        }
+
+        // een pagina erbij of eraf: de geschiedenis van de pagina's erachter schuift mee
+        void ShiftHist(int from, int delta)
+        {
+            Dictionary<int, History> n = new Dictionary<int, History>();
+            foreach (KeyValuePair<int, History> kv in pageHist)
+            {
+                int k = kv.Key < from ? kv.Key : kv.Key + delta;
+                if (k >= 0) n[k] = kv.Value;
+            }
+            pageHist = n;
+        }
 
 
         // ---------- inklappen: alles weg (balk, tekeningen, bord), alleen het logo blijft
