@@ -339,6 +339,15 @@ static class Tests {
       Check(ts.Text == "Ik ga met niet de ", "Ctrl+Backspace wist een woord");
       ed.Undo();
       Check(ts.Text == "Ik ga met niet de bus", "Ongedaan maken binnen de tekst");
+      {
+        Stroke wt = new Stroke(); wt.Tool = Tool.Text; wt.Text = ""; wt.FontSize = 30; wt.Pts.Add(new PointF(10, 10));
+        TextEditor we = new TextEditor(wt, 0);
+        foreach (char ch in "ik ga") we.Insert(ch.ToString());
+        we.Undo();
+        Check(wt.Text == "ik", "Ctrl+Z tijdens typen haalt een woord weg, niet de hele zin (" + wt.Text + ")");
+        we.Undo(); we.Undo();
+        Check(!we.Undo() && wt.Text == "", "Daarna is er niets meer terug te zetten in de tekst (dan gaat Ctrl+Z verder terug)");
+      }
       ed.Home(false, false); ed.Insert("\n"); ed.Home(true, false); ed.Insert("Regel 1");
       using (var tlay = new TextLayout(ts)) {
         Check(tlay.Lines.Length == 2, "Twee regels na Enter");

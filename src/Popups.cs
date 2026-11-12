@@ -371,6 +371,13 @@ namespace NexusPen
             Chip(null, "rechts", Color.Empty, L.T("Volgende pagina"), null, delegate { o.NextPage(); Rebuild(); });
             Chip(null, "plus", Color.Empty, L.T("Nieuwe pagina"), null, delegate { o.NewPage(); Rebuild(); });
             Chip(null, "prullenbak", Color.Empty, L.T("Deze pagina verwijderen"), null, delegate { o.DeletePage(); if (!IsDisposed) Rebuild(); });
+            if (Overlay.OrderedMonitors().Count > 1)
+            {
+                // met een beamer: het bord alleen daar, jouw eigen scherm blijft vrij
+                Sep();
+                Chip(L.T("Alleen op ander scherm"), "naarscherm", Color.Empty, L.T("Bord en tekenen alleen op het andere scherm (de beamer); op jouw scherm werk je gewoon verder"),
+                    delegate { return o.OneScreenOn; }, delegate { o.ToggleOneScreen(); Rebuild(); });
+            }
             Finish();
         }
 

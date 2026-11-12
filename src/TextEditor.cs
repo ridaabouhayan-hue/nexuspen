@@ -66,6 +66,7 @@ namespace NexusPen
         public void Insert(string t)
         {
             if (t == null) return;
+            if (t == " ") lastKind = null;   // na een spatie een nieuwe stap: Ctrl+Z haalt dan een woord weg, niet de hele zin
             Snapshot(t.Length == 1 && t != "\n" ? "typen" : "plakken");
             string s = Text;
             int a = SelStart, b = SelEnd;

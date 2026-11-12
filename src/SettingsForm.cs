@@ -987,6 +987,9 @@ namespace NexusPen
             float[] zs = { 0.6f, 1f, 2f, 4f };
             y = Segments(y, L.T("Grootte van lijnen en ruitjes"), null, new string[] { L.T("Klein"), L.T("Normaal"), L.T("Groot"), L.T("Extra groot") },
                 delegate { int b = -1; for (int i = 0; i < zs.Length; i++) if (Math.Abs(zs[i] - c.BoardZoom) < 0.05f) b = i; return b; }, delegate(int i) { c.BoardZoom = zs[i]; });
+            if (Overlay.OrderedMonitors().Count > 1)
+                y = Toggle(y, L.T("Alleen op ander scherm"), L.T("Bord en tekenen alleen op het andere scherm (de beamer); op jouw scherm werk je gewoon verder"),
+                    delegate { return ov.OneScreenOn; }, delegate(bool v) { if (v != ov.OneScreenOn) ov.ToggleOneScreen(); });
             y = Segments(y, L.T("De bordknop opent"), null, new string[] { L.T("Zoals de vorige keer"), L.T("Whiteboard"), L.T("Krijtbord"), L.T("Zwart bord") }, delegate { return c.BoardOpenAs; }, delegate(int i) { c.BoardOpenAs = i; });
             y = Segments(y, L.T("Wat er op het bord staat als je het sluit"), L.T("Sluiten: op de bordknop klikken, of Esc"), new string[] { L.T("Bewaren"), L.T("Wissen") }, delegate { return c.BoardClearOnClose ? 1 : 0; }, delegate(int i) { c.BoardClearOnClose = i == 1; });
         }

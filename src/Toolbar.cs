@@ -889,6 +889,11 @@ namespace NexusPen
                         int idx = i;
                         m.AddCheck(bgs[i], c.BoardBg == idx, delegate { c.BoardBg = idx; c.Save(); if (o.BoardMode == Board.None) o.SetBoard(Board.White); else o.Rebuild(); o.RefreshSettingsWindow(); });
                     }
+                    if (Overlay.OrderedMonitors().Count > 1)
+                    {
+                        m.AddSeparator();
+                        m.AddCheck(L.T("Alleen op ander scherm"), o.OneScreenOn, delegate { o.ToggleOneScreen(); });
+                    }
                     return true;
                 }
                 case "timer":

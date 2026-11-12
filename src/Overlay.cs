@@ -295,6 +295,25 @@ namespace NexusPen
         int lastDrawScreen = -1;
         public void ScreensChoiceChanged() { monitorsOrdered = null; Rebuild(); RenderFrame(); }
 
+        // Bord en tekenen alleen op het andere scherm (de beamer), of weer op alle schermen.
+        // "Het andere scherm" = het scherm waar de werkbalk niet staat; je eigen scherm blijft dan vrij om op te werken.
+        public bool OneScreenOn { get { return Cfg.DrawScreen > 0 && ActiveArea().Width > 0; } }
+        public void ToggleOneScreen()
+        {
+            List<Rectangle> mons = OrderedMonitors();
+            if (Cfg.DrawScreen > 0 || mons.Count < 2) Cfg.DrawScreen = 0;
+            else
+            {
+                Point barAt = toolbar != null ? new Point(toolbar.Left + toolbar.Width / 2, toolbar.Top + toolbar.Height / 2) : Control.MousePosition;
+                int mine = 0;
+                for (int i = 0; i < mons.Count; i++) if (mons[i].Contains(barAt)) mine = i;
+                Cfg.DrawScreen = (mine == 0 ? 1 : 0) + 1;   // het eerste scherm dat niet het jouwe is
+            }
+            Cfg.Save(); ApplySettings(); RefreshSettingsWindow();
+            Usage.Log("bord", Cfg.DrawScreen > 0 ? "een scherm" : "alle schermen", "");
+            if (toolbar != null && Cfg.DrawScreen > 0) toolbar.ShowToast(L.T("Bord en tekenen nu alleen op het andere scherm. Op jouw scherm werk je gewoon verder."), "", null, "vink");
+        }
+
         // Tekening naar het andere scherm: alles wat op het scherm van de werkbalk staat, past precies op het andere scherm
         public void MoveDrawingToOtherScreen()
         {
@@ -2974,7 +2993,14 @@ namespace NexusPen
                 case Keys.C: if (ctrl) CopyText(false); else handled = false; break;
                 case Keys.X: if (ctrl) CopyText(true); else handled = false; break;
                 case Keys.V: if (ctrl) PasteText(); else handled = false; break;
-                case Keys.Z: if (ctrl) { if (shift) ed.Redo(); else ed.Undo(); } else handled = false; break;
+                case Keys.Z:
+                    if (!ctrl) { handled = false; break; }
+                    if (shift) { ed.Redo(); break; }
+                    if (ed.Undo()) break;
+                    // niets meer terug te zetten in deze tekst: dan verder terug, zoals in Word.
+                    // (bijv. net ergens anders geklikt met Tekst: dan staat er een leeg nieuw vakje, en dat telt niet mee)
+                    UndoPastTyping();
+                    return true;
                 case Keys.Y: if (ctrl) ed.Redo(); else handled = false; break;
                 case Keys.Oemplus: case Keys.Add: if (ctrl) WheelText(120); else handled = false; break;
                 case Keys.OemMinus: case Keys.Subtract: if (ctrl) WheelText(-120); else handled = false; break;
@@ -3319,6 +3345,17 @@ namespace NexusPen
         }
 
         // Klaar met typen: de tekst komt in de tekening (of terug zoals hij was)
+        // Ctrl+Z terwijl er in de tekst niets meer terug te zetten is: het vakje sluiten en de stap daarvoor ongedaan maken
+        void UndoPastTyping()
+        {
+            if (typing == null) { Undo(); return; }
+            bool empty = string.IsNullOrEmpty(typing.Text) || typing.Text.Trim().Length == 0;
+            if (empty && typingOld == null) CloseTextInput(false);   // leeg nieuw vakje: gewoon weg, zonder spoor
+            else CloseTextInput(true);   // een tekst die je net opende en niet veranderde, laat geen stap achter
+            Undo();
+            RenderFrame();
+        }
+
         // Het tekstvak waarin je typt helemaal weghalen (met Ongedaan maken krijg je het terug)
         void DeleteTypingBox()
         {
