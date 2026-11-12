@@ -3158,7 +3158,7 @@ namespace NexusPen
                 if (e.Clicks >= 2) ed.SelectWordAt(idx);
                 else ed.PlaceAt(idx, (Control.ModifierKeys & Keys.Shift) != 0);
                 textDrag = e.Clicks >= 2 ? 0 : 1; Capture = textDrag != 0;
-                if (textDrag == 1) StartHold(p);
+                if (textDrag == 1 && (Control.ModifierKeys & Keys.Shift) == 0) StartHold(p);   // Shift+klik vergroot de selectie: niet verplaatsen
                 TypingChanged();
                 return true;
             }
@@ -3176,6 +3176,7 @@ namespace NexusPen
         {
             if (!holdPending) return;
             if (typing == null || (Control.MouseButtons & MouseButtons.Left) == 0 || (textDrag != 1 && textDrag != 4)) { holdPending = false; return; }
+            if (textDrag == 4 && textDropIdx >= 0) { holdPending = false; return; }   // je sleept al woorden
             if ((DateTime.Now - holdAt).TotalMilliseconds < HoldMs) return;
             holdPending = false;
             if (textDrag == 1 && ed.HasSelection) ed.PlaceAt(ed.Caret, false);   // een klein beetje geselecteerd door trillen: weg
