@@ -35,6 +35,7 @@ namespace NexusPen
             Size = Math.Max(1, s.FontSize);
             font = Render.MakeFont(Size, s.FontName);
             Family = font.FontFamily; Style = font.Style;
+            cacheKey = Family.Name + "|" + (int)Style + "|" + Size.ToString(System.Globalization.CultureInfo.InvariantCulture) + "|";
             typo = (StringFormat)StringFormat.GenericTypographic.Clone();
             typo.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
             float lh = Size * 1.2f;
@@ -59,8 +60,79 @@ namespace NexusPen
 
         public float X(int line, int col)
         {
-            string l = Lines[Math.Max(0, Math.Min(Lines.Length - 1, line))];
-            return Origin.X + Width(l.Substring(0, Math.Max(0, Math.Min(l.Length, col))));
+            line = Math.Max(0, Math.Min(Lines.Length - 1, line));
+            string l = Lines[line];
+            col = Math.Max(0, Math.Min(l.Length, col));
+            if (col == 0) return Origin.X;
+            float[] edges = Edges(line);
+            if (edges != null && edges.Length == l.Length) return Origin.X + edges[col - 1];
+            return Origin.X + Width(l.Substring(0, col));
+        }
+
+        // Waar elke letter van een regel ophoudt, zoals Windows de hele regel echt neerzet (dezelfde opmaak als de getekende vorm).
+        // Losse stukjes meten liep op lange regels soms een paar pixels uit de pas: dan stonden selectie en streepje scheef.
+        // Gedeeld bewaard (de muis maakt bij elke beweging een nieuwe TextLayout): alleen een veranderde regel wordt opnieuw gemeten.
+        static readonly Dictionary<string, float[]> edgeStore = new Dictionary<string, float[]>();
+        static readonly float[] NoEdges = new float[0];   // niet te meten of rechts-naar-links: dan de oude manier
+        readonly string cacheKey;
+
+        public float[] Edges(int line)
+        {
+            string l = Lines[line];
+            if (l.Length == 0) return NoEdges;
+            string key = cacheKey + l;
+            float[] e;
+            lock (edgeStore) if (edgeStore.TryGetValue(key, out e)) return e;
+            e = Measure(l);
+            lock (edgeStore)
+            {
+                if (edgeStore.Count > 200) edgeStore.Clear();
+                edgeStore[key] = e;
+            }
+            return e;
+        }
+
+        static bool HasRtl(string l)
+        {
+            foreach (char c in l)
+                if ((c >= '\u0590' && c <= '\u08FF') || (c >= '\uFB1D' && c <= '\uFDFF') || (c >= '\uFE70' && c <= '\uFEFF')) return true;
+            return false;
+        }
+
+        float[] Measure(string l)
+        {
+            // Arabisch en Hebreeuws lopen van rechts naar links: daar werkt "waar houdt de letter op" niet, dus de oude manier
+            if (HasRtl(l)) return NoEdges;
+            try
+            {
+                float[] e = new float[l.Length];
+                RectangleF box = new RectangleF(0, 0, Math.Max(100000f, l.Length * Size * 3), LineH * 2);
+                using (StringFormat sf = (StringFormat)typo.Clone())
+                {
+                    sf.FormatFlags |= StringFormatFlags.NoWrap;
+                    for (int start = 0; start < l.Length; start += 32)
+                    {
+                        int n = Math.Min(32, l.Length - start);
+                        CharacterRange[] ranges = new CharacterRange[n];
+                        for (int i = 0; i < n; i++) ranges[i] = new CharacterRange(start + i, 1);
+                        sf.SetMeasurableCharacterRanges(ranges);
+                        Region[] rs = measureG.MeasureCharacterRanges(l, font, box, sf);
+                        try
+                        {
+                            for (int i = 0; i < n; i++)
+                            {
+                                RectangleF b = rs[i].GetBounds(measureG);
+                                e[start + i] = b.Width > 0 ? b.Right : (start + i > 0 ? e[start + i - 1] : 0);
+                            }
+                        }
+                        finally { foreach (Region r in rs) if (r != null) r.Dispose(); }
+                    }
+                }
+                // nooit achteruit (bijv. bij tekens zonder breedte)
+                for (int i = 1; i < e.Length; i++) if (e[i] < e[i - 1]) e[i] = e[i - 1];
+                return e;
+            }
+            catch { return NoEdges; }
         }
 
         public float LineTop(int line) { return Origin.Y + line * LineH; }
@@ -133,7 +205,7 @@ namespace NexusPen
         public RectangleF InkBounds()
         {
             float w = 0;
-            foreach (string l in Lines) w = Math.Max(w, Width(l));
+            for (int i = 0; i < Lines.Length; i++) w = Math.Max(w, X(i, Lines[i].Length) - Origin.X);
             return new RectangleF(Origin.X, Origin.Y, Math.Max(Size * 0.3f, w), Lines.Length * LineH);
         }
 

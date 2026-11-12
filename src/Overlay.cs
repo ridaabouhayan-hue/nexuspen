@@ -1626,6 +1626,28 @@ namespace NexusPen
                 string want = "Ik echt ga met de trein.\nÉén, twee: café!";
                 Console.WriteLine("Tekstverwerker: '" + (typing != null ? typing.Text.Replace("\n", " / ") : "") + "', geselecteerd '" + (ed != null ? ed.Selected : "") + "'");
                 if (typing == null || typing.Text != want || ed.Selected != " met") { Program.SelfTestErrors++; Console.Error.WriteLine("Pijltjes of selecteren in de tekst werken niet"); }
+                // klopt het streepje met de getekende letters? per lettertype: verschil tussen de positie na elke letter en de inkt
+                foreach (string fn in new string[] { "Nunito", "Andika", "Lexend", "Segoe UI" })
+                {
+                    Stroke ms = new Stroke(); ms.Tool = Tool.Text; ms.Text = "Het boek is echt niet gescand."; ms.FontName = fn; ms.FontSize = 64; ms.Outline = true; ms.OutlineWidth = 1; ms.Pts.Add(new PointF(0, 0));
+                    float worst = 0, worstOld = 0;
+                    using (TextLayout lay = new TextLayout(ms))
+                    {
+                        string l = ms.Text;
+                        for (int k = 1; k <= l.Length; k++)
+                        {
+                            if (l[k - 1] == ' ') continue;
+                            using (GraphicsPath gp = new GraphicsPath())
+                            {
+                                gp.AddString(l.Substring(0, k), lay.Family, (int)lay.Style, lay.Size, lay.Origin, StringFormat.GenericTypographic);
+                                float ink = gp.GetBounds().Right;
+                                float now = lay.X(0, k), old = lay.Origin.X + lay.Width(l.Substring(0, k));
+                                worst = Math.Max(worst, Math.Abs(ink - now)); worstOld = Math.Max(worstOld, Math.Abs(ink - old));
+                            }
+                        }
+                    }
+                    Console.WriteLine("Streepje na letters, " + fn + ": grootste afstand tot de inkt " + worst.ToString("0.0") + " px (oude manier " + worstOld.ToString("0.0") + " px, letters 64 px)");
+                }
                 // tekst met rand in alle lettertypes: geen zwarte vakjes in letters als de t
                 float ty = 40;
                 foreach (string fn in new string[] { "Andika", "Nunito", "Lexend", "Atkinson Hyperlegible", "Patrick Hand", "Segoe UI", "Arial", "Calibri", "Verdana" })
@@ -3165,10 +3187,10 @@ namespace NexusPen
             return false;
         }
 
-        // Ingedrukt houden in de tekst (een halve seconde stil): dan verplaats je het hele tekstvak, zonder de rand te pakken.
+        // Ingedrukt houden in de tekst (0,4 seconde stil): dan verplaats je het hele tekstvak, zonder de rand te pakken.
         // Meteen bewegen = gewoon selecteren of woorden slepen, zoals altijd.
         bool holdPending; DateTime holdAt; PointF holdFrom;
-        const int HoldMs = 450;
+        const int HoldMs = 400;
         void StartHold(PointF p) { holdPending = true; holdAt = DateTime.Now; holdFrom = p; }
 
         // in de Tick: lang genoeg stil ingedrukt? dan wordt het verplaatsen
@@ -3188,7 +3210,7 @@ namespace NexusPen
         bool TextMouseMove(MouseEventArgs e)
         {
             PointF p = e.Location;
-            if (holdPending && Dist2(p, holdFrom) > 25) holdPending = false;   // bewogen voor de halve seconde om was: gewoon selecteren
+            if (holdPending && Dist2(p, holdFrom) > 64) holdPending = false;   // duidelijk bewogen voordat de tijd om was: gewoon selecteren (een beetje trillen mag)
             if (textDrag == 1)
             {
                 int idx;

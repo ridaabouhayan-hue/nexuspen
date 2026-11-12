@@ -151,7 +151,7 @@ namespace NexusPen
             bool over = near.Contains(m) || (!Anchor.IsEmpty && Rectangle.Inflate(Anchor, (int)(6 * S), (int)(6 * S)).Contains(m));
             if (over || down) awaySince = -1;
             else if (awaySince < 0) awaySince = Environment.TickCount;
-            else if (Environment.TickCount - awaySince >= 650) Close();
+            else if (Environment.TickCount - awaySince >= 400) Close();
         }
         int awaySince = -1;
         public Rectangle Anchor;   // de knop waar het menu bij hoort (op het scherm): daar mag de muis ook zijn
