@@ -347,7 +347,7 @@ namespace NexusPen
                 foreach (Stroke st in strokes) { Stroke m2 = move(st); if (m2 != st) count++; moved.Add(m2); }
                 if (BoardMode != Board.None)
                     for (int pi = 0; pi < pages.Count; pi++)
-                        if (pi != pageIndex) for (int i = 0; i < pages[pi].Count; i++) { Stroke m2 = move(pages[pi][i]); if (m2 != pages[pi][i]) count++; pages[pi][i] = m2; }
+                        if (pi != pageIndex) { int before = count; for (int i = 0; i < pages[pi].Count; i++) { Stroke m2 = move(pages[pi][i]); if (m2 != pages[pi][i]) count++; pages[pi][i] = m2; } if (count != before) pageHist.Remove(pi); }   // verplaatst: oude geschiedenis van die pagina past niet meer
                 if (count == 0) { if (toolbar != null) toolbar.ShowToast(L.T("Er staat niets op dit scherm om te verplaatsen"), "", null, "info"); return; }
                 Checkpoint();
                 strokes.Clear(); strokes.AddRange(moved);
@@ -790,7 +790,7 @@ namespace NexusPen
                 try { CloseTextInput(true); } catch { typing = null; }
                 DrawMode = false;
                 // terug naar het gewone scherm: anders zou je niets meer zien (bordtekst toont alleen met het bord)
-                if (BoardMode != Board.None) { try { SetBoard(Board.None, false); } catch { BoardMode = Board.None; strokes = screenStrokes; } }
+                if (BoardMode != Board.None) { try { SetBoard(Board.None, false); } catch { BoardMode = Board.None; strokes = screenStrokes; undo.Clear(); redo.Clear(); } }
                 current = null;
                 erasing = false;
                 dragging = false; quietMove = false;
@@ -2265,7 +2265,7 @@ namespace NexusPen
 
         public void PrevPage() { GoToPage(pageIndex - 1); }
         public void NextPage() { GoToPage(pageIndex + 1); }
-        public void NewPage() { StoreActive(); SaveHist(); ShiftHist(pageIndex + 1, 1); pages.Insert(pageIndex + 1, new List<Stroke>()); GoToPage(pageIndex + 1); }
+        public void NewPage() { if (pages.Count >= 200) { if (toolbar != null) toolbar.ShowToast(L.T("Het bord heeft al 200 pagina's."), "", null, "info"); return; } StoreActive(); SaveHist(); ShiftHist(pageIndex + 1, 1); pages.Insert(pageIndex + 1, new List<Stroke>()); GoToPage(pageIndex + 1); }
 
         // ---- geschiedenis per plek: het scherm, en elke bordpagina apart
         class History { public List<List<Stroke>> U = new List<List<Stroke>>(), R = new List<List<Stroke>>(); }
