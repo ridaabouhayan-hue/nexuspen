@@ -121,7 +121,7 @@ namespace NexusPen
             KeyPreview = true;
             vs = SystemInformation.VirtualScreen;
             Bounds = vs;
-            monitors = W.MonitorRects();
+            monitors = W.MonitorRects(); namedMons = W.NamedMonitors();
             SetupBuffers();
 
             timer = new System.Windows.Forms.Timer();
@@ -322,7 +322,8 @@ namespace NexusPen
                 if (remapTimer != null && remapTimer.Enabled) return;
                 List<KeyValuePair<string, Rectangle>> fromNamed = remapFrom; Rectangle fromVs = remapFromVs; HashSet<Stroke> only = remapStrokes;
                 remapFrom = null; remapStrokes = null;
-                if (fromNamed == null || fromNamed.Count == 0 || namedMons == null || namedMons.Count == 0) return;
+                if (namedMons == null || namedMons.Count == 0) namedMons = W.NamedMonitors();
+                if (fromNamed == null || fromNamed.Count == 0 || namedMons.Count == 0) { Log.Info("Schermen veranderd: geen schermen om mee te vergelijken"); return; }
                 List<Rectangle> from = new List<Rectangle>(), to = new List<Rectangle>();
                 foreach (KeyValuePair<string, Rectangle> kv in fromNamed) from.Add(kv.Value);
                 foreach (KeyValuePair<string, Rectangle> kv in namedMons) to.Add(kv.Value);
@@ -567,7 +568,7 @@ namespace NexusPen
             float z = Math.Max(Settings.MinZoom, Math.Min(Settings.MaxZoom, Cfg.BoardZoom));
             // Elk scherm zijn eigen lijnen, in zijn eigen schaal en met zijn eigen randen. Vroeger was het
             // een groot vlak over alle schermen samen: dan klopte het op het ene scherm wel en op het andere niet.
-            if (monitors == null || monitors.Count == 0) monitors = W.MonitorRects();
+            if (monitors == null || monitors.Count == 0) { monitors = W.MonitorRects(); namedMons = W.NamedMonitors(); }
             List<Rectangle> areas = new List<Rectangle>();
             foreach (Rectangle mon in monitors)
             {
