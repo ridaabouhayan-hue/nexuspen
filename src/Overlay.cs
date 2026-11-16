@@ -214,8 +214,10 @@ namespace NexusPen
                 if (!force && !sizeChanged && !windowOff) return;
                 int before = monitors != null ? CountUnique(monitors) : 1;
                 List<Rectangle> oldMons = monitors; Rectangle oldVs = vs;
-                monitors = W.MonitorRects(); monitorsOrdered = null;
-                if (oldMons != null && (oldVs.Location != now.Location || !SameScreens(oldMons, monitors))) NoteScreensChanging(oldMons, oldVs);
+                List<KeyValuePair<string, Rectangle>> oldNamed = namedMons;
+                monitors = W.MonitorRects(); monitorsOrdered = null; namedMons = W.NamedMonitors();
+                bool screensDiffer = oldMons != null && !SameScreens(oldMons, monitors);
+                if (oldNamed != null && (oldVs.Location != now.Location || screensDiffer)) NoteScreensChanging(oldNamed, oldVs);
                 // net uitgebreid naar een tweede scherm, en er staat iets getekend: aanbieden om het naar de beamer te zetten
                 if (CountUnique(monitors) > before && CountUnique(monitors) >= 2 && HasDrawing && toolbar != null && !Program.SelfTest && !offeredMove)
                 {
@@ -230,8 +232,10 @@ namespace NexusPen
                 if (sizeChanged) SetupBuffers();
                 Rebuild();
                 RenderFrame();
-                if (toolbar != null) { toolbar.ScreensChanged(); toolbar.KeepAllOnTop(); }
-                if (TimerVisible) lesTimer.ScreensChanged();
+                // alleen bij een echte wissel alles opnieuw passend maken (Windows meldt soms een wissel zonder dat er iets anders is)
+                bool real = sizeChanged || screensDiffer || oldVs.Location != now.Location;
+                if (toolbar != null) { if (real) toolbar.ScreensChanged(); else toolbar.EnsureOnScreen(); toolbar.KeepAllOnTop(); }
+                if (TimerVisible && real) lesTimer.ScreensChanged();
                 foreach (Loupe l in pinnedLoupes) { KeepFormOnScreen(l); if (l.Strip != null && l.Strip.Visible) KeepFormOnScreen(l.Strip); }
                 KeepExtrasOnTop();
             }
@@ -271,23 +275,30 @@ namespace NexusPen
 
         // ---- Schermen anders (uitbreiden, dupliceren, beamer eraf, andere resolutie): de tekening blijft op hetzelfde scherm.
         // Even wachten tot Windows klaar is met wisselen (na de slaapstand verdwijnt een scherm soms heel kort en komt het terug).
-        List<Rectangle> remapFromMons; Rectangle remapFromVs; HashSet<Stroke> remapStrokes;
+        List<KeyValuePair<string, Rectangle>> namedMons, remapFrom; Rectangle remapFromVs; HashSet<Stroke> remapStrokes;
         System.Windows.Forms.Timer remapTimer;
 
-        void NoteScreensChanging(List<Rectangle> oldMons, Rectangle oldVs)
+        void NoteScreensChanging(List<KeyValuePair<string, Rectangle>> oldNamed, Rectangle oldVs)
         {
-            if (remapFromMons == null)
+            if (remapFrom == null)
             {
-                remapFromMons = UniqueScreens(oldMons); remapFromVs = oldVs;
+                CloseTextInput(true); Deselect();   // de tekst die je typt hoort er ook bij
+                remapFrom = oldNamed; remapFromVs = oldVs;
                 remapStrokes = new HashSet<Stroke>();
                 ForEachStroke(delegate(Stroke st) { remapStrokes.Add(st); });   // alleen wat er al stond (niet wat je intussen tekent)
             }
             if (remapTimer == null)
             {
                 remapTimer = new System.Windows.Forms.Timer();
-                remapTimer.Interval = Program.SelfTest ? 300 : 1500;
                 remapTimer.Tick += delegate { remapTimer.Stop(); if (!IsDisposed) RemapToScreens(); };
             }
+            // Is er alleen een scherm weggevallen en staat de rest nog precies zo? Dan langer wachten:
+            // na de slaapstand komt een beamer vaak pas na een paar seconden terug, dan hoeft er niets te verschuiven.
+            bool onlyGone = true;
+            List<KeyValuePair<string, Rectangle>> nowNamed = W.NamedMonitors();
+            foreach (KeyValuePair<string, Rectangle> kv in nowNamed) if (!remapFrom.Contains(kv)) onlyGone = false;
+            if (nowNamed.Count >= remapFrom.Count || remapFromVs.Location != SystemInformation.VirtualScreen.Location) onlyGone = false;
+            remapTimer.Interval = Program.SelfTest ? 300 : onlyGone ? 8000 : 1500;
             remapTimer.Stop(); remapTimer.Start();
         }
 
@@ -306,10 +317,15 @@ namespace NexusPen
         {
             try
             {
-                List<Rectangle> from = remapFromMons; Rectangle fromVs = remapFromVs; HashSet<Stroke> only = remapStrokes;
-                remapFromMons = null; remapStrokes = null;
-                List<Rectangle> to = UniqueScreens(W.MonitorRects());
-                if (from == null || from.Count == 0 || to.Count == 0) return;
+                // eerst zeker weten dat de tekenlaag bij de schermen van nu hoort; is er intussen weer iets veranderd, dan nog even wachten
+                FitToScreens(false);
+                if (remapTimer != null && remapTimer.Enabled) return;
+                List<KeyValuePair<string, Rectangle>> fromNamed = remapFrom; Rectangle fromVs = remapFromVs; HashSet<Stroke> only = remapStrokes;
+                remapFrom = null; remapStrokes = null;
+                if (fromNamed == null || fromNamed.Count == 0 || namedMons == null || namedMons.Count == 0) return;
+                List<Rectangle> from = new List<Rectangle>(), to = new List<Rectangle>();
+                foreach (KeyValuePair<string, Rectangle> kv in fromNamed) from.Add(kv.Value);
+                foreach (KeyValuePair<string, Rectangle> kv in namedMons) to.Add(kv.Value);
                 List<Rectangle> fromOrd = InOrder(from), toOrd = InOrder(to);
                 // bij elk oud scherm: waar komt wat erop stond nu?
                 Rectangle[] target = new Rectangle[from.Count];
@@ -318,7 +334,9 @@ namespace NexusPen
                 {
                     Rectangle o = from[i];
                     Rectangle t = Rectangle.Empty;
-                    if (to.Contains(o)) t = o;                                                     // nog precies hetzelfde scherm
+                    string name = fromNamed[i].Key;
+                    if (!string.IsNullOrEmpty(name)) foreach (KeyValuePair<string, Rectangle> kv in namedMons) if (kv.Key == name) { t = kv.Value; break; }   // hetzelfde scherm (naam van Windows), ook als het nu ergens anders staat
+                    if (t.IsEmpty && to.Contains(o)) t = o;                                        // nog precies hetzelfde scherm
                     if (t.IsEmpty) foreach (Rectangle n in to) if (n.Location == o.Location) { t = n; break; }   // zelfde plek, andere resolutie
                     if (t.IsEmpty && fromOrd.Count == toOrd.Count) t = toOrd[fromOrd.IndexOf(o)];   // even veel schermen, anders gerangschikt
                     if (t.IsEmpty) t = toOrd[0];                                                    // scherm weg: naar het hoofdscherm
@@ -1489,8 +1507,8 @@ namespace NexusPen
                                 Stroke probe = new Stroke(); probe.Tool = Tool.Line; probe.Color = Color.Red; probe.Width = 8;
                                 probe.Pts.Add(new PointF(mon.X - vs.X + 200, mon.Y - vs.Y + 200)); probe.Pts.Add(new PointF(mon.X - vs.X + 400, mon.Y - vs.Y + 200));
                                 strokes.Add(probe);
-                                List<Rectangle> fakeOld = new List<Rectangle>();
-                                foreach (Rectangle r0 in UniqueScreens(W.MonitorRects())) fakeOld.Add(r0 == mon ? new Rectangle(mon.X, mon.Y, mon.Width * 2, mon.Height * 2) : r0);
+                                List<KeyValuePair<string, Rectangle>> fakeOld = new List<KeyValuePair<string, Rectangle>>();
+                                foreach (KeyValuePair<string, Rectangle> kv in W.NamedMonitors()) fakeOld.Add(kv.Value == mon ? new KeyValuePair<string, Rectangle>(kv.Key, new Rectangle(mon.X, mon.Y, mon.Width * 2, mon.Height * 2)) : kv);
                                 NoteScreensChanging(fakeOld, vs);
                                 if (remapTimer != null) remapTimer.Stop();
                                 remapStrokes = new HashSet<Stroke>(); remapStrokes.Add(probe);   // alleen de proefstreep (de rest van de test blijft staan)

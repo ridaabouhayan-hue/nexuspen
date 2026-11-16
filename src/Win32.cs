@@ -114,6 +114,34 @@ namespace NexusPen
             catch { }
             return list;
         }
+        // De schermen met hun naam van Windows (\\.\DISPLAY1 ...): zo herken je een scherm ook als het ergens anders is komen te staan
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        public struct MONITORINFOEX
+        {
+            public int cbSize; public RECT rcMonitor, rcWork; public int dwFlags;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string szDevice;
+        }
+        [DllImport("user32.dll", CharSet = CharSet.Auto)] public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFOEX info);
+        public static List<KeyValuePair<string, Rectangle>> NamedMonitors()
+        {
+            List<KeyValuePair<string, Rectangle>> list = new List<KeyValuePair<string, Rectangle>>();
+            try
+            {
+                EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, delegate(IntPtr m, IntPtr d, ref RECT r, IntPtr x)
+                {
+                    Rectangle rect = Rectangle.FromLTRB(r.Left, r.Top, r.Right, r.Bottom);
+                    string name = "";
+                    try { MONITORINFOEX mi = new MONITORINFOEX(); mi.cbSize = Marshal.SizeOf(typeof(MONITORINFOEX)); if (GetMonitorInfo(m, ref mi)) name = mi.szDevice ?? ""; } catch { }
+                    bool dup = false;
+                    foreach (KeyValuePair<string, Rectangle> kv in list) if (kv.Value == rect) dup = true;
+                    if (!dup) list.Add(new KeyValuePair<string, Rectangle>(name, rect));
+                    return true;
+                }, IntPtr.Zero);
+            }
+            catch { }
+            return list;
+        }
+
         [StructLayout(LayoutKind.Sequential)]
         public struct UPDATELAYEREDWINDOWINFO
         {

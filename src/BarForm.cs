@@ -187,8 +187,10 @@ namespace NexusPen
             }
             try
             {
-                using (Bitmap b = RenderBitmap())
+                Bitmap big = RenderReuse();
+                using (Bitmap small = big == null ? RenderBitmap() : null)
                 {
+                    Bitmap b = big ?? small;
                     IntPtr screen = W.GetDC(IntPtr.Zero);
                     IntPtr mem = W.CreateCompatibleDC(screen);
                     IntPtr hb = IntPtr.Zero, old = IntPtr.Zero;
@@ -212,6 +214,27 @@ namespace NexusPen
                 }
             }
             catch (Exception ex) { Log.Error("Venster tekenen", ex); }
+        }
+
+        // Grote vensters (de timer op het hele scherm): hetzelfde plaatje steeds opnieuw gebruiken in plaats van elke keer een nieuw
+        Bitmap reuse;
+        Bitmap RenderReuse()
+        {
+            Size want = wantSize.IsEmpty ? ClientSize : wantSize;
+            int w = Math.Max(1, want.Width), h = Math.Max(1, want.Height);
+            if ((long)w * h < 1000000)
+            {
+                if (reuse != null) { reuse.Dispose(); reuse = null; }
+                return null;
+            }
+            if (reuse == null || reuse.Width != w || reuse.Height != h)
+            {
+                if (reuse != null) reuse.Dispose();
+                reuse = new Bitmap(w, h, PixelFormat.Format32bppPArgb);
+            }
+            using (Graphics g = Graphics.FromImage(reuse)) PaintAll(g);
+            if (!SkipMask) ApplyMask(reuse);
+            return reuse;
         }
 
         // Het hele venster als plaatje (ook voor de zelftest)
@@ -277,6 +300,7 @@ namespace NexusPen
         protected override void Dispose(bool disposing)
         {
             if (disposing && maskCache != null) { maskCache.Dispose(); maskCache = null; }
+            if (disposing && reuse != null) { reuse.Dispose(); reuse = null; }
             base.Dispose(disposing);
         }
 

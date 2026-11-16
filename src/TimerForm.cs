@@ -44,8 +44,8 @@ namespace NexusPen
 
         public void ShowNear(Point at)
         {
-            baseS = Math.Max(1f, W.UiScaleAt(at));
             if (full) ExitFull();
+            baseS = Math.Max(1f, W.UiScaleAt(at));
             S = baseS * ov.Cfg.TimerZoom;
             Rebuild();
             Rectangle wz = Screen.FromPoint(at).WorkingArea;
@@ -169,7 +169,7 @@ namespace NexusPen
             }
             base.OnMouseMove(e);
             if (InCorner(e.Location)) Cursor = Cursors.SizeNWSE;
-            else if (hover == null) Cursor = Cursors.SizeAll;   // overal waar geen knop zit: slepen
+            else if (hover == null) Cursor = full ? Cursors.Default : Cursors.SizeAll;   // overal waar geen knop zit: slepen
         }
 
         protected override void OnMouseCaptureChanged(EventArgs e)
@@ -197,7 +197,7 @@ namespace NexusPen
         }
 
         // ---- het hele scherm: de timer vult het hele scherm (cirkel, alleen cijfers of een balk). Esc of dezelfde knop: terug
-        bool full; Point beforeFull; Rectangle fullScreen;
+        bool full; Point beforeFull; Rectangle fullScreen; Size smallSize;
         public bool IsFull { get { return full; } }
 
         void ToggleBig() { if (full) ExitFull(); else EnterFull(); }
@@ -205,7 +205,7 @@ namespace NexusPen
         void EnterFull()
         {
             if (Editing && editFinish != null) editFinish(true);
-            beforeFull = Location;
+            beforeFull = Location; smallSize = Size;
             fullScreen = Screen.FromPoint(new Point(Left + Width / 2, Top + Height / 2)).Bounds;
             full = true;
             FitFull();
@@ -216,8 +216,10 @@ namespace NexusPen
         {
             baseS = Math.Max(1f, W.UiScaleAt(new Point(fullScreen.X + fullScreen.Width / 2, fullScreen.Y + fullScreen.Height / 2)));
             S = baseS * 1.4f;   // de knoppen onderaan iets groter: goed te raken op een groot scherm
+            Location = fullScreen.Location;   // eerst op de plek, dan pas groot (anders even over twee schermen)
             Rebuild();
             Location = fullScreen.Location;
+            lastFullKey = null;
             RenderNow();
         }
 
@@ -245,7 +247,7 @@ namespace NexusPen
             if (full)
             {
                 fullScreen = next.Bounds;
-                beforeFull = new Point(next.WorkingArea.Right - Width / 3, next.WorkingArea.Top + 40);   // terug uit het hele scherm: rechtsboven op dat scherm
+                beforeFull = new Point(Math.Max(next.WorkingArea.Left, next.WorkingArea.Right - smallSize.Width - 40), next.WorkingArea.Top + 40);   // terug uit het hele scherm: rechtsboven op dat scherm
                 FitFull();
                 return;
             }
@@ -271,6 +273,21 @@ namespace NexusPen
             }
             Restyle();
             Overlay.KeepFormOnScreen(this);
+            // nooit groter dan het scherm (bijvoorbeeld van een groot scherm naar een kleine beamer)
+            Rectangle wa = Screen.FromPoint(new Point(Left + Width / 2, Top + Height / 2)).WorkingArea;
+            float fit = Math.Min(wa.Width * 0.95f / Math.Max(1, Width), wa.Height * 0.95f / Math.Max(1, Height));
+            if (fit < 1f) { S *= fit; Rebuild(); }
+            Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, Left)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, Top)));
+        }
+
+        // Op het hele scherm alleen opnieuw tekenen als er iets te zien verandert (een groot scherm tekenen kost veel)
+        string lastFullKey;
+        string FullKey()
+        {
+            double total = Math.Max(1, setSeconds * 1000.0);
+            int arc = (int)(Math.Max(0, Math.Min(1, leftMs / total)) * 720);   // halve graden
+            bool blink = done && ((int)((DateTime.Now - doneAt).TotalMilliseconds / 450) % 2 == 0) && (DateTime.Now - doneAt).TotalSeconds < 6;
+            return TimeText() + "|" + (ov.Cfg.TimerView == 0 ? arc : ov.Cfg.TimerView == 2 ? arc / 2 : 0) + "|" + blink + "|" + done + "|" + running;
         }
 
         // naar een scherm met een andere schaal gesleept: jouw timergrootte houden (en op het hele scherm het hele scherm)
@@ -313,7 +330,8 @@ namespace NexusPen
             int n = two ? 7 : 6;
             float rowW = n * btn + (n - 1) * gap;
             float by = h - btn - 28 * S, x = (w - rowW) / 2;
-            timeItem = Add(new RectangleF(0, 0, w, by - 12 * S), null, delegate { StartPause(); });
+            // klik op het scherm: starten of pauzeren; is de tijd om, dan alleen het geluid stil (niet meteen opnieuw beginnen)
+            timeItem = Add(new RectangleF(0, 0, w, by - 12 * S), null, delegate { if (done) { done = false; TimerSound.Stop(); Invalidate(); return; } StartPause(); });
             timeItem.Paint = delegate(Graphics g, Item it, bool hv) { PaintFull(g, it.R); };
             Item play = Add(new RectangleF(x, by, btn, btn), L.T("Starten of pauzeren"), delegate { StartPause(); });
             play.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, running ? "pauze" : "afspelen", true); };
@@ -428,6 +446,7 @@ namespace NexusPen
             }
             if (!running && !done) clock.Stop();
             if (done && (now - doneAt).TotalSeconds > 6) clock.Stop();   // na een paar keer knipperen blijft 00:00 gewoon staan
+            if (full) { string k = FullKey(); if (k == lastFullKey) return; lastFullKey = k; }
             Invalidate();
         }
 

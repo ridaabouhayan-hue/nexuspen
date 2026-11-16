@@ -462,6 +462,7 @@ namespace NexusPen
             Rebuild();
             Location = keep;
             FitBarToScreen();
+            if (S < baseS * z * 0.995f) ov.Cfg.BarZoom = Math.Max(0.6f, S / baseS);   // groter past niet op dit scherm: dan ook niet groter onthouden
         }
 
         // De balk past altijd op het scherm: zo nodig kleiner, en helemaal binnen de rand.
