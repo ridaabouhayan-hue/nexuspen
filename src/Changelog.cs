@@ -11,6 +11,11 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.24", "16 November 2026",
+                I("timer", "Full screen timer fills the whole screen: a circle, digits only or a bar"),
+                I("naarscherm", "Move the timer to the other screen with one click, or drag it there"),
+                I("scherm", "Extend, duplicate or unplug a screen: toolbar and drawing stay right"),
+                I("vergrootglas", "Magnifier up to 10 times")),
             V("1.3.23", "12 November 2026",
                 I("tekst", "The typing line and the selection sit exactly on the letters, also in long lines"),
                 I("muis", "Menus close a bit sooner when your mouse leaves them")),

@@ -40,7 +40,7 @@ namespace NexusPen
         public float StampPx = 0;               // eigen stempelgrootte (muiswiel); 0 = S, M of L
         public int BoardScale = 1;              // (oud, niet meer gebruikt)
         public float BoardZoom = 1;             // lijnen en ruitjes: van 0,5 (veel kleine regels) tot 6 (een grote regel)
-        public float LoupeZoom = 2f;            // vergrootglas: 1,5 tot 6 keer
+        public float LoupeZoom = 2f;            // vergrootglas: 1,5 tot 10 keer
         public int LoupeShape = 0;              // 0 rechthoek (om te lezen), 1 rond
         public bool Buttons130;                 // eenmalig: timer en vergrootglas in een eigen balk zetten (vanaf 1.3.0)
         public string ShotFolder = "";          // eigen map voor schermafbeeldingen; leeg = Afbeeldingen\NexusPen
@@ -54,6 +54,7 @@ namespace NexusPen
         public int TimerRepeat = 0;             // 0 een keer, 1 twee keer, 2 drie keer, 3 tot je klikt
         public bool TimerMute;
         public float TimerZoom = 1f;
+        public int TimerView;                   // timer op het hele scherm: 0 cirkel, 1 alleen cijfers, 2 balk
         public float BarZoom = 1f;              // eigen grootte van de werkbalk (Grootte aanpassen via het logo)
         public int LastBoard = 1;               // het bord van de vorige keer (1 wit, 2 krijtbord, 3 zwart)
         public int BoardOpenAs = 0;             // bordknop opent: 0 zoals de vorige keer, anders 1 wit, 2 krijtbord, 3 zwart
@@ -203,7 +204,7 @@ namespace NexusPen
             ActiveStyle = Math.Max(0, Math.Min(1, ActiveStyle));
             LaserMode = Math.Max(0, Math.Min(2, LaserMode));
             if (float.IsNaN(LoupeZoom) || float.IsInfinity(LoupeZoom)) LoupeZoom = 2f;
-            LoupeZoom = Math.Max(1.5f, Math.Min(6f, LoupeZoom));
+            LoupeZoom = Math.Max(1.5f, Math.Min(10f, LoupeZoom));
             LoupeShape = Math.Max(0, Math.Min(1, LoupeShape));
             if (FadeSeconds != 3 && FadeSeconds != 5 && FadeSeconds != 7 && FadeSeconds != 12) FadeSeconds = 5;
             if (float.IsNaN(StampPx) || StampPx < 0) StampPx = 0;
@@ -218,6 +219,7 @@ namespace NexusPen
             TimerSound = Math.Max(0, Math.Min(4, TimerSound));
             TimerRepeat = Math.Max(0, Math.Min(3, TimerRepeat));
             if (float.IsNaN(BarZoom) || BarZoom < 0.6f || BarZoom > 2.5f) BarZoom = float.IsNaN(BarZoom) ? 1f : Math.Max(0.6f, Math.Min(2.5f, BarZoom));
+            if (TimerView < 0 || TimerView > 2) TimerView = 0;
             if (float.IsNaN(TimerZoom) || TimerZoom < 0.7f || TimerZoom > 4f) TimerZoom = Math.Max(0.7f, Math.Min(4f, float.IsNaN(TimerZoom) ? 1f : TimerZoom));
             if (FontName == "Comic Sans MS") FontName = "Andika";   // zat in 1.3.12 tot 1.3.15, vervangen door Verdana
             DrawScreen = Math.Max(0, Math.Min(8, DrawScreen));

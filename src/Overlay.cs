@@ -213,7 +213,9 @@ namespace NexusPen
                 bool sizeChanged = now != vs || committed == null || committed.Width != now.Width || committed.Height != now.Height;
                 if (!force && !sizeChanged && !windowOff) return;
                 int before = monitors != null ? CountUnique(monitors) : 1;
+                List<Rectangle> oldMons = monitors; Rectangle oldVs = vs;
                 monitors = W.MonitorRects(); monitorsOrdered = null;
+                if (oldMons != null && (oldVs.Location != now.Location || !SameScreens(oldMons, monitors))) NoteScreensChanging(oldMons, oldVs);
                 // net uitgebreid naar een tweede scherm, en er staat iets getekend: aanbieden om het naar de beamer te zetten
                 if (CountUnique(monitors) > before && CountUnique(monitors) >= 2 && HasDrawing && toolbar != null && !Program.SelfTest && !offeredMove)
                 {
@@ -228,10 +230,131 @@ namespace NexusPen
                 if (sizeChanged) SetupBuffers();
                 Rebuild();
                 RenderFrame();
-                if (toolbar != null) { toolbar.EnsureOnScreen(); toolbar.FitBarToScreen(); toolbar.KeepAllOnTop(); }
+                if (toolbar != null) { toolbar.ScreensChanged(); toolbar.KeepAllOnTop(); }
+                if (TimerVisible) lesTimer.ScreensChanged();
+                foreach (Loupe l in pinnedLoupes) { KeepFormOnScreen(l); if (l.Strip != null && l.Strip.Visible) KeepFormOnScreen(l.Strip); }
                 KeepExtrasOnTop();
             }
             catch (Exception ex) { Log.Error("Schermen aanpassen", ex); }
+        }
+
+        // Een venster dat na een scherm-wissel nergens meer te zien is: terug op het hoofdscherm
+        public static void KeepFormOnScreen(Form f)
+        {
+            if (f == null || f.IsDisposed || !f.Visible) return;
+            Rectangle me = f.Bounds;
+            foreach (Screen sc in Screen.AllScreens)
+                if (sc.WorkingArea.IntersectsWith(new Rectangle(me.X + me.Width / 2 - 10, me.Y + me.Height / 2 - 10, 20, 20))) return;
+            Rectangle wa = Screen.PrimaryScreen.WorkingArea;
+            f.Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - me.Width, wa.Left + 60)), Math.Max(wa.Top, Math.Min(wa.Bottom - me.Height, wa.Top + 60)));
+        }
+
+        static List<Rectangle> UniqueScreens(List<Rectangle> l) { List<Rectangle> u = new List<Rectangle>(); if (l != null) foreach (Rectangle r in l) if (!u.Contains(r)) u.Add(r); return u; }
+        static bool SameScreens(List<Rectangle> a, List<Rectangle> b)
+        {
+            List<Rectangle> ua = UniqueScreens(a), ub = UniqueScreens(b);
+            if (ua.Count != ub.Count) return false;
+            foreach (Rectangle r in ua) if (!ub.Contains(r)) return false;
+            return true;
+        }
+        static List<Rectangle> InOrder(List<Rectangle> l)
+        {
+            List<Rectangle> u = UniqueScreens(l);
+            u.Sort(delegate(Rectangle a, Rectangle b)
+            {
+                bool pa = a.Contains(0, 0), pb = b.Contains(0, 0);
+                if (pa != pb) return pa ? -1 : 1;
+                return a.X != b.X ? a.X.CompareTo(b.X) : a.Y.CompareTo(b.Y);
+            });
+            return u;
+        }
+
+        // ---- Schermen anders (uitbreiden, dupliceren, beamer eraf, andere resolutie): de tekening blijft op hetzelfde scherm.
+        // Even wachten tot Windows klaar is met wisselen (na de slaapstand verdwijnt een scherm soms heel kort en komt het terug).
+        List<Rectangle> remapFromMons; Rectangle remapFromVs; HashSet<Stroke> remapStrokes;
+        System.Windows.Forms.Timer remapTimer;
+
+        void NoteScreensChanging(List<Rectangle> oldMons, Rectangle oldVs)
+        {
+            if (remapFromMons == null)
+            {
+                remapFromMons = UniqueScreens(oldMons); remapFromVs = oldVs;
+                remapStrokes = new HashSet<Stroke>();
+                ForEachStroke(delegate(Stroke st) { remapStrokes.Add(st); });   // alleen wat er al stond (niet wat je intussen tekent)
+            }
+            if (remapTimer == null)
+            {
+                remapTimer = new System.Windows.Forms.Timer();
+                remapTimer.Interval = Program.SelfTest ? 300 : 1500;
+                remapTimer.Tick += delegate { remapTimer.Stop(); if (!IsDisposed) RemapToScreens(); };
+            }
+            remapTimer.Stop(); remapTimer.Start();
+        }
+
+        // alle tekeningen: het scherm, de bordpagina's, en wat in ongedaan maken en opnieuw zit
+        void ForEachStroke(Action<Stroke> a)
+        {
+            HashSet<Stroke> seen = new HashSet<Stroke>();
+            Action<List<Stroke>> list = delegate(List<Stroke> l) { if (l != null) foreach (Stroke st in l) if (st != null && seen.Add(st)) a(st); };
+            Action<List<List<Stroke>>> lists = delegate(List<List<Stroke>> ll) { if (ll != null) foreach (List<Stroke> l in ll) list(l); };
+            list(strokes); list(screenStrokes); list(fading);
+            lists(pages); lists(undo); lists(redo); lists(screenUndo); lists(screenRedo);
+            foreach (History h in pageHist.Values) { lists(h.U); lists(h.R); }
+        }
+
+        void RemapToScreens()
+        {
+            try
+            {
+                List<Rectangle> from = remapFromMons; Rectangle fromVs = remapFromVs; HashSet<Stroke> only = remapStrokes;
+                remapFromMons = null; remapStrokes = null;
+                List<Rectangle> to = UniqueScreens(W.MonitorRects());
+                if (from == null || from.Count == 0 || to.Count == 0) return;
+                List<Rectangle> fromOrd = InOrder(from), toOrd = InOrder(to);
+                // bij elk oud scherm: waar komt wat erop stond nu?
+                Rectangle[] target = new Rectangle[from.Count];
+                bool any = fromVs.Location != vs.Location;
+                for (int i = 0; i < from.Count; i++)
+                {
+                    Rectangle o = from[i];
+                    Rectangle t = Rectangle.Empty;
+                    if (to.Contains(o)) t = o;                                                     // nog precies hetzelfde scherm
+                    if (t.IsEmpty) foreach (Rectangle n in to) if (n.Location == o.Location) { t = n; break; }   // zelfde plek, andere resolutie
+                    if (t.IsEmpty && fromOrd.Count == toOrd.Count) t = toOrd[fromOrd.IndexOf(o)];   // even veel schermen, anders gerangschikt
+                    if (t.IsEmpty) t = toOrd[0];                                                    // scherm weg: naar het hoofdscherm
+                    target[i] = t;
+                    if (t != o) any = true;
+                }
+                if (!any) return;
+                CloseTextInput(true); Deselect();
+                Rectangle nowVs = vs;
+                int moved = 0;
+                ForEachStroke(delegate(Stroke st)
+                {
+                    if (st.Pts.Count == 0 || (only != null && !only.Contains(st))) return;
+                    RectangleF bb = Render.Bounds(st);
+                    PointF c = new PointF(bb.X + bb.Width / 2 + fromVs.X, bb.Y + bb.Height / 2 + fromVs.Y);
+                    int mi = 0; double best = double.MaxValue;
+                    for (int i = 0; i < from.Count; i++)
+                    {
+                        Rectangle r = from[i];
+                        double dx = Math.Max(0, Math.Max(r.Left - c.X, c.X - r.Right)), dy = Math.Max(0, Math.Max(r.Top - c.Y, c.Y - r.Bottom));
+                        double d = dx * dx + dy * dy;
+                        if (d < best) { best = d; mi = i; }
+                    }
+                    Rectangle o = from[mi], n = target[mi];
+                    float k = o.Size == n.Size ? 1f : Math.Min((float)n.Width / Math.Max(1, o.Width), (float)n.Height / Math.Max(1, o.Height));
+                    float ox = n.X + (n.Width - o.Width * k) / 2 - nowVs.X, oy = n.Y + (n.Height - o.Height * k) / 2 - nowVs.Y;
+                    float ax = fromVs.X - o.X, ay = fromVs.Y - o.Y;
+                    if (k == 1f && ox + ax == 0 && oy + ay == 0) return;   // staat al goed
+                    for (int i = 0; i < st.Pts.Count; i++) st.Pts[i] = new PointF(ox + (st.Pts[i].X + ax) * k, oy + (st.Pts[i].Y + ay) * k);
+                    if (k != 1f) { st.Width *= k; if (st.FontSize > 0) st.FontSize *= k; }
+                    moved++;
+                });
+                Log.Info("Schermen veranderd: " + moved + " tekening(en) meegeschoven");
+                if (moved > 0) { MarkChanged(); Rebuild(); RenderFrame(); }
+            }
+            catch (Exception ex) { Log.Error("Tekening meeschuiven met de schermen", ex); }
         }
         List<Rectangle> monitors;   // de schermen bij de laatste wissel (voor het bord per scherm)
         bool offeredMove;
@@ -1351,6 +1474,33 @@ namespace NexusPen
                         case 22:
                             screen("20-vergrootglas-timer");
                             if (lesTimer != null) snap(lesTimer, "21-timer");
+                            if (lesTimer != null)
+                            {
+                                // timer op het hele scherm: vult precies het hele scherm, in alle drie de weergaven
+                                int keepView = Cfg.TimerView;
+                                for (int v = 0; v < 3; v++) { Cfg.TimerView = v; lesTimer.FullForTest(); snap(lesTimer, "21-timer-heel-scherm-" + (v + 1)); }
+                                Rectangle sb = Screen.FromControl(lesTimer).Bounds;
+                                bool fills = lesTimer.Bounds == sb;
+                                Console.WriteLine("Timer op het hele scherm: " + lesTimer.Bounds + ", scherm " + sb + (fills ? " (vult het hele scherm)" : ""));
+                                if (!fills) { Program.SelfTestErrors++; Console.Error.WriteLine("De timer vult niet het hele scherm"); }
+                                lesTimer.ExitFull(); Cfg.TimerView = keepView;
+                                // schermen anders (zelfde plek, andere resolutie): de tekening schaalt mee en blijft op dat scherm
+                                Rectangle mon = Screen.PrimaryScreen.Bounds;
+                                Stroke probe = new Stroke(); probe.Tool = Tool.Line; probe.Color = Color.Red; probe.Width = 8;
+                                probe.Pts.Add(new PointF(mon.X - vs.X + 200, mon.Y - vs.Y + 200)); probe.Pts.Add(new PointF(mon.X - vs.X + 400, mon.Y - vs.Y + 200));
+                                strokes.Add(probe);
+                                List<Rectangle> fakeOld = new List<Rectangle>();
+                                foreach (Rectangle r0 in UniqueScreens(W.MonitorRects())) fakeOld.Add(r0 == mon ? new Rectangle(mon.X, mon.Y, mon.Width * 2, mon.Height * 2) : r0);
+                                NoteScreensChanging(fakeOld, vs);
+                                if (remapTimer != null) remapTimer.Stop();
+                                remapStrokes = new HashSet<Stroke>(); remapStrokes.Add(probe);   // alleen de proefstreep (de rest van de test blijft staan)
+                                RemapToScreens();
+                                PointF q = probe.Pts[0];
+                                bool ok = Math.Abs(q.X - (mon.X - vs.X + 100)) < 1 && Math.Abs(q.Y - (mon.Y - vs.Y + 100)) < 1 && Math.Abs(probe.Width - 4) < 0.01f;
+                                Console.WriteLine("Tekening na scherm-wissel: " + q + ", dikte " + probe.Width + (ok ? " (klopt)" : ""));
+                                if (!ok) { Program.SelfTestErrors++; Console.Error.WriteLine("De tekening schuift niet goed mee met een scherm-wissel"); }
+                                strokes.Remove(probe); Rebuild(); RenderFrame();
+                            }
                             foreach (Loupe l in pinnedLoupes) if (l.Strip != null) snap(l.Strip, "22-vergrootglas-balkje");
                             CloseAllLoupes();
                             if (lesTimer != null) lesTimer.EditForTest();   // klik op de cijfers: zelf een tijd typen

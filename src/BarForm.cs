@@ -163,6 +163,7 @@ namespace NexusPen
         // De vorm van het venster. Standaard een afgeronde rechthoek.
         protected virtual GraphicsPath ShapePath(float w, float h) { return Svg.RoundRect(new RectangleF(0, 0, w, h), Radius); }
         protected virtual int ShapeKind { get { return 0; } }
+        protected virtual bool SkipMask { get { return false; } }   // venster zonder ronde hoeken (de timer op het hele scherm)
 
         // Is er intussen al getekend (bijvoorbeeld direct na een klik), dan hoeft het niet nog een keer
         void RenderQueued() { if (renderQueued) RenderNow(); }
@@ -220,7 +221,7 @@ namespace NexusPen
             int w = Math.Max(1, want.Width), h = Math.Max(1, want.Height);
             Bitmap b = new Bitmap(w, h, PixelFormat.Format32bppPArgb);
             using (Graphics g = Graphics.FromImage(b)) PaintAll(g);
-            ApplyMask(b);
+            if (!SkipMask) ApplyMask(b);
             return b;
         }
 

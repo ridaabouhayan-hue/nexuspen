@@ -67,7 +67,7 @@ namespace NexusPen
         public Loupe(Overlay o, bool following, Point at)
         {
             ov = o; follow = following; source = at;
-            zoom = Math.Max(1.5f, Math.Min(6f, o.Cfg.LoupeZoom));
+            zoom = Math.Max(1.5f, Math.Min(10f, o.Cfg.LoupeZoom));
             FormBorderStyle = FormBorderStyle.None;
             ShowInTaskbar = false;
             StartPosition = FormStartPosition.Manual;
@@ -149,7 +149,8 @@ namespace NexusPen
 
         public void ChangeZoom(int dir)
         {
-            zoom = Math.Max(1.5f, Math.Min(6f, zoom + (dir > 0 ? 0.5f : -0.5f)));
+            float step = (dir > 0 ? zoom >= 4f : zoom > 4f) ? 1f : 0.5f;   // boven de 4 keer met hele stappen (tot 10 keer)
+            zoom = Math.Max(1.5f, Math.Min(10f, zoom + (dir > 0 ? step : -step)));
             ov.Cfg.LoupeZoom = zoom;
             ApplyZoom();
         }

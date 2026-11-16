@@ -91,8 +91,8 @@ namespace NexusPen
         public void Restyle()
         {
             Point keep = Location;
-            baseS = Math.Max(1f, W.UiScaleAt(keep));
             if (full) { FitFull(); return; }
+            baseS = Math.Max(1f, W.UiScaleAt(keep));
             S = baseS * ov.Cfg.TimerZoom;
             Rebuild();
             Location = keep;
@@ -196,8 +196,8 @@ namespace NexusPen
             }
         }
 
-        // ---- het hele scherm: grote cijfers voor de hele groep. Esc of dezelfde knop: terug
-        bool full; Point beforeFull;
+        // ---- het hele scherm: de timer vult het hele scherm (cirkel, alleen cijfers of een balk). Esc of dezelfde knop: terug
+        bool full; Point beforeFull; Rectangle fullScreen;
         public bool IsFull { get { return full; } }
 
         void ToggleBig() { if (full) ExitFull(); else EnterFull(); }
@@ -205,30 +205,209 @@ namespace NexusPen
         void EnterFull()
         {
             if (Editing && editFinish != null) editFinish(true);
-            beforeFull = Location; full = true;
+            beforeFull = Location;
+            fullScreen = Screen.FromPoint(new Point(Left + Width / 2, Top + Height / 2)).Bounds;
+            full = true;
             FitFull();
             Usage.Log("timer", "volledig scherm", "");
         }
 
         void FitFull()
         {
-            Rectangle sb = Screen.FromPoint(new Point(Left + Width / 2, Top + Height / 2)).Bounds;
-            if (full && beforeFull != Point.Empty) sb = Screen.FromPoint(beforeFull).Bounds;
-            S = baseS; Rebuild();
-            float k = Math.Min(sb.Width * 0.94f / Width, sb.Height * 0.9f / Height);
-            S = baseS * Math.Max(1f, k);
+            baseS = Math.Max(1f, W.UiScaleAt(new Point(fullScreen.X + fullScreen.Width / 2, fullScreen.Y + fullScreen.Height / 2)));
+            S = baseS * 1.4f;   // de knoppen onderaan iets groter: goed te raken op een groot scherm
             Rebuild();
-            Location = new Point(sb.Left + (sb.Width - Width) / 2, sb.Top + (sb.Height - Height) / 2);
+            Location = fullScreen.Location;
+            RenderNow();
         }
 
         public void ExitFull()
         {
             if (!full) return;
             full = false;
+            baseS = Math.Max(1f, W.UiScaleAt(beforeFull));
             S = baseS * ov.Cfg.TimerZoom;
             Rebuild();
             Rectangle wa = Screen.FromPoint(beforeFull).WorkingArea;
             Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, beforeFull.X)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, beforeFull.Y)));
+        }
+
+        // Naar het volgende scherm (bijvoorbeeld de beamer). Op het hele scherm gaat hij daar ook over het hele scherm.
+        public void ToNextScreen()
+        {
+            Screen[] all = Screen.AllScreens;
+            if (all.Length < 2) return;
+            Point mid = full ? new Point(fullScreen.X + fullScreen.Width / 2, fullScreen.Y + fullScreen.Height / 2) : new Point(Left + Width / 2, Top + Height / 2);
+            int at = 0;
+            for (int i = 0; i < all.Length; i++) if (all[i].Bounds.Contains(mid)) at = i;
+            Screen next = all[(at + 1) % all.Length];
+            Usage.Log("timer", "ander scherm", "");
+            if (full)
+            {
+                fullScreen = next.Bounds;
+                beforeFull = new Point(next.WorkingArea.Right - Width / 3, next.WorkingArea.Top + 40);   // terug uit het hele scherm: rechtsboven op dat scherm
+                FitFull();
+                return;
+            }
+            Rectangle from = all[at].WorkingArea, wa = next.WorkingArea;
+            float fx = (Left - from.Left) / (float)Math.Max(1, from.Width - Width), fy = (Top - from.Top) / (float)Math.Max(1, from.Height - Height);
+            baseS = Math.Max(1f, W.UiScaleAt(new Point(wa.X + wa.Width / 2, wa.Y + wa.Height / 2)));
+            S = baseS * ov.Cfg.TimerZoom;
+            Rebuild();
+            int x = wa.Left + (int)(Math.Max(0, Math.Min(1, fx)) * Math.Max(0, wa.Width - Width)), y = wa.Top + (int)(Math.Max(0, Math.Min(1, fy)) * Math.Max(0, wa.Height - Height));
+            Location = new Point(x, y);
+        }
+
+        // Schermen veranderd: opnieuw passend (en weer op een scherm dat er nog is)
+        public void ScreensChanged()
+        {
+            if (full)
+            {
+                bool still = false;
+                foreach (Screen sc in Screen.AllScreens) if (sc.Bounds == fullScreen) still = true;
+                if (!still) fullScreen = Screen.FromPoint(new Point(fullScreen.X + fullScreen.Width / 2, fullScreen.Y + fullScreen.Height / 2)).Bounds;
+                FitFull();
+                return;
+            }
+            Restyle();
+            Overlay.KeepFormOnScreen(this);
+        }
+
+        // naar een scherm met een andere schaal gesleept: jouw timergrootte houden (en op het hele scherm het hele scherm)
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == W.WM_DPICHANGED)
+            {
+                m.Result = IntPtr.Zero;
+                if (full) { BeginInvoke((MethodInvoker)delegate { if (!IsDisposed && full) FitFull(); }); return; }
+                W.RECT r = (W.RECT)System.Runtime.InteropServices.Marshal.PtrToStructure(m.LParam, typeof(W.RECT));
+                Point at = new Point((r.Left + r.Right) / 2, (r.Top + r.Bottom) / 2);
+                baseS = Math.Max(1f, W.UiScaleAt(at));
+                S = baseS * ov.Cfg.TimerZoom;
+                Rebuild();
+                Location = new Point(r.Left, r.Top);
+                moveStart = Location; moveMouse = Control.MousePosition;
+                return;
+            }
+            base.WndProc(ref m);
+        }
+
+        protected override GraphicsPath ShapePath(float w, float h)
+        {
+            if (!full) return base.ShapePath(w, h);
+            GraphicsPath gp = new GraphicsPath(); gp.AddRectangle(new RectangleF(0, 0, w, h)); return gp;
+        }
+        protected override int ShapeKind { get { return full ? 1 : 0; } }
+        protected override bool SkipMask { get { return full; } }   // het hele scherm is helemaal dicht: niets weg te knippen (scheelt veel werk)
+        protected override GraphicsPath BorderPath(float w, float h, float bw)
+        {
+            if (!full) return base.BorderPath(w, h, bw);
+            return new GraphicsPath();   // geen rand om het hele scherm
+        }
+
+        void BuildFull()
+        {
+            float w = fullScreen.Width, h = fullScreen.Height;
+            float btn = 32 * S, gap = 10 * S;
+            bool two = Screen.AllScreens.Length > 1;
+            int n = two ? 7 : 6;
+            float rowW = n * btn + (n - 1) * gap;
+            float by = h - btn - 28 * S, x = (w - rowW) / 2;
+            timeItem = Add(new RectangleF(0, 0, w, by - 12 * S), null, delegate { StartPause(); });
+            timeItem.Paint = delegate(Graphics g, Item it, bool hv) { PaintFull(g, it.R); };
+            Item play = Add(new RectangleF(x, by, btn, btn), L.T("Starten of pauzeren"), delegate { StartPause(); });
+            play.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, running ? "pauze" : "afspelen", true); };
+            x += btn + gap;
+            Item reset = Add(new RectangleF(x, by, btn, btn), L.T("Opnieuw beginnen"), delegate { Reset(); });
+            reset.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, "terugzetten", false); };
+            x += btn + gap;
+            Item view = Add(new RectangleF(x, by, btn, btn), L.T("Andere weergave: cirkel, alleen cijfers of balk"), delegate { ov.Cfg.TimerView = (ov.Cfg.TimerView + 1) % 3; ov.Cfg.Save(); Usage.Log("timer", "weergave", ov.Cfg.TimerView.ToString()); Invalidate(); });
+            view.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, ov.Cfg.TimerView == 0 ? "cirkel" : ov.Cfg.TimerView == 1 ? "tekst" : "rechthoek", false); };
+            x += btn + gap;
+            if (two)
+            {
+                Item scr = Add(new RectangleF(x, by, btn, btn), L.T("Naar het andere scherm"), delegate { ToNextScreen(); });
+                scr.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, "naarscherm", false); };
+                x += btn + gap;
+            }
+            Item small = Add(new RectangleF(x, by, btn, btn), L.T("Weer klein (Esc)"), delegate { ExitFull(); });
+            small.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, "volterug", false); };
+            x += btn + gap;
+            Item mute = Add(new RectangleF(x, by, btn, btn), L.T("Geluid aan of uit"), delegate { ov.Cfg.TimerMute = !ov.Cfg.TimerMute; if (ov.Cfg.TimerMute) TimerSound.Stop(); ov.Cfg.Save(); });
+            mute.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, ov.Cfg.TimerMute ? "geluiduit" : "geluid", false); };
+            x += btn + gap;
+            Item close = Add(new RectangleF(x, by, btn, btn), L.T("Timer sluiten"), delegate { running = false; clock.Stop(); TimerSound.Stop(); ExitFull(); Hide(); });
+            close.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, "kruis", false); };
+            ClientSize = new Size(fullScreen.Width, fullScreen.Height);
+        }
+
+        // Het grote beeld: een cirkel die rondloopt (zoals de klok van Windows), alleen grote cijfers, of cijfers met een balk
+        void PaintFull(Graphics g, RectangleF area)
+        {
+            Theme t = T;
+            double total = Math.Max(1, setSeconds * 1000.0);
+            float frac = (float)Math.Max(0, Math.Min(1, leftMs / total));
+            bool blink = done && ((int)((DateTime.Now - doneAt).TotalMilliseconds / 450) % 2 == 0) && (DateTime.Now - doneAt).TotalSeconds < 6;
+            Color digits = done ? t.Accent : t.Text;
+            Color track = Color.FromArgb(t.IsLight ? 28 : 40, t.Text);
+            Color fill = blink ? t.Text : t.Accent;
+            float cx = area.X + area.Width / 2, cy = area.Y + area.Height / 2;
+            int view = ov.Cfg.TimerView;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            if (view == 0)
+            {
+                float R = Math.Min(area.Width, area.Height) * 0.45f;
+                float th = Math.Max(4, R * 0.07f);
+                RectangleF rr = new RectangleF(cx - R + th / 2, cy - R + th / 2, 2 * R - th, 2 * R - th);
+                using (Pen p = new Pen(track, th)) g.DrawEllipse(p, rr);
+                if (frac > 0.0005f || done)
+                    using (Pen p = new Pen(fill, th))
+                    {
+                        p.StartCap = LineCap.Round; p.EndCap = LineCap.Round;
+                        if (done) g.DrawEllipse(p, rr);
+                        else g.DrawArc(p, rr, -90, 360f * frac);
+                    }
+                float inner = (R - th) * 2;
+                BigText(g, TimeText(), new RectangleF(cx - inner * 0.42f, cy - inner * 0.25f, inner * 0.84f, inner * 0.5f), digits);
+            }
+            else if (view == 1)
+            {
+                BigText(g, TimeText(), new RectangleF(area.X + area.Width * 0.06f, area.Y + area.Height * 0.08f, area.Width * 0.88f, area.Height * 0.84f), blink ? t.Accent : digits);
+            }
+            else
+            {
+                float bw = area.Width * 0.76f, bh = Math.Max(8, area.Height * 0.05f);
+                RectangleF textBox = new RectangleF(area.X + area.Width * 0.1f, area.Y + area.Height * 0.1f, area.Width * 0.8f, area.Height * 0.55f);
+                BigText(g, TimeText(), textBox, digits);
+                RectangleF bar = new RectangleF(cx - bw / 2, textBox.Bottom + area.Height * 0.08f, bw, bh);
+                using (SolidBrush b = new SolidBrush(track)) using (GraphicsPath gp = Svg.RoundRect(bar, bh / 2)) g.FillPath(b, gp);
+                float fw = done ? bw : bw * frac;
+                if (fw >= 1)
+                    using (SolidBrush b = new SolidBrush(fill)) using (GraphicsPath gp = Svg.RoundRect(new RectangleF(bar.X, bar.Y, Math.Max(bh, fw), bh), bh / 2)) g.FillPath(b, gp);
+            }
+        }
+
+        // Tekst zo groot als past in het vak, in het midden
+        void BigText(Graphics g, string text, RectangleF box, Color c)
+        {
+            if (box.Width < 4 || box.Height < 4) return;
+            float px = box.Height * 0.9f;
+            using (Font f0 = UiFont.Make(px, true))
+            {
+                SizeF sz = g.MeasureString(text, f0, PointF.Empty, StringFormat.GenericTypographic);
+                if (sz.Width > box.Width) px *= box.Width / sz.Width;
+                if (sz.Height > box.Height) px = Math.Min(px, box.Height * 0.9f * box.Height / sz.Height);
+            }
+            using (Font f = UiFont.Make(Math.Max(4, px), true))
+            using (SolidBrush b = new SolidBrush(c))
+            using (StringFormat sf = (StringFormat)StringFormat.GenericTypographic.Clone())
+            {
+                sf.Alignment = StringAlignment.Center; sf.LineAlignment = StringAlignment.Center;
+                System.Drawing.Text.TextRenderingHint keep = g.TextRenderingHint;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
+                g.DrawString(text, f, b, box, sf);
+                g.TextRenderingHint = keep;
+            }
         }
 
         void Step()
@@ -254,6 +433,8 @@ namespace NexusPen
 
         protected override void Build()
         {
+            draggable = !full;
+            if (full) { BuildFull(); return; }
             float pad = 10 * S, btn = 30 * S, gap = 4 * S;
             float timeW = TextWidth("00:00", 30) + 8 * S;
             float x = pad, y = pad;
@@ -371,6 +552,7 @@ namespace NexusPen
 
         // voor de zelftest: het vakje openen, kijken of het blijft staan, en een tijd invullen
         public void EditForTest() { EditTime(); }
+        public void FullForTest() { if (!full) EnterFull(); else { Rebuild(); RenderNow(); } }
         public bool FinishEditForTest(string text)
         {
             if (!Editing) return false;

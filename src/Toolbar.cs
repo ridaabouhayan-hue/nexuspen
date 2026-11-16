@@ -464,17 +464,21 @@ namespace NexusPen
             FitBarToScreen();
         }
 
-        // De balk past altijd op het scherm: zo nodig kleiner, en helemaal binnen de rand
+        // De balk past altijd op het scherm: zo nodig kleiner, en helemaal binnen de rand.
+        // Jouw eigen grootte blijft bewaard: is een scherm te klein (bijvoorbeeld bij dupliceren naar een beamer),
+        // dan wordt de balk alleen tijdelijk kleiner. Komt je gewone scherm terug, dan heeft hij weer jouw maat.
         public void FitBarToScreen()
         {
             if (collapsed || docked) return;
             Point c = new Point(Left + 10, Top + 10);
             Rectangle wa = Screen.FromPoint(c).WorkingArea;
-            float fit = Math.Min(wa.Width * 0.98f / Math.Max(1, Width), wa.Height * 0.98f / Math.Max(1, Height));
-            if (fit < 1f)
+            float want = W.UiScaleAt(c) * ov.Cfg.BarZoom;
+            if (Math.Abs(S - want) > want * 0.004f) { S = want; Point k0 = Location; Rebuild(); Location = k0; }
+            for (int tries = 0; tries < 2; tries++)
             {
-                ov.Cfg.BarZoom = Math.Max(0.6f, ov.Cfg.BarZoom * fit);
-                S = W.UiScaleAt(c) * ov.Cfg.BarZoom;
+                float fit = Math.Min(wa.Width * 0.98f / Math.Max(1, Width), wa.Height * 0.98f / Math.Max(1, Height));
+                if (fit >= 1f) break;
+                S = Math.Max(want * 0.25f, S * fit);
                 Point k = Location; Rebuild(); Location = k;
             }
             int x = Math.Max(wa.Left, Math.Min(wa.Right - Width, Left)), y = Math.Max(wa.Top, Math.Min(wa.Bottom - Height, Top));
@@ -482,6 +486,24 @@ namespace NexusPen
         }
 
         protected override void AfterDpiChange() { FitBarToScreen(); }
+
+        // Schermen veranderd (uitbreiden, dupliceren, beamer eraf, andere schaal): alles opnieuw passend en scherp
+        public void ScreensChanged()
+        {
+            ClosePopups();
+            HideMiniBar();
+            EnsureOnScreen();
+            if (collapsed || docked)
+            {
+                float want = W.UiScaleAt(new Point(Left + 10, Top + 10)) * ov.Cfg.BarZoom;
+                if (Math.Abs(S - want) > want * 0.004f) { S = want; Point k = Location; Rebuild(); Location = k; }
+            }
+            else FitBarToScreen();
+            foreach (BarForm f in new BarForm[] { lipje, miniBar, widthTip, toast, colorPopup, shapePopup, stampPopup, boardPopup, eraserPopup, overflowPopup })
+                if (f != null && !f.IsDisposed) f.S = S;
+            if (tile != null && tile.Visible) Overlay.KeepFormOnScreen(tile);   // ingeklapt: het logo-tegeltje blijft in beeld
+            if (lipje != null && lipje.Visible) lipje.Restyle();
+        }
 
         protected override void OnMouseWheel(MouseEventArgs e)
         {
@@ -793,7 +815,7 @@ namespace NexusPen
                 m.AddCheck(L.T("Rechthoek (om te lezen)"), ov.Cfg.LoupeShape == 0, delegate { ov.SetLoupeShape(0); });
                 m.AddCheck(L.T("Rond"), ov.Cfg.LoupeShape == 1, delegate { ov.SetLoupeShape(1); });
                 m.AddSeparator();
-                foreach (float z0 in new float[] { 2f, 3f, 4f })
+                foreach (float z0 in new float[] { 2f, 3f, 4f, 6f, 10f })
                 {
                     float z = z0;
                     m.AddCheck(L.F("{0} keer zo groot", z), Math.Abs(ov.Cfg.LoupeZoom - z) < 0.01f, delegate { ov.SetLoupeZoom(z); });
