@@ -172,9 +172,13 @@ namespace NexusPen
             return true;
         }
 
+        public W.RECT SourceRect { get { return lastSrc; } }
+
+        // buiten het glas gekomen tijdens het tekenen: de lijn blijft op de rand van het glas (niet verder dan wat het glas laat zien)
         public PointF ToSource(PointF screen)
         {
             float iw = Math.Max(1, Width - 2 * Border), ih = Math.Max(1, Height - 2 * Border);
+            screen = new PointF(Math.Max(Left + Border, Math.Min(Left + Border + iw - 1, screen.X)), Math.Max(Top + Border, Math.Min(Top + Border + ih - 1, screen.Y)));
             float kx = (lastSrc.Right - lastSrc.Left) / iw, ky = (lastSrc.Bottom - lastSrc.Top) / ih;
             return new PointF(lastSrc.Left + (screen.X - Left - Border) * kx, lastSrc.Top + (screen.Y - Top - Border) * ky);
         }

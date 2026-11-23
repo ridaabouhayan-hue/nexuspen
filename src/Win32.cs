@@ -83,6 +83,29 @@ namespace NexusPen
         [DllImport("user32.dll")] public static extern bool UnhookWindowsHookEx(IntPtr hook);
         [DllImport("user32.dll")] public static extern IntPtr CallNextHookEx(IntPtr hook, int nCode, IntPtr wParam, IntPtr lParam);
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr GetModuleHandle(string name);
+        [StructLayout(LayoutKind.Sequential)] public struct MSG { public IntPtr hwnd; public uint message; public IntPtr wParam, lParam; public uint time; public int ptX, ptY; }
+        [DllImport("user32.dll")] public static extern int GetMessage(out MSG msg, IntPtr hwnd, uint min, uint max);
+        [DllImport("user32.dll")] public static extern bool PostThreadMessage(uint threadId, uint msg, IntPtr wParam, IntPtr lParam);
+
+        [StructLayout(LayoutKind.Sequential)] struct KEYBDINPUT { public ushort wVk, wScan; public uint dwFlags, time; public IntPtr dwExtraInfo; }
+        [StructLayout(LayoutKind.Sequential)] struct MOUSEINPUT { public int dx, dy; public uint mouseData, dwFlags, time; public IntPtr dwExtraInfo; }
+        [StructLayout(LayoutKind.Explicit)] struct InputUnion { [FieldOffset(0)] public MOUSEINPUT mi; [FieldOffset(0)] public KEYBDINPUT ki; }
+        [StructLayout(LayoutKind.Sequential)] struct INPUT { public uint type; public InputUnion u; }
+        [DllImport("user32.dll", SetLastError = true)] static extern uint SendInput(uint n, INPUT[] inputs, int size);
+
+        // Een "lege" toets (0xE8 heeft geen betekenis) indrukken en loslaten. Zo ziet Windows niet "alleen Ctrl+Shift"
+        // (wisselen van toetsenbordtaal) of "alleen Alt" (menu openen) als NexusPen de letter ertussen gebruikte.
+        public static void TapMaskKey()
+        {
+            try
+            {
+                INPUT[] inp = new INPUT[2];
+                inp[0].type = 1; inp[0].u.ki.wVk = 0xE8;
+                inp[1].type = 1; inp[1].u.ki.wVk = 0xE8; inp[1].u.ki.dwFlags = 2;   // KEYEVENTF_KEYUP
+                SendInput(2, inp, Marshal.SizeOf(typeof(INPUT)));
+            }
+            catch { }
+        }
         [DllImport("user32.dll")] public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
         [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
         [DllImport("user32.dll")] public static extern bool ReleaseCapture();
@@ -197,7 +220,7 @@ namespace NexusPen
         [DllImport("user32.dll")] public static extern IntPtr SetCursor(IntPtr hCursor);
         [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
         [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, IntPtr pid);
-        [DllImport("kernel32.dll")] static extern uint GetCurrentThreadId();
+        [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
         [DllImport("user32.dll")] static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool attach);
         [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
         [DllImport("user32.dll")] static extern IntPtr SetFocus(IntPtr hWnd);

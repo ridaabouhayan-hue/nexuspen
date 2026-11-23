@@ -401,7 +401,7 @@ namespace NexusPen
             int key = c.ToArgb() ^ (kind * 0x5bd1e995);
             if (chalkCache.TryGetValue(key, out tb)) return tb;
             const int N = 96, G = 12;   // plaatje van 96 pixels, klontjes op een raster van 12
-            Random rnd = new Random(c.ToArgb() ^ 0x2468);
+            Random rnd = new Random((c.ToArgb() & 0xFFFFFF) ^ 0x2468);   // zelfde korrel bij elke doorzichtigheid (geen flikkeren bij vervagen)
             float[,] coarse = new float[G, G];
             for (int y = 0; y < G; y++) for (int x = 0; x < G; x++) coarse[x, y] = (float)rnd.NextDouble();
             Color tint = kind == 1 ? c : Color.FromArgb(c.A, Mix(c, Color.White, 0.10f));
@@ -435,7 +435,7 @@ namespace NexusPen
             finally { b.UnlockBits(bd); }
             tb = new TextureBrush(b, WrapMode.Tile);   // de brush maakt een eigen kopie
             b.Dispose();
-            if (chalkCache.Count > 40) { foreach (TextureBrush old in chalkCache.Values) old.Dispose(); chalkCache.Clear(); }
+            if (chalkCache.Count > 160) { foreach (TextureBrush old in chalkCache.Values) old.Dispose(); chalkCache.Clear(); }
             chalkCache[key] = tb;
             return tb;
         }

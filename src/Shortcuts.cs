@@ -47,11 +47,23 @@ namespace NexusPen
             return null;
         }
 
+        // onthouden zolang de eigen sneltoetsen niet veranderen (wordt bij elke toets gevraagd)
+        static string ovSrc; static Dictionary<string, string> ovCache;
         static Dictionary<string, string> Overrides()
         {
+            string src = Cfg == null ? null : Cfg.ShortcutOverrides;
+            Dictionary<string, string> cached = ovCache;
+            if (cached != null && object.ReferenceEquals(src, ovSrc)) return cached;
+            Dictionary<string, string> d = ParseOverrides(src);
+            ovCache = d; ovSrc = src;
+            return d;
+        }
+
+        static Dictionary<string, string> ParseOverrides(string src)
+        {
             Dictionary<string, string> d = new Dictionary<string, string>();
-            if (Cfg == null || string.IsNullOrEmpty(Cfg.ShortcutOverrides)) return d;
-            foreach (string part in Cfg.ShortcutOverrides.Split(';'))
+            if (string.IsNullOrEmpty(src)) return d;
+            foreach (string part in src.Split(';'))
             {
                 int i = part.IndexOf('=');
                 if (i > 0) d[part.Substring(0, i)] = part.Substring(i + 1);
@@ -62,7 +74,7 @@ namespace NexusPen
         // combo null = terug naar standaard, "" = geen sneltoets
         public static void SetOverride(string id, string combo)
         {
-            Dictionary<string, string> d = Overrides();
+            Dictionary<string, string> d = new Dictionary<string, string>(Overrides());   // een kopie: de onthouden lijst niet zelf veranderen
             if (combo == null) d.Remove(id); else d[id] = combo;
             List<string> parts = new List<string>();
             foreach (KeyValuePair<string, string> kv in d) parts.Add(kv.Key + "=" + kv.Value);

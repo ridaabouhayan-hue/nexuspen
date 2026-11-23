@@ -2116,6 +2116,7 @@ namespace NexusPen
         Loupe followLoupe;
         readonly List<Loupe> pinnedLoupes = new List<Loupe>();
         Loupe drawLoupe;   // je tekent nu in dit vastgezette glas
+        W.RECT drawLoupeSrc;
 
         // punt in het glas (tekenlaag) naar de plek die het glas vergroot (ook in de tekenlaag)
         PointF LoupePoint(Point client)
@@ -2938,7 +2939,7 @@ namespace NexusPen
                 Point sp = PointToScreen(e.Location);
                 for (int li = pinnedLoupes.Count - 1; li >= 0; li--)
                     if (pinnedLoupes[li].Inside(sp)) { drawLoupe = pinnedLoupes[li]; break; }
-                if (drawLoupe != null) { p = LoupePoint(e.Location); Capture = true; }
+                if (drawLoupe != null) { p = ClampActive(LoupePoint(e.Location)); drawLoupeSrc = drawLoupe.SourceRect; Capture = true; }
             }
             // dubbelklik op iets wat er staat (met pen, markeerstift of een vorm): meteen selecteren
             if (e.Button == MouseButtons.Left && e.Clicks >= 2 && StrokesVisible && (CurrentTool == Tool.Pen || CurrentTool == Tool.Marker || IsShape(CurrentTool)))
@@ -3010,6 +3011,7 @@ namespace NexusPen
                 st.Tool = Tool.Stamp; st.Width = PenWidth;
                 st.Color = Render.StampColor(kind);
                 st.FontSize = StampPx * ScreenScale;
+                if (drawLoupe != null) { st.FontSize /= Math.Max(1f, drawLoupe.Zoom); drawLoupe = null; Capture = false; }   // in het glas even groot als gewoon
                 st.Text = kind == "nummer" ? "#" + (Cfg.StampNext++) : kind;
                 if (kind == "nummer") UpdateCursor();
                 st.Pts.Add(p);
@@ -3045,7 +3047,14 @@ namespace NexusPen
             if (CurrentTool == Tool.Stamp) { float sc = ScreenScale; if (Math.Abs(sc - lastCursorScale) > 0.01f) { lastCursorScale = sc; UpdateCursor(); } }
             if (typing != null && TextMouseMove(e)) return;
             if (inputAt < 0) inputAt = Perf.Now;
-            PointF p = drawLoupe != null && (current != null || erasing) ? LoupePoint(e.Location) : ClampActive(e.Location);
+            // het glas is intussen dicht, verschoven of anders ingezoomd: hier stoppen (anders een lange streep dwars over het scherm)
+            if (drawLoupe != null && (drawLoupe.IsDisposed || !drawLoupe.Visible || !drawLoupe.SourceRect.Equals(drawLoupeSrc)))
+            {
+                drawLoupe = null;
+                if (current != null || erasing) { Point mp = e.Location; OnMouseUp(new MouseEventArgs(MouseButtons.Left, 1, mp.X, mp.Y, 0)); }
+                return;
+            }
+            PointF p = drawLoupe != null && (current != null || erasing) ? ClampActive(LoupePoint(e.Location)) : ClampActive(e.Location);
             if (CurrentTool == Tool.Focus) { focusAt = p; dirty = true; inputAt = -1; return; }   // spotlicht: groot vlak, de timer is snel genoeg
             if (erasing) { EraseAt(p); return; }
             if (resizing && selected != null)
@@ -3128,6 +3137,7 @@ namespace NexusPen
             base.OnMouseUp(e);
             if (RealMouseInSelfTest) return;
             if (e.Button == MouseButtons.Right && !erasing) return;   // rechts loslaten zonder gummen: niets afbreken
+            if (drawLoupe != null) { drawLoupe = null; Capture = false; }   // klaar met tekenen in het vergrootglas
             if (textDrag == 4 && typing != null && ed != null)
             {
                 // losgelaten: de woorden naar die plek (met Ctrl: een kopie). Niet bewogen: gewoon het streepje daar.
@@ -3136,7 +3146,7 @@ namespace NexusPen
                 textDrag = 0; textDropIdx = -1; Capture = false; TypingChanged(); return;
             }
             if (textDrag != 0) { textDrag = 0; textDropIdx = -1; Capture = false; RenderSoon(); return; }
-            if (erasing) { erasing = false; drawLoupe = null; return; }
+            if (erasing) { erasing = false; return; }
             if (resizing)
             {
                 resizing = false;
@@ -3163,7 +3173,6 @@ namespace NexusPen
                 if (selected != null && toolbar != null) toolbar.ShowMiniBar(SelectionScreenRect());
                 return;
             }
-            if (drawLoupe != null) { drawLoupe = null; Capture = false; }
             if (current == null) return;
             Stroke s = current;
             current = null;
@@ -3615,29 +3624,57 @@ namespace NexusPen
         // - tijdens het tekenen: alle sneltoetsen (ook Ctrl+Z, kleuren, dikte), welk programma ook vooraan staat;
         // - als je in een ander programma werkt: alleen Ctrl+Shift + letter of cijfer (gereedschap en kleur), als dat aanstaat.
         // Elke andere toets gaat ongemoeid door. Er wordt niets onthouden of bewaard van wat je typt.
+        // De haak draait op een eigen, rustige draad: dan wacht typen in andere programma's nooit op NexusPen
+        // (ook niet als die even druk is met tekenen of bewaren), en haalt Windows de haak niet weg.
         W.LowLevelKeyboardProc keyProc;
-        IntPtr keyHook = IntPtr.Zero;
-        readonly HashSet<int> keysHeld = new HashSet<int>();
+        volatile IntPtr keyHook = IntPtr.Zero;
+        System.Threading.Thread keyThread;
+        volatile uint keyThreadId;
+        readonly HashSet<int> keysHeld = new HashSet<int>();   // alleen op de draad van de haak
         static readonly Action NoOp = delegate { };
-        static readonly uint myPid = (uint)System.Diagnostics.Process.GetCurrentProcess().Id;
 
         public void ApplyKeyHook()
         {
             bool want = Cfg.ShortcutMode != 2 && !Program.SelfTest;
             try
             {
-                if (want && keyHook == IntPtr.Zero)
+                if (want && keyThread == null)
                 {
-                    keyProc = KeyHookProc;   // vasthouden, anders ruimt .NET hem op terwijl Windows hem nog gebruikt
-                    keyHook = W.SetWindowsHookEx(13, keyProc, W.GetModuleHandle(null), 0);
-                    if (keyHook == IntPtr.Zero) Log.Info("Sneltoetsen overal: kon niet worden aangezet (" + Marshal.GetLastWin32Error() + ")");
+                    keyThread = new System.Threading.Thread(KeyThreadRun);
+                    keyThread.IsBackground = true;
+                    keyThread.Name = "NexusPen sneltoetsen";
+                    keyThread.Start();
                 }
-                else if (!want && keyHook != IntPtr.Zero) { W.UnhookWindowsHookEx(keyHook); keyHook = IntPtr.Zero; keysHeld.Clear(); }
+                else if (!want && keyThread != null) RemoveKeyHook();
             }
             catch (Exception ex) { Log.Error("Sneltoetsen overal", ex); }
         }
 
-        void RemoveKeyHook() { try { if (keyHook != IntPtr.Zero) W.UnhookWindowsHookEx(keyHook); } catch { } keyHook = IntPtr.Zero; }
+        void KeyThreadRun()
+        {
+            try
+            {
+                keyThreadId = W.GetCurrentThreadId();
+                keyProc = KeyHookProc;   // vasthouden, anders ruimt .NET hem op terwijl Windows hem nog gebruikt
+                keyHook = W.SetWindowsHookEx(13, keyProc, W.GetModuleHandle(null), 0);
+                if (keyHook == IntPtr.Zero) { Log.Info("Sneltoetsen overal: kon niet worden aangezet (" + Marshal.GetLastWin32Error() + ")"); return; }
+                W.MSG m;
+                while (W.GetMessage(out m, IntPtr.Zero, 0, 0) > 0) { }   // alleen wachten; Windows roept de haak vanzelf aan
+            }
+            catch (Exception ex) { Log.Error("Sneltoetsen overal", ex); }
+            finally
+            {
+                try { if (keyHook != IntPtr.Zero) W.UnhookWindowsHookEx(keyHook); } catch { }
+                keyHook = IntPtr.Zero;
+                lock (keysHeld) keysHeld.Clear();
+            }
+        }
+
+        void RemoveKeyHook()
+        {
+            try { if (keyThreadId != 0) W.PostThreadMessage(keyThreadId, 0x0012, IntPtr.Zero, IntPtr.Zero); } catch { }   // WM_QUIT: de draad stopt en haalt de haak weg
+            keyThread = null; keyThreadId = 0;
+        }
 
         IntPtr KeyHookProc(int nCode, IntPtr wParam, IntPtr lParam)
         {
@@ -3647,26 +3684,44 @@ namespace NexusPen
                 {
                     int msg = wParam.ToInt32();
                     int vk = Marshal.ReadInt32(lParam);
+                    int flags = Marshal.ReadInt32(lParam, 8);
+                    if ((flags & 0x10) != 0) return W.CallNextHookEx(keyHook, nCode, wParam, lParam);   // nagemaakte toetsen (ook die van onszelf): niet aankomen
                     bool down = msg == 0x100 || msg == 0x104, up = msg == 0x101 || msg == 0x105;
-                    if (up && keysHeld.Remove(vk)) return new IntPtr(1);   // ook het loslaten van een toets die NexusPen gebruikte
-                    if (down)
+                    lock (keysHeld)
                     {
-                        Action a = GlobalShortcut(vk, keysHeld.Contains(vk));
-                        if (a != null)
+                        if (up && keysHeld.Remove(vk)) return new IntPtr(1);   // ook het loslaten van een toets die NexusPen gebruikte
+                        if (down)
                         {
-                            keysHeld.Add(vk);
-                            if (a != NoOp) BeginInvoke(a);   // meteen terug naar Windows; het werk zelf daarna
-                            return new IntPtr(1);
+                            bool wasDown = (W.GetAsyncKeyState(vk) & 0x8000) != 0;
+                            if (keysHeld.Contains(vk) && !wasDown) keysHeld.Remove(vk);   // het loslaten gemist: gewoon een nieuwe druk
+                            if (keysHeld.Contains(vk))
+                            {
+                                // ingedrukt gehouden: blijft van NexusPen tot je loslaat (anders krijgt je programma een halve toets)
+                                Action again = GlobalShortcut(vk, true);
+                                if (again != null && again != NoOp) BeginInvoke(again);
+                                return new IntPtr(1);
+                            }
+                            Action a = GlobalShortcut(vk, false);
+                            if (a != null)
+                            {
+                                keysHeld.Add(vk);
+                                // Ctrl, Shift of Alt ingedrukt: een lege toets erachteraan, anders denkt Windows dat je alleen Ctrl+Shift
+                                // drukte (dat wisselt de toetsenbordtaal) of alleen Alt (dat opent het menu van je programma)
+                                if (KeyDown(0x11) || KeyDown(0x10) || KeyDown(0x12)) W.TapMaskKey();
+                                BeginInvoke(a);   // meteen terug naar Windows; het werk zelf gebeurt in NexusPen
+                                return new IntPtr(1);
+                            }
                         }
                     }
                 }
             }
-            catch (Exception ex) { Log.Error("Sneltoets", ex); }
+            catch { }
             return W.CallNextHookEx(keyHook, nCode, wParam, lParam);
         }
 
         static bool KeyDown(int vk) { return (W.GetAsyncKeyState(vk) & 0x8000) != 0; }
 
+        // Leest alleen (vanaf de draad van de haak); het werk zelf gaat via BeginInvoke naar NexusPen
         Action GlobalShortcut(int vk, bool repeat)
         {
             if (IsDisposed || !IsHandleCreated || Cfg.ShortcutMode == 2 || typing != null || allHidden) return null;
@@ -3674,19 +3729,20 @@ namespace NexusPen
             if (KeyDown(0x5B) || KeyDown(0x5C)) return null;   // Windows-toets erbij: altijd van Windows
             // een venster van NexusPen zelf vooraan (Instellingen, typen): dan gaat het zoals altijd
             IntPtr fg = W.GetForegroundWindow();
-            uint pid = 0;
-            if (fg != IntPtr.Zero) W.GetWindowThreadProcessId(fg, out pid);
-            if (pid == myPid) return null;
+            if (fg != IntPtr.Zero && IsOurs(fg)) return null;
             Keys k = (Keys)vk;
             if (KeyDown(0x11)) k |= Keys.Control;
             if (KeyDown(0x10)) k |= Keys.Shift;
             if (KeyDown(0x12)) k |= Keys.Alt;
             KeyEventArgs e = new KeyEventArgs(k);
             Action a;
-            if (DrawMode) a = ShortcutAction(e, false);
+            if (DrawMode) a = ShortcutAction(e, false);   // je tekent: alle sneltoetsen zijn van NexusPen
             else
             {
-                if (!Cfg.ShortcutsEverywhere || !e.Control || !e.Shift || e.Alt) return null;
+                // je werkt in een ander programma: alleen als je dat aanzette, en alleen Ctrl+Shift + letter of cijfer
+                if (!Cfg.ShortcutsEverywhere || Cfg.ShortcutMode != 0 || !e.Control || !e.Shift || e.Alt) return null;
+                string act = Shortcuts.ActionFor(e);
+                if (act == "foto" || act == "bord") return null;   // nooit ongevraagd een schermafbeelding of het bord over je les
                 a = ShortcutAction(e, true);
             }
             if (a == null) return null;

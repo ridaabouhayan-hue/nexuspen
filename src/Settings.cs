@@ -75,7 +75,7 @@ namespace NexusPen
         public int KeepDrawing = 1;             // nooit, na Opslaan, altijd
         // sneltoetsen
         public string HotkeyDraw = "Ctrl+Shift+D", HotkeyHide = "Ctrl+Shift+H";
-        public bool ShortcutsEverywhere = true; // Ctrl+Shift + letter werkt ook als je in een ander programma werkt
+        public bool ShortcutsEverywhere;        // Ctrl+Shift + letter werkt ook als je in een ander programma werkt (zelf aanzetten: botst soms met Teams of je browser)
         public int ShortcutMode = 0;            // Ctrl+Shift + letter, alleen een letter, uit
         public string ShortcutOverrides = "";   // actie=combinatie;actie=combinatie
         // gebruik

@@ -666,9 +666,12 @@ namespace NexusPen
         // Schermen veranderd: de schaal van het scherm waar het logo staat, op dezelfde plek, en altijd in beeld
         public void FitScreen()
         {
-            Point c = LogoCenter;
-            Rectangle wa = Screen.FromPoint(c).WorkingArea;
-            if (!wa.Contains(c)) { wa = Screen.PrimaryScreen.WorkingArea; c = new Point(wa.Left + 60, wa.Top + 60); }
+            Point c = dpiCenter.IsEmpty ? LogoCenter : dpiCenter;
+            dpiCenter = Point.Empty;
+            Screen on = null;
+            foreach (Screen sc in Screen.AllScreens) if (sc.Bounds.Contains(c)) on = sc;
+            if (on == null) { on = Screen.PrimaryScreen; c = new Point(on.WorkingArea.Left + 60, on.WorkingArea.Top + 60); }   // scherm weg: naar het hoofdscherm
+            Rectangle wa = on.WorkingArea;
             float want = W.UiScaleAt(c) * ov.Cfg.BarZoom;
             if (Math.Abs(want - S) > want * 0.004f) { S = want; Rebuild(); }
             int x = c.X - Width / 2, y = c.Y - Height / 2;
@@ -676,6 +679,14 @@ namespace NexusPen
         }
 
         protected override void AfterDpiChange() { FitScreen(); }
+
+        // naar een scherm met een andere schaal: het midden onthouden (het venster verschuift anders een beetje bij het groter of kleiner worden)
+        Point dpiCenter;
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == W.WM_DPICHANGED && dpiCenter.IsEmpty && IsHandleCreated) dpiCenter = LogoCenter;
+            base.WndProc(ref m);
+        }
 
         protected override void Build()
         {

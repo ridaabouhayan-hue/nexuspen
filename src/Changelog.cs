@@ -12,7 +12,7 @@ namespace NexusPen
 
         public static readonly Version[] All = {
             V("1.3.25", "23 November 2026",
-                I("toetsen", "Shortcuts work everywhere: while drawing always, and Ctrl+Shift + letter also in other programs"),
+                I("toetsen", "While drawing, every shortcut works whichever program is in front (and, if you turn it on, also in other programs)"),
                 I("kleuren", "Pick a colour and you draw again right away with your last tool"),
                 I("vergrootglas", "Draw inside a pinned magnifier"),
                 I("krijt", "Chalk looks and feels more like real chalk"),

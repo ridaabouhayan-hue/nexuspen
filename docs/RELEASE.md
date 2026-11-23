@@ -3,7 +3,7 @@ NexusPen 1.3.25 for Windows 10 and 11.
 **Install:** update with one click (Settings > Updates). Or download `NexusPen-Setup.exe` and open it. Your drawings and settings stay.
 
 **New in 1.3.25**
-- **Shortcuts that always work:** while you draw, every NexusPen shortcut works, whichever program is in front. While you work in another program, Ctrl+Shift + letter (or number) picks a tool or colour straight away. You can turn that off in Settings > Shortcuts. NexusPen only reacts to its own shortcuts and never keeps anything you type.
+- **Shortcuts that always work:** while you draw, every NexusPen shortcut works, whichever program is in front. If you want, Ctrl+Shift + letter (or number) also picks a tool or colour while you work in another program: turn on Settings > Shortcuts > Also in other programs. It is off by default, because those keys then no longer work in that program (for example Ctrl+Shift+M to mute in Teams). NexusPen only reacts to its own shortcuts and never keeps anything you type.
 - **Colour picks your tool:** with the mouse pointer or the eraser, picking a colour switches back to the tool you used last.
 - **Draw in the magnifier:** draw inside a pinned magnifier and the ink lands on the spot it magnifies (right-click the magnifier button to turn it off).
 - **Chalk feels like chalk:** a rougher grain with small gaps and a soft dusty edge.
