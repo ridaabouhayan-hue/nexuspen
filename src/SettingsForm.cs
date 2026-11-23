@@ -437,7 +437,7 @@ namespace NexusPen
             y = Section(y + 8 * S, L.T("Tekenen"));
             y = Toggle(y, L.T("Muiswiel en touchpad veranderen de dikte"), null, delegate { return c.WheelWidth; }, delegate(bool v) { c.WheelWidth = v; });
             y = Toggle(y, L.T("Elk gereedschap onthoudt zijn eigen dikte"), null, delegate { return c.PerToolWidth; }, delegate(bool v) { c.PerToolWidth = v; });
-            y = Segments(y, L.T("Spotlicht"), null, new string[] { L.T("Rond"), L.T("Rechthoek") }, delegate { return c.FocusShape; }, delegate(int i) { c.FocusShape = i; });
+            y = Segments(y, L.T("Spotlicht"), null, new string[] { L.T("Rond"), L.T("Rechthoek"), L.T("Vierkant") }, delegate { return c.FocusShape; }, delegate(int i) { c.FocusShape = i; });
             y = Segments(y, L.T("Tekening bewaren na afsluiten"), null, new string[] { L.T("Nooit"), L.T("Na Opslaan"), L.T("Altijd") },
                 delegate { return c.KeepDrawing; }, delegate(int i) { c.KeepDrawing = i; });
         }
@@ -1006,7 +1006,9 @@ namespace NexusPen
             Settings c = Cfg;
             float y = Heading(contentTop, L.T("Sneltoetsen"), null);
             y = Segments(y, L.T("Sneltoetsen voor gereedschap"), L.T("Met Ctrl+Shift kies je nooit per ongeluk een gereedschap als je typt"),
-                new string[] { "Ctrl+Shift + " + L.T("letter"), L.T("Alleen een letter"), L.T("Uit") }, delegate { return c.ShortcutMode; }, delegate(int i) { c.ShortcutMode = i; BuildItems(); });
+                new string[] { "Ctrl+Shift + " + L.T("letter"), L.T("Alleen een letter"), L.T("Uit") }, delegate { return c.ShortcutMode; }, delegate(int i) { c.ShortcutMode = i; ov.ApplyKeyHook(); BuildItems(); });
+            if (c.ShortcutMode != 2)
+                y = Toggle(y, L.T("Ook in andere programma's"), L.T("Ctrl+Shift + letter kiest meteen een gereedschap, ook als je in een ander programma werkt. Tijdens het tekenen werken alle sneltoetsen altijd."), delegate { return c.ShortcutsEverywhere; }, delegate(bool v) { c.ShortcutsEverywhere = v; });
             y = Section(y + 6 * S, L.T("Werken overal, ook als je niet tekent"));
             float cw = (contentW - 14 * S) / 2, rh = 38 * S;
             KeyRow(contentX, y, cw, "global:draw", "pen", L.T("Tekenen aan of uit"), delegate { return c.HotkeyDraw; });

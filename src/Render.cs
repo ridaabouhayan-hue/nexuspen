@@ -264,7 +264,7 @@ namespace NexusPen
         {
             if (s.Pts.Count < 2 || (s.Tool != Tool.Pen && s.Tool != Tool.Marker && s.Tool != Tool.Laser)) { Draw(g, s, 1f); return; }
             float ow = OutlineWidth(s);
-            float widest = (s.Tool == Tool.Marker ? MarkerWidth(s.Width) : s.Tool == Tool.Laser ? LaserWidest(s.Width) : s.Width) + 2 * ow;
+            float widest = (s.Tool == Tool.Marker ? MarkerWidth(s.Width) : s.Tool == Tool.Laser ? LaserWidest(s.Width) : PenWidest(s)) + 2 * ow;
             // stukjes ruim meenemen: het begin en eind van een stuk liggen dan altijd buiten 'area',
             // zodat binnen 'area' de lijn precies zo getekend wordt als de hele lijn
             using (GraphicsPath gp = PartialPath(s.Pts, area, widest + 8))
@@ -275,7 +275,7 @@ namespace NexusPen
                     case Tool.Pen:
                         // met rand: eerst de rand van alle stukjes, dan de lijn (net als bij de hele lijn)
                         if (ow > 0) using (Pen p = MakePen(OutlineColorOf(s), s.Width + 2 * ow)) g.DrawPath(p, gp);
-                        if ((s.Style & Stroke.Chalk) != 0) using (Pen p = ChalkPen(s.Color, s.Width)) g.DrawPath(p, gp);
+                        if ((s.Style & Stroke.Chalk) != 0) ChalkPath(g, gp, s.Color, s.Width);
                         else using (Pen p = MakePen(s.Color, s.Width)) g.DrawPath(p, gp);
                         break;
                     case Tool.Marker: using (Pen p = MakePen(Color.FromArgb(110, s.Color), MarkerWidth(s.Width))) g.DrawPath(p, gp); break;
@@ -331,6 +331,18 @@ namespace NexusPen
             return p;
         }
 
+        // Hoe breed een lijn op het scherm komt (krijt heeft een stoffig randje)
+        public static float PenWidest(Stroke s) { return (s.Style & Stroke.Chalk) != 0 ? s.Width * 1.35f + 1.5f : s.Width; }
+
+        // Krijt: eerst een heel zacht stoffig randje (net iets breder), dan de korrelige streep zelf.
+        // De korrel ligt vast op het scherm (net als de structuur van een echt bord), dus natte en droge inkt zijn gelijk.
+        static void ChalkPath(Graphics g, GraphicsPath gp, Color c, float w)
+        {
+            Color dust = Color.FromArgb(c.A * 34 / 255, c);
+            using (Pen p = new Pen(ChalkBrush(dust, 1), w * 1.35f + 1.5f)) { p.StartCap = LineCap.Round; p.EndCap = LineCap.Round; p.LineJoin = LineJoin.Round; g.DrawPath(p, gp); }
+            using (Pen p = ChalkPen(c, w)) g.DrawPath(p, gp);
+        }
+
         static void Arrow(Graphics g, PointF a, PointF b, Color c, float w)
         {
             float dx = b.X - a.X, dy = b.Y - a.Y;
@@ -376,34 +388,63 @@ namespace NexusPen
         // Krijtstreep: dezelfde lijn, maar met een korrelige structuur zoals krijt op een bord
         static readonly Dictionary<int, TextureBrush> chalkCache = new Dictionary<int, TextureBrush>();
 
-        static TextureBrush ChalkBrush(Color c)
+        static TextureBrush ChalkBrush(Color c) { return ChalkBrush(c, 0); }
+
+        // Korrel van krijt: kleine klontjes (waar het krijt over de bobbels van het bord gaat), fijne korrels,
+        // gaatjes waar het bord doorschemert en een heel lichte schuine streep. Iets lichter dan de kleur zelf, zoals echt krijt.
+        // kind 1 = het stoffige randje: zachter en gelijkmatiger
+        static TextureBrush ChalkBrush(Color c, int kind)
         {
             TextureBrush tb;
             // bij vervagen verandert de doorzichtigheid elk beeldje: afronden, dan blijft het bij een paar plaatjes
             c = Color.FromArgb(Math.Min(255, (c.A + 8) / 16 * 16), c);
-            if (chalkCache.TryGetValue(c.ToArgb(), out tb)) return tb;
-            Bitmap b = new Bitmap(48, 48, PixelFormat.Format32bppArgb);
-            Random rnd = new Random(c.ToArgb());
-            for (int y = 0; y < 48; y++)
-                for (int x = 0; x < 48; x++)
+            int key = c.ToArgb() ^ (kind * 0x5bd1e995);
+            if (chalkCache.TryGetValue(key, out tb)) return tb;
+            const int N = 96, G = 12;   // plaatje van 96 pixels, klontjes op een raster van 12
+            Random rnd = new Random(c.ToArgb() ^ 0x2468);
+            float[,] coarse = new float[G, G];
+            for (int y = 0; y < G; y++) for (int x = 0; x < G; x++) coarse[x, y] = (float)rnd.NextDouble();
+            Color tint = kind == 1 ? c : Color.FromArgb(c.A, Mix(c, Color.White, 0.10f));
+            Bitmap b = new Bitmap(N, N, PixelFormat.Format32bppArgb);
+            BitmapData bd = b.LockBits(new Rectangle(0, 0, N, N), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+            try
+            {
+                int[] row = new int[N];
+                for (int y = 0; y < N; y++)
                 {
-                    int r = rnd.Next(100);
-                    int a = r < 12 ? 40 : r < 30 ? 150 : 235;
-                    b.SetPixel(x, y, Color.FromArgb(a * c.A / 255, c));
+                    for (int x = 0; x < N; x++)
+                    {
+                        // klontjes: zacht verlopend (rondom doorlopend, dan zie je geen naden tussen de tegels)
+                        float gx = x * G / (float)N, gy = y * G / (float)N;
+                        int x0 = (int)gx, y0 = (int)gy, x1 = (x0 + 1) % G, y1 = (y0 + 1) % G;
+                        float fx = gx - x0, fy = gy - y0;
+                        fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+                        float clump = (coarse[x0, y0] * (1 - fx) + coarse[x1, y0] * fx) * (1 - fy) + (coarse[x0, y1] * (1 - fx) + coarse[x1, y1] * fx) * fy;
+                        float grain = (float)rnd.NextDouble();
+                        float streak = 0.5f + 0.5f * (float)Math.Sin((x + y * 0.35) * (2 * Math.PI * 8 / N));   // 8 keer rond: naadloos
+                        float v = 0.45f * clump + 0.45f * grain + 0.10f * streak;
+                        int a;
+                        if (kind == 1) a = (int)(120 + 135 * v);
+                        else a = v < 0.30f ? (int)(25 * v / 0.30f) : v < 0.42f ? (int)(60 + 600 * (v - 0.30f)) : (int)(190 + 65 * Math.Min(1, (v - 0.42f) / 0.5f));
+                        a = Math.Max(0, Math.Min(255, a)) * c.A / 255;
+                        row[x] = Color.FromArgb(a, tint).ToArgb();
+                    }
+                    System.Runtime.InteropServices.Marshal.Copy(row, 0, new IntPtr(bd.Scan0.ToInt64() + (long)y * bd.Stride), N);
                 }
+            }
+            finally { b.UnlockBits(bd); }
             tb = new TextureBrush(b, WrapMode.Tile);   // de brush maakt een eigen kopie
             b.Dispose();
             if (chalkCache.Count > 40) { foreach (TextureBrush old in chalkCache.Values) old.Dispose(); chalkCache.Clear(); }
-            chalkCache[c.ToArgb()] = tb;
+            chalkCache[key] = tb;
             return tb;
         }
 
         static void FreeChalk(Graphics g, List<PointF> pts, Color c, float w)
         {
             if (pts.Count < 2) { Free(g, pts, c, w); return; }
-            using (Pen p = ChalkPen(c, w))
             using (GraphicsPath gp = CurvePath(pts, 0, pts.Count - 2))
-                g.DrawPath(p, gp);
+                ChalkPath(g, gp, c, w);
         }
 
         // Tekst altijd als vorm tekenen (met of zonder rand): dan staan de letters precies waar TextLayout ze verwacht
@@ -621,7 +662,7 @@ namespace NexusPen
                     if (sb.Left < minX) minX = sb.Left; if (sb.Top < minY) minY = sb.Top;
                     if (sb.Right > maxX) maxX = sb.Right; if (sb.Bottom > maxY) maxY = sb.Bottom;
                 }
-            float pad = (s.Tool == Tool.Marker ? MarkerWidth(s.Width) / 2 : s.Width / 2) + OutlineWidth(s) * 1.6f;   // met de rand (een pijlpunt wordt met rand ook groter)
+            float pad = (s.Tool == Tool.Marker ? MarkerWidth(s.Width) / 2 : PenWidest(s) / 2) + OutlineWidth(s) * 1.6f;   // met de rand (een pijlpunt wordt met rand ook groter)
             return RectangleF.FromLTRB(minX - pad, minY - pad, maxX + pad, maxY + pad);
         }
 

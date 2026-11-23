@@ -157,6 +157,28 @@ namespace NexusPen
 
         public float Zoom { get { return zoom; } }
 
+        // Tekenen in het vastgezette glas: een punt in het glas hoort bij deze plek op het scherm (wat het glas vergroot)
+        public bool Inside(Point screen)
+        {
+            if (follow || mag == IntPtr.Zero || !Visible || lastSrc.Right <= lastSrc.Left) return false;
+            Rectangle inner = new Rectangle(Left + Border, Top + Border, Width - 2 * Border, Height - 2 * Border);
+            if (!inner.Contains(screen)) return false;
+            if (ov.Cfg.LoupeShape == 1)
+            {
+                float rx = inner.Width / 2f, ry = inner.Height / 2f;
+                float dx = (screen.X - inner.X - rx) / rx, dy = (screen.Y - inner.Y - ry) / ry;
+                return dx * dx + dy * dy <= 1f;
+            }
+            return true;
+        }
+
+        public PointF ToSource(PointF screen)
+        {
+            float iw = Math.Max(1, Width - 2 * Border), ih = Math.Max(1, Height - 2 * Border);
+            float kx = (lastSrc.Right - lastSrc.Left) / iw, ky = (lastSrc.Bottom - lastSrc.Top) / ih;
+            return new PointF(lastSrc.Left + (screen.X - Left - Border) * kx, lastSrc.Top + (screen.Y - Top - Border) * ky);
+        }
+
         void Step()
         {
             if (mag == IntPtr.Zero || !Visible) return;

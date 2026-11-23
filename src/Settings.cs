@@ -35,7 +35,7 @@ namespace NexusPen
         public bool WheelWidth = true, PerToolWidth = true, Chalk, Fade;
         public string ToolWidths = "";
         public float FocusRadius = 160;
-        public int FocusShape = 0;              // spotlicht: 0 rond, 1 rechthoek (om zinnen te lezen)
+        public int FocusShape = 0;              // spotlicht: 0 rond, 1 rechthoek (om zinnen te lezen), 2 vierkant
         public int FadeSeconds = 5;             // vervagen na 3, 5, 7 of 12 seconden
         public float StampPx = 0;               // eigen stempelgrootte (muiswiel); 0 = S, M of L
         public int BoardScale = 1;              // (oud, niet meer gebruikt)
@@ -59,6 +59,7 @@ namespace NexusPen
         public int LastBoard = 1;               // het bord van de vorige keer (1 wit, 2 krijtbord, 3 zwart)
         public int BoardOpenAs = 0;             // bordknop opent: 0 zoals de vorige keer, anders 1 wit, 2 krijtbord, 3 zwart
         public bool BoardClearOnClose;          // bij sluiten van het bord: wat erop staat wissen (anders bewaren)
+        public bool LoupeDraw = true;           // in een vastgezet vergrootglas tekenen = tekenen op de plek die het vergroot
         public bool LoupeCursor = true;         // muisaanwijzer in het vergrootglas            // hoe groot de timer is (muiswiel of hoekje slepen)                  // timer zonder geluid
         public int DrawScreen = 0;              // 0 alle schermen, anders scherm nummer (1 = eerste, 2 = tweede, ...)
         public bool LineOutline;                // rand om lijnen en vormen (pen, krijt, lijn, pijl, rechthoek, cirkel)
@@ -74,6 +75,7 @@ namespace NexusPen
         public int KeepDrawing = 1;             // nooit, na Opslaan, altijd
         // sneltoetsen
         public string HotkeyDraw = "Ctrl+Shift+D", HotkeyHide = "Ctrl+Shift+H";
+        public bool ShortcutsEverywhere = true; // Ctrl+Shift + letter werkt ook als je in een ander programma werkt
         public int ShortcutMode = 0;            // Ctrl+Shift + letter, alleen een letter, uit
         public string ShortcutOverrides = "";   // actie=combinatie;actie=combinatie
         // gebruik
@@ -200,7 +202,7 @@ namespace NexusPen
             if (float.IsNaN(TextSize) || float.IsInfinity(TextSize)) TextSize = 36;
             if (!Enum.IsDefined(typeof(Tool), Tool)) Tool = Tool.Pen;
             Width = Math.Max(1, Math.Min(MaxWidth, Width));
-            FocusShape = Math.Max(0, Math.Min(1, FocusShape));
+            FocusShape = Math.Max(0, Math.Min(2, FocusShape));
             ActiveStyle = Math.Max(0, Math.Min(1, ActiveStyle));
             LaserMode = Math.Max(0, Math.Min(2, LaserMode));
             if (float.IsNaN(LoupeZoom) || float.IsInfinity(LoupeZoom)) LoupeZoom = 2f;

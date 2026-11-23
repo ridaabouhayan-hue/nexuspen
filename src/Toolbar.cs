@@ -330,7 +330,7 @@ namespace NexusPen
                     it.Paint = PaintShapeButton;
                     break;
                 case "kleur":
-                    it = Add(r, L.T("Kleur en dikte (muiswiel of knijpen op het touchpad)"), delegate { Use(key); TogglePopup(ref colorPopup, key); });
+                    it = Add(r, L.T("Kleur en dikte (muiswiel of knijpen op het touchpad)"), delegate { Use(key); o.UseColorTool(); TogglePopup(ref colorPopup, key); });
                     it.Paint = PaintColorButton;
                     break;
                 case "stempel":
@@ -502,7 +502,7 @@ namespace NexusPen
             else FitBarToScreen();
             foreach (BarForm f in new BarForm[] { lipje, miniBar, widthTip, toast, colorPopup, shapePopup, stampPopup, boardPopup, eraserPopup, overflowPopup })
                 if (f != null && !f.IsDisposed) f.S = S;
-            if (tile != null && tile.Visible) Overlay.KeepFormOnScreen(tile);   // ingeklapt: het logo-tegeltje blijft in beeld
+            if (tile != null && tile.Visible) tile.FitScreen();   // ingeklapt: het logo in de juiste maat voor dit scherm, en in beeld
             if (lipje != null && lipje.Visible) lipje.Restyle();
         }
 
@@ -822,6 +822,7 @@ namespace NexusPen
                     m.AddCheck(L.F("{0} keer zo groot", z), Math.Abs(ov.Cfg.LoupeZoom - z) < 0.01f, delegate { ov.SetLoupeZoom(z); });
                 }
                 m.AddSeparator();
+                m.AddCheck(L.T("Tekenen in het vergrootglas"), ov.Cfg.LoupeDraw, delegate { ov.Cfg.LoupeDraw = !ov.Cfg.LoupeDraw; ov.Cfg.Save(); });
                 m.AddCheck(L.T("Muisaanwijzer tonen"), ov.Cfg.LoupeCursor, delegate { ov.Cfg.LoupeCursor = !ov.Cfg.LoupeCursor; ov.Cfg.Save(); ov.ApplySettings(); });
                 m.AddSeparator();
             }
@@ -829,6 +830,7 @@ namespace NexusPen
             {
                 m.AddCheck(L.T("Rond"), ov.Cfg.FocusShape == 0, delegate { ov.SetFocusShape(0); });
                 m.AddCheck(L.T("Rechthoek (om te lezen)"), ov.Cfg.FocusShape == 1, delegate { ov.SetFocusShape(1); });
+                m.AddCheck(L.T("Vierkant"), ov.Cfg.FocusShape == 2, delegate { ov.SetFocusShape(2); });
                 m.AddSeparator();
             }
             if (AddToolMenu(m, it.Key)) m.AddSeparator();

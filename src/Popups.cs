@@ -646,12 +646,15 @@ namespace NexusPen
 
         public LogoTile(Overlay o, Toolbar b) : base(o) { bar = b; Text = "NexusPen"; }
 
-        int side, logo;
+        // maat zonder schaal: zo blijft het logo even groot op elk scherm (ook als je wisselt naar dupliceren of een beamer)
+        float side, logo;
+
+        protected override float ExtraScale { get { return ov.Cfg.BarZoom; } }
 
         // Precies op de plek en in de maat van het logo in de balk: 'center' is het midden van het logo
         public void PlaceAt(Point center, float scale, int tileSide, int logoSize)
         {
-            S = scale; side = tileSide; logo = logoSize;
+            S = Math.Max(0.1f, scale); side = tileSide / S; logo = logoSize / S;
             Rebuild();
             Rectangle wa = Screen.FromPoint(center).WorkingArea;
             int x = center.X - Width / 2, y = center.Y - Height / 2;
@@ -660,16 +663,30 @@ namespace NexusPen
 
         public Point LogoCenter { get { return new Point(Left + Width / 2, Top + Height / 2); } }
 
+        // Schermen veranderd: de schaal van het scherm waar het logo staat, op dezelfde plek, en altijd in beeld
+        public void FitScreen()
+        {
+            Point c = LogoCenter;
+            Rectangle wa = Screen.FromPoint(c).WorkingArea;
+            if (!wa.Contains(c)) { wa = Screen.PrimaryScreen.WorkingArea; c = new Point(wa.Left + 60, wa.Top + 60); }
+            float want = W.UiScaleAt(c) * ov.Cfg.BarZoom;
+            if (Math.Abs(want - S) > want * 0.004f) { S = want; Rebuild(); }
+            int x = c.X - Width / 2, y = c.Y - Height / 2;
+            Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, x)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, y)));
+        }
+
+        protected override void AfterDpiChange() { FitScreen(); }
+
         protected override void Build()
         {
-            int sd = side > 0 ? side : (int)(48 * S);
+            int sd = side > 0 ? (int)Math.Round(side * S) : (int)(48 * S);
             ClientSize = new Size(sd, sd);
             Item it = Add(new RectangleF(0, 0, ClientSize.Width, ClientSize.Height), L.T("Klik om alles weer te tonen. Slepen = verplaatsen, rechtsklik = menu"), null);
             it.Paint = delegate(Graphics g, Item item, bool h)
             {
                 Theme t = T;
                 if (h) using (SolidBrush b = new SolidBrush(t.Hover)) g.FillRectangle(b, item.R);
-                float z = logo > 0 ? logo : 34 * S;
+                float z = logo > 0 ? logo * S : 34 * S;
                 Logo.Draw(g, new RectangleF((item.R.Width - z) / 2, (item.R.Height - z) / 2, z, z), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
             };
         }
