@@ -1,14 +1,22 @@
-NexusPen 1.3.26 for Windows 10 and 11.
+NexusPen 1.3.27 for Windows 10 and 11.
 
 **Install:** update with one click (Settings > Updates). Or download `NexusPen-Setup.exe` and open it. Your drawings and settings stay.
 
-**New in 1.3.26**
+**New in 1.3.27**
+- **Pen type in the colour panel:** choose Pen, Calligraphy or Chalk right next to the colours, the same choice as in the pen's right-click menu.
+- **Full screen timer:** bigger round buttons with a light background, easy to hit on a smartboard, and a clear button for the view (circle, digits or bar).
+- **Calmer shortcuts:** holding a shortcut a bit too long no longer repeats it (no flickering board or a row of screenshots), and switching shortcuts off always works right away.
+- **Pen fix:** a pen hovering just above the screen no longer makes lines drawn with the mouse thin.
+- **Smaller fixes:** closing the colour panel no longer switches your tool, the eraser on chalk works as before, menus have a calm heading, and NexusPen uses less memory with long pen lines.
+- Behind the scenes the code is split into smaller parts, and small errors that used to stay silent now go to the error log, so problems are easier to find.
+
+**Also in 1.3.26**
 - **Calligraphy pen:** thick and thin strokes, like writing with a slanted nib. Right-click the pen button and choose Calligraphy pen (or in Settings > Pen and colours).
 - **Pressure sensitivity:** with a pen on a tablet or touchscreen, press lightly for a thin line and firmly for a thick one. With the mouse nothing changes. On by default.
 - **Smooth line:** a shaky hand or mouse still gives a calm line. Turn it on in the pen's right-click menu.
 - **Cleaner menus:** right-click menus now have a small heading, roomier rows and calmer shortcut hints.
 
-**Also in 1.3.25**
+**Earlier: 1.3.25**
 - **Shortcuts that always work:** while you draw, every NexusPen shortcut works, whichever program is in front. If you want, Ctrl+Shift + letter (or number) also picks a tool or colour while you work in another program: turn on Settings > Shortcuts > Also in other programs. It is off by default, because those keys then no longer work in that program (for example Ctrl+Shift+M to mute in Teams). NexusPen only reacts to its own shortcuts and never keeps anything you type.
 - **Colour picks your tool:** with the mouse pointer or the eraser, picking a colour switches back to the tool you used last.
 - **Draw in the magnifier:** draw inside a pinned magnifier and the ink lands on the spot it magnifies (right-click the magnifier button to turn it off).

@@ -330,7 +330,7 @@ namespace NexusPen
                     it.Paint = PaintShapeButton;
                     break;
                 case "kleur":
-                    it = Add(r, L.T("Kleur en dikte (muiswiel of knijpen op het touchpad)"), delegate { Use(key); o.UseColorTool(); TogglePopup(ref colorPopup, key); });
+                    it = Add(r, L.T("Kleur en dikte (muiswiel of knijpen op het touchpad)"), delegate { Use(key); if (!IsOpen(colorPopup)) o.UseColorTool(); TogglePopup(ref colorPopup, key); });   // alleen bij openen: dichtdoen verandert niets
                     it.Paint = PaintColorButton;
                     break;
                 case "stempel":

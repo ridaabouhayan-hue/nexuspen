@@ -33,8 +33,9 @@ namespace NexusPen
             int perRow = 8, rows = Math.Max(1, (cols.Length + perRow - 1) / perRow);
             gapX = 10 * S; rowGap = 10 * S;
             float w = pad * 2 + sw * perRow + gapX * (perRow - 1);
-            float chipW = Math.Max(TextWidth(L.T("Krijtstreep"), 13), TextWidth(L.T("Vervagen"), 13) + 22 * S) + 30 * S;
-            w = Math.Max(w, pad * 2 + 8 * S + chipW * 2);
+            string[] penNames = { L.T("Pen"), L.T("Kalligrafie"), L.T("Krijt") };
+            float penSeg = 0; foreach (string pn in penNames) penSeg = Math.Max(penSeg, TextWidth(pn, 12) + 20 * S);
+            w = Math.Max(w, pad * 2 + 6 * S + penSeg * 3);
             float y = pad;
             titleRow = new RectangleF(pad, y, w - pad * 2, 16 * S);
             y += 24 * S;
@@ -50,19 +51,7 @@ namespace NexusPen
                     o.SetPalette(idx); Rebuild();
                     if (above) Top = bottom - Height;
                 });
-                it.Paint = delegate(Graphics g, Item item, bool h)
-                {
-                    Theme t = T;
-                    bool on = o.PaletteIndex == idx;
-                    if (on)
-                    {
-                        using (SolidBrush b = new SolidBrush(t.IsLight ? Color.White : ColorTranslator.FromHtml("#3F3F46")))
-                        using (GraphicsPath gp = Svg.RoundRect(item.R, 7 * S)) g.FillPath(b, gp);
-                        using (Pen p = new Pen(t.Accent, 1.5f * S))
-                        using (GraphicsPath gp = Svg.RoundRect(RectangleF.Inflate(item.R, -0.75f * S, -0.75f * S), 7 * S)) g.DrawPath(p, gp);
-                    }
-                    Label(g, L.T(Palette.Names[idx]), item.R, on ? t.Text : t.Muted, 12, true, StringAlignment.Center);
-                };
+                it.Paint = delegate(Graphics g, Item item, bool h) { PaintSegment(g, item.R, o.PaletteIndex == idx, h, L.T(Palette.Names[idx])); };
             }
             segBox = new RectangleF(pad, y, w - pad * 2, 34 * S);
             y += 34 * S + 14 * S;
@@ -86,12 +75,27 @@ namespace NexusPen
             labelRow = new RectangleF(pad, y, w - pad * 2, 20 * S);
             track = new RectangleF(pad + 46 * S, y + 8 * S, w - pad * 2 - 46 * S - 34 * S, 4 * S);
             y += 20 * S + 14 * S;
-            // krijtstreep en vervagen (voor de pen)
-            float half = (w - pad * 2 - 8 * S) / 2;
-            Item chalk = Add(new RectangleF(pad, y, half, 32 * S), L.T("Lijnen zien eruit als krijt op een bord"), delegate { o.Cfg.Chalk = !o.Cfg.Chalk; o.Cfg.Save(); Invalidate(); if (o.Bar != null) o.Bar.Refresh2(); });
-            chalk.Paint = delegate(Graphics g, Item item, bool h) { PaintChip(g, item.R, o.Cfg.Chalk, h, L.T("Krijtstreep"), "krijt", o.Cfg.Chalk ? T.Text : T.Icon); };
+            // soort pen: dezelfde keuze als in het menu van de penknop en in Instellingen (gewoon, kalligrafie of krijt)
+            penBox = new RectangleF(pad, y, w - pad * 2, 34 * S);
+            float pw = (w - pad * 2 - 6 * S) / 3;
+            string[] penTips = { L.T("Gewone pen"), L.T("Kalligrafie: dik en dun, zoals een schuine penpunt"), L.T("Lijnen zien eruit als krijt op een bord") };
+            for (int i = 0; i < 3; i++)
+            {
+                int idx = i;
+                Item it = Add(new RectangleF(pad + 3 * S + i * pw, y + 3 * S, pw, 28 * S), penTips[i], delegate
+                {
+                    o.Cfg.Chalk = idx == 2; o.Cfg.PenStyle = idx == 1 ? 1 : 0; o.Cfg.Save();
+                    o.SetTool(Tool.Pen); Invalidate(); if (o.Bar != null) o.Bar.Refresh2(); o.RefreshSettingsWindow();
+                });
+                it.Paint = delegate(Graphics g, Item item, bool h)
+                {
+                    int cur = o.Cfg.Chalk ? 2 : o.Cfg.PenStyle == 1 ? 1 : 0;
+                    PaintSegment(g, item.R, cur == idx, h, penNames[idx]);
+                };
+            }
+            y += 34 * S + 10 * S;
             // vervagen: gewoon aan of uit; hoe lang het blijft staan kies je in Instellingen > Pen en kleuren
-            Item fade = Add(new RectangleF(pad + half + 8 * S, y, half, 32 * S), L.F("Wat je tekent verdwijnt vanzelf na {0} seconden. De tijd kies je in Instellingen", o.Cfg.FadeSeconds), delegate
+            Item fade = Add(new RectangleF(pad, y, w - pad * 2, 32 * S), L.F("Wat je tekent verdwijnt vanzelf na {0} seconden. De tijd kies je in Instellingen", o.Cfg.FadeSeconds), delegate
             {
                 o.Cfg.Fade = !o.Cfg.Fade; o.Cfg.Save(); Invalidate();
             });
@@ -100,7 +104,22 @@ namespace NexusPen
             ClientSize = new Size((int)Math.Ceiling(w), (int)Math.Ceiling(y));
         }
 
-        RectangleF segBox, labelRow, titleRow;
+        RectangleF segBox, labelRow, titleRow, penBox;
+
+        // een keuze in een rij (Fel / Zacht, of Pen / Kalligrafie / Krijt): de gekozen staat op een licht vlakje met een accentrand
+        void PaintSegment(Graphics g, RectangleF r, bool on, bool hover, string text)
+        {
+            Theme t = T;
+            if (on)
+            {
+                using (SolidBrush b = new SolidBrush(t.IsLight ? Color.White : ColorTranslator.FromHtml("#3F3F46")))
+                using (GraphicsPath gp = Svg.RoundRect(r, 8 * S)) g.FillPath(b, gp);
+                using (Pen p = new Pen(t.Accent, 1.5f * S))
+                using (GraphicsPath gp = Svg.RoundRect(RectangleF.Inflate(r, -0.75f * S, -0.75f * S), 8 * S)) g.DrawPath(p, gp);
+            }
+            else if (hover) using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(r, 8 * S)) g.FillPath(b, gp);
+            Label(g, text, r, on ? t.Text : t.Muted, 12, true, StringAlignment.Center);
+        }
         Dictionary<Item, int> tipFor = new Dictionary<Item, int>();
 
         protected override void OnMouseMove(MouseEventArgs e)
@@ -134,8 +153,12 @@ namespace NexusPen
         {
             Theme t = T;
             using (SolidBrush b = new SolidBrush(t.Chip))
-            using (GraphicsPath gp = Svg.RoundRect(segBox, 9 * S)) g.FillPath(b, gp);
-            Label(g, L.T("Pen").ToUpperInvariant(), titleRow, t.Muted, 11, true, StringAlignment.Near);
+            {
+                using (GraphicsPath gp = Svg.RoundRect(segBox, 10 * S)) g.FillPath(b, gp);
+                if (penBox.Width > 0) using (GraphicsPath gp = Svg.RoundRect(penBox, 10 * S)) g.FillPath(b, gp);
+            }
+            // kopje in dezelfde stijl als in de rechtermuisknopmenu's: gewone letters, grijs
+            Label(g, L.T("Kleur en dikte"), titleRow, t.Muted, 13, false, StringAlignment.Near);
             Label(g, L.T("Dikte"), new RectangleF(labelRow.X, labelRow.Y, 46 * S, labelRow.Height), t.Muted, 12, true, StringAlignment.Near);
             Label(g, ((int)ov.PenWidth).ToString(), new RectangleF(labelRow.Right - 30 * S, labelRow.Y, 30 * S, labelRow.Height), t.Text, 13, true, StringAlignment.Far);
             float f = Math.Max(0, Math.Min(1, (ov.PenWidth - 1) / (MaxW - 1)));
@@ -655,6 +678,9 @@ namespace NexusPen
         public void PlaceAt(Point center, float scale, int tileSide, int logoSize)
         {
             S = Math.Max(0.1f, scale); side = tileSide / S; logo = logoSize / S;
+            // was de balk tijdelijk kleiner (scherm te klein)? Dan blijft het logo op dit scherm ook zo klein
+            placedWa = Screen.FromPoint(center).WorkingArea;
+            fitRatio = Math.Min(1f, S / Math.Max(0.1f, W.UiScaleAt(center) * ov.Cfg.BarZoom));
             Rebuild();
             Rectangle wa = Screen.FromPoint(center).WorkingArea;
             int x = center.X - Width / 2, y = center.Y - Height / 2;
@@ -672,7 +698,7 @@ namespace NexusPen
             foreach (Screen sc in Screen.AllScreens) if (sc.Bounds.Contains(c)) on = sc;
             if (on == null) { on = Screen.PrimaryScreen; c = new Point(on.WorkingArea.Left + 60, on.WorkingArea.Top + 60); }   // scherm weg: naar het hoofdscherm
             Rectangle wa = on.WorkingArea;
-            float want = W.UiScaleAt(c) * ov.Cfg.BarZoom;
+            float want = W.UiScaleAt(c) * ov.Cfg.BarZoom * (wa == placedWa ? fitRatio : 1f);
             if (Math.Abs(want - S) > want * 0.004f) { S = want; Rebuild(); }
             int x = c.X - Width / 2, y = c.Y - Height / 2;
             Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, x)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, y)));
@@ -682,6 +708,7 @@ namespace NexusPen
 
         // naar een scherm met een andere schaal: het midden onthouden (het venster verschuift anders een beetje bij het groter of kleiner worden)
         Point dpiCenter;
+        Rectangle placedWa; float fitRatio = 1f;
         protected override void WndProc(ref Message m)
         {
             if (m.Msg == W.WM_DPICHANGED && dpiCenter.IsEmpty && IsHandleCreated) dpiCenter = LogoCenter;

@@ -26,6 +26,7 @@ namespace NexusPen
         public bool Muted;
         public string Name;               // korte naam, in kleine venstertjes onderaan te zien als je erover gaat
         public Func<bool> On;             // staat deze keuze aan (voor die naam als je nergens over gaat)
+        public bool Inert;                // alleen om te lezen (zoals een kopje): geen handje, niets te klikken
     }
 
     class BarForm : Form
@@ -404,7 +405,7 @@ namespace NexusPen
 
         protected Item ItemAt(Point p)
         {
-            for (int i = items.Count - 1; i >= 0; i--) if (items[i].R.Contains(p)) return items[i];
+            for (int i = items.Count - 1; i >= 0; i--) if (!items[i].Inert && items[i].R.Contains(p)) return items[i];
             return null;
         }
 

@@ -325,37 +325,37 @@ namespace NexusPen
         void BuildFull()
         {
             float w = fullScreen.Width, h = fullScreen.Height;
-            float btn = 32 * S, gap = 10 * S;
+            float btn = 40 * S, gap = 12 * S;   // groot genoeg om op een digibord te raken (S is hier al 1,4 keer: ruim 56 px)
             bool two = Screen.AllScreens.Length > 1;
             int n = two ? 7 : 6;
             float rowW = n * btn + (n - 1) * gap;
-            float by = h - btn - 28 * S, x = (w - rowW) / 2;
+            float by = h - btn - 32 * S, x = (w - rowW) / 2;
             // klik op het scherm: starten of pauzeren; is de tijd om, dan alleen het geluid stil (niet meteen opnieuw beginnen)
             timeItem = Add(new RectangleF(0, 0, w, by - 12 * S), null, delegate { if (done) { done = false; TimerSound.Stop(); Invalidate(); return; } StartPause(); });
             timeItem.Paint = delegate(Graphics g, Item it, bool hv) { PaintFull(g, it.R); };
             Item play = Add(new RectangleF(x, by, btn, btn), L.T("Starten of pauzeren"), delegate { StartPause(); });
-            play.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, running ? "pauze" : "afspelen", true); };
+            play.Paint = delegate(Graphics g, Item it, bool hv) { PaintBigButton(g, it, hv, running ? "pauze" : "afspelen", true); };
             x += btn + gap;
             Item reset = Add(new RectangleF(x, by, btn, btn), L.T("Opnieuw beginnen"), delegate { Reset(); });
-            reset.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, "terugzetten", false); };
+            reset.Paint = delegate(Graphics g, Item it, bool hv) { PaintBigButton(g, it, hv, "terugzetten", false); };
             x += btn + gap;
-            Item view = Add(new RectangleF(x, by, btn, btn), L.T("Andere weergave: cirkel, alleen cijfers of balk"), delegate { ov.Cfg.TimerView = (ov.Cfg.TimerView + 1) % 3; ov.Cfg.Save(); Usage.Log("timer", "weergave", ov.Cfg.TimerView.ToString()); Invalidate(); });
-            view.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, ov.Cfg.TimerView == 0 ? "cirkel" : ov.Cfg.TimerView == 1 ? "tekst" : "rechthoek", false); };
+            Item view = Add(new RectangleF(x, by, btn, btn), L.T("Weergave: cirkel, alleen cijfers of balk"), delegate { ov.Cfg.TimerView = (ov.Cfg.TimerView + 1) % 3; ov.Cfg.Save(); Usage.Log("timer", "weergave", ov.Cfg.TimerView.ToString()); Invalidate(); });
+            view.Paint = delegate(Graphics g, Item it, bool hv) { PaintBigButton(g, it, hv, "weergave", false); };
             x += btn + gap;
             if (two)
             {
                 Item scr = Add(new RectangleF(x, by, btn, btn), L.T("Naar het andere scherm"), delegate { ToNextScreen(); });
-                scr.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, "naarscherm", false); };
+                scr.Paint = delegate(Graphics g, Item it, bool hv) { PaintBigButton(g, it, hv, "naarscherm", false); };
                 x += btn + gap;
             }
             Item small = Add(new RectangleF(x, by, btn, btn), L.T("Weer klein (Esc)"), delegate { ExitFull(); });
-            small.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, "volterug", false); };
+            small.Paint = delegate(Graphics g, Item it, bool hv) { PaintBigButton(g, it, hv, "volterug", false); };
             x += btn + gap;
             Item mute = Add(new RectangleF(x, by, btn, btn), L.T("Geluid aan of uit"), delegate { ov.Cfg.TimerMute = !ov.Cfg.TimerMute; if (ov.Cfg.TimerMute) TimerSound.Stop(); ov.Cfg.Save(); });
-            mute.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, ov.Cfg.TimerMute ? "geluiduit" : "geluid", false); };
+            mute.Paint = delegate(Graphics g, Item it, bool hv) { PaintBigButton(g, it, hv, ov.Cfg.TimerMute ? "geluiduit" : "geluid", false); };
             x += btn + gap;
             Item close = Add(new RectangleF(x, by, btn, btn), L.T("Timer sluiten"), delegate { running = false; clock.Stop(); TimerSound.Stop(); ExitFull(); Hide(); });
-            close.Paint = delegate(Graphics g, Item it, bool hv) { PaintIconButton(g, it, hv, "kruis", false); };
+            close.Paint = delegate(Graphics g, Item it, bool hv) { PaintBigButton(g, it, hv, "kruis", false); };
             ClientSize = new Size(fullScreen.Width, fullScreen.Height);
         }
 
@@ -601,6 +601,15 @@ namespace NexusPen
             else if (int.TryParse(t.TrimEnd('m'), out m)) seconds = m * 60;
             else return false;
             return seconds >= 1 && seconds <= 99 * 60 + 59;
+        }
+
+        // knoppen onder de timer op het hele scherm: rond, met een licht vlakje erachter (zichtbaar van achter in de klas)
+        void PaintBigButton(Graphics g, Item it, bool h, string icon, bool primary)
+        {
+            Theme t = T;
+            Color back = primary ? t.Accent : Color.FromArgb(h ? (t.IsLight ? 40 : 60) : (t.IsLight ? 20 : 34), t.Text);
+            using (SolidBrush b = new SolidBrush(back)) g.FillEllipse(b, it.R);
+            Icons.Draw(g, icon, it.R, 18 * S, primary ? t.OnAccent : t.Text, 2f);
         }
 
         void PaintIconButton(Graphics g, Item it, bool h, string icon, bool primary)

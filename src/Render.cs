@@ -439,11 +439,21 @@ namespace NexusPen
         }
 
         // De hele vorm onthouden zolang de lijn niet verandert (opnieuw tekenen bij ongedaan maken, selecteren of vervagen gaat dan snel)
+        // Hooguit zoveel vormen tegelijk onthouden; de oudste wordt opgeruimd (ook van lijnen die al weg zijn)
+        static readonly LinkedList<Stroke> varCached = new LinkedList<Stroke>();
+        const int MaxVarCached = 80;
+
         static GraphicsPath FullVarPath(Stroke s)
         {
             int n = s.Pts.Count;
             if (s.VCache != null && s.vCount == n && s.vFirst == s.Pts[0] && s.vLast == s.Pts[n - 1] && s.vWidth == s.Width && s.vStyle == s.Style) return s.VCache;
-            if (s.VCache != null) s.VCache.Dispose();
+            if (s.VCache != null) { s.VCache.Dispose(); s.VCache = null; varCached.Remove(s); }
+            while (varCached.Count >= MaxVarCached)
+            {
+                Stroke old = varCached.First.Value; varCached.RemoveFirst();
+                if (old.VCache != null) { old.VCache.Dispose(); old.VCache = null; }
+            }
+            varCached.AddLast(s);
             s.VCache = VarPath(s, RectangleF.Empty);
             s.vCount = n; s.vFirst = s.Pts[0]; s.vLast = s.Pts[n - 1]; s.vWidth = s.Width; s.vStyle = s.Style;
             return s.VCache;
@@ -693,7 +703,9 @@ namespace NexusPen
                     {
                         // maar een stukje van het scherm opnieuw (bijv. tijdens het gummen): alleen dat stukje van de lijn opbouwen
                         RectangleF clip = g.ClipBounds;
-                        bool part = clip.Width > 0 && clip.Width < 30000 && clip.Height < 30000 && !clip.Contains(Bounds(s));
+                        RectangleF sb = Bounds(s);
+                        // alleen als het stukje echt veel kleiner is dan de lijn (anders de onthouden vorm: die is sneller)
+                        bool part = clip.Width > 0 && clip.Width < 30000 && clip.Height < 30000 && !clip.Contains(sb) && clip.Width * clip.Height * 4 < sb.Width * sb.Height;
                         DrawVar(g, s, pc, part ? clip : RectangleF.Empty);
                     }
                     else if ((s.Style & Stroke.Chalk) != 0) FreeChalk(g, s.Pts, pc, s.Width); else Free(g, s.Pts, pc, s.Width);
@@ -805,7 +817,7 @@ namespace NexusPen
         {
             if (s.Pts.Count == 0) return false;
             if (s.Tool == Tool.Text || s.Tool == Tool.Stamp) { RectangleF tb = Bounds(s); tb.Inflate(r, r); return tb.Contains(p); }
-            float w = (s.Tool == Tool.Marker ? MarkerWidth(s.Width) : s.Tool == Tool.Pen ? PenWidest(s) : s.Width) + r * 2;
+            float w = (s.Tool == Tool.Marker ? MarkerWidth(s.Width) : s.Tool == Tool.Pen && IsVarWidth(s) ? PenWidest(s) : s.Width) + r * 2;   // krijt: alleen de zichtbare streep (niet het stofrandje)
             if (s.Pts.Count == 1)
             {
                 float dx = p.X - s.Pts[0].X, dy = p.Y - s.Pts[0].Y;

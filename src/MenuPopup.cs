@@ -60,6 +60,7 @@ namespace NexusPen
             {
                 string title = Title;
                 Item ti = Add(new RectangleF(Pad * S, y, w - Pad * 2 * S, TitleH * S), null, null);
+                ti.Inert = true;
                 ti.Paint = delegate(Graphics g, Item item, bool hv)
                 {
                     g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
