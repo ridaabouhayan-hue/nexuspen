@@ -35,6 +35,10 @@ namespace NexusPen
         public int Style;            // 1 = krijtstreep, 2 = kalligrafiepen
         public List<float> Press;    // drukgevoeligheid per punt (0 tot 1), alleen bij een echte pen; anders leeg
 
+        // onthouden vorm van een lijn met wisselende dikte (zie Render.FullVarPath)
+        internal System.Drawing.Drawing2D.GraphicsPath VCache;
+        internal int vCount, vStyle; internal PointF vFirst, vLast; internal float vWidth;
+
         public const int Chalk = 1, Callig = 2;
 
         // Onthouden omtrek (zie Render.Bounds). Klopt zolang punten, dikte en tekst niet veranderen.
@@ -65,6 +69,7 @@ namespace NexusPen
             Stroke s = (Stroke)MemberwiseClone();
             s.Pts = new List<PointF>(Pts);
             if (Press != null) s.Press = new List<float>(Press);
+            s.VCache = null;   // de kopie maakt een eigen vorm (anders ruimt de een de vorm van de ander op)
             return s;
         }
     }

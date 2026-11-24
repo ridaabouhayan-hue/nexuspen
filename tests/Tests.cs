@@ -246,6 +246,17 @@ static class Tests {
         Check(big == 0 && diff * 200 < inked, "Natte inkt is gelijk aan de hele lijn (" + wname + ", " + diff + " van " + inked + " pixels een fractie anders)");
       }
     }
+    // lijnen met druk of kalligrafie zijn helemaal dicht: geen gaatjes waar stukjes overlappen (de draairichting klopt)
+    foreach (int hv in new[]{0, 1}) foreach (float hw in new[]{2f, 4f, 8f, 14f}) {
+      var hs2 = new Stroke{Tool=Tool.Pen, Color=Color.Black, Width=hw, Press = hv == 0 ? new List<float>() : null, Style = hv == 1 ? Stroke.Callig : 0};
+      for (int i = 0; i <= 40; i++) { hs2.Pts.Add(new PointF(20 + i * 9, 50)); if (hs2.Press != null) hs2.Press.Add(0.6f); }
+      int holes = 0;
+      using (var hb = new Bitmap(420, 100, PixelFormat.Format32bppArgb)) {
+        using (var g = Graphics.FromImage(hb)) { Render.Setup(g); Render.Draw(g, hs2, 1f); }
+        for (int x = 40; x < 370; x++) if (hb.GetPixel(x, 50).A < 250) holes++;
+      }
+      Check(holes == 0, "Geen gaatjes in een lijn " + (hv == 0 ? "met druk" : "met de kalligrafiepen") + " (dikte " + hw + ", " + holes + " gaatjes)");
+    }
     // drukgevoeligheid en kalligrafie blijven bewaard (en oude bestanden zonder druk laden gewoon)
     {
       var ps = new Stroke{Tool=Tool.Pen, Color=Color.Black, Width=4, Style=Stroke.Callig, Press=new List<float>{0.2f, 0.9f, 0.55f}};

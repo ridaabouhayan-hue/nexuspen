@@ -79,7 +79,7 @@ namespace NexusPen
                     Theme t = T;
                     // de achtergrond van het menu is helemaal dicht: dan kan de scherpe ClearType-tekst van Windows (zoals in Verkenner)
                     g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-                    if (hv && e.Click != null) using (SolidBrush b = new SolidBrush(t.IsLight ? Color.FromArgb(22, 0, 0, 0) : Color.FromArgb(34, 255, 255, 255))) using (GraphicsPath gp = Svg.RoundRect(item.R, 9 * S)) g.FillPath(b, gp);
+                    if (hv && e.Click != null) using (SolidBrush b = new SolidBrush(Color.FromArgb(Math.Min(255, t.Hover.A * 5 / 4), t.Hover))) using (GraphicsPath gp = Svg.RoundRect(item.R, 9 * S)) g.FillPath(b, gp);
                     float cs = 17 * S;
                     RectangleF ir = new RectangleF(item.R.X + TextPad * S - 3 * S, item.R.Y + (item.R.Height - cs) / 2, cs, cs);
                     if (e.HasCheck && e.Check) Icons.Draw(g, "vink", ir, cs, t.Accent, 2.2f);

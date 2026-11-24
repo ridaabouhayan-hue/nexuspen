@@ -2118,7 +2118,7 @@ namespace NexusPen
         readonly List<Loupe> pinnedLoupes = new List<Loupe>();
         // ---- pen van een tablet: hoe hard je drukt, en de vloeiende lijn
         float penPressure = 0.5f; int penPressureAt = -100000;
-        PointF smoothAt;
+        PointF smoothAt; int smoothTick;
         bool PenPressureFresh { get { return Environment.TickCount - penPressureAt < 120; } }
 
         void ReadPenPressure(IntPtr wParam)
@@ -2772,7 +2772,7 @@ namespace NexusPen
 
         public Color SelectedColor { get { return selected == null ? Color.Empty : selected.Color; } }
         public bool SelectionIsText { get { return selected != null && selected.Tool == Tool.Text; } }
-        public bool SelectionCanOutline { get { return selected != null && (selected.Tool == Tool.Text || Render.CanOutline(selected.Tool)); } }
+        public bool SelectionCanOutline { get { return selected != null && (selected.Tool == Tool.Text || (Render.CanOutline(selected.Tool) && !Render.IsVarWidth(selected))); } }
         public bool SelectionHasOutline { get { return selected != null && selected.Outline; } }
 
         // Getal in het selectiebalkje: lettergrootte, stempelgrootte of lijndikte
@@ -2822,7 +2822,7 @@ namespace NexusPen
 
         public void ToggleOutlineSelected()
         {
-            if (selected == null || !(selected.Tool == Tool.Text || Render.CanOutline(selected.Tool))) return;
+            if (!SelectionCanOutline) return;   // kalligrafie en lijnen met druk krijgen geen rand (die past niet om een wisselende dikte)
             EditSelected();
             selected.Outline = !selected.Outline;
             if (selected.Outline) { selected.OutlineWidth = Cfg.OutlineWidth; selected.OutlineColor = Cfg.OutlineColor; }
@@ -3052,7 +3052,7 @@ namespace NexusPen
             else if (Cfg.PenStyle == 1 && CurrentTool == Tool.Pen) current.Style |= Stroke.Callig;
             // drukgevoeligheid: alleen als er net een echte pen op het scherm kwam (met de muis blijft de lijn gewoon even dik)
             if (Cfg.Pressure && CurrentTool == Tool.Pen && PenPressureFresh) current.Press = new List<float> { penPressure };
-            smoothAt = p;
+            smoothAt = p; smoothTick = Environment.TickCount;
             // rand om lijnen en vormen (niet bij krijt: de rand schijnt door de krijtkorrels)
             if (Cfg.LineOutline && Render.CanOutline(CurrentTool) && (current.Style & Stroke.Chalk) == 0 && !Render.IsVarWidth(current)) { current.Outline = true; current.OutlineWidth = Cfg.OutlineWidth; current.OutlineColor = Cfg.OutlineColor; }
             strokeStartAt = DateTime.Now;
@@ -3122,13 +3122,19 @@ namespace NexusPen
                     int n = current.Pts.Count;
                     PointF last = current.Pts[n - 1];
                     // vloeiende lijn: elk nieuw punt komt maar een stukje richting de muis (een trillende hand wordt rustig)
-                    if (Cfg.Smooth && current.Tool != Tool.Laser) { smoothAt = new PointF(smoothAt.X + (p.X - smoothAt.X) * 0.35f, smoothAt.Y + (p.Y - smoothAt.Y) * 0.35f); p = smoothAt; }
+                    // (op tijd gebaseerd: even rustig met een snelle of een langzame muis)
+                    if (Cfg.Smooth && current.Tool != Tool.Laser)
+                    {
+                        int now = Environment.TickCount, dt = Math.Max(1, Math.Min(100, now - smoothTick)); smoothTick = now;
+                        float k = 1f - (float)Math.Exp(-dt / 28.0);
+                        smoothAt = new PointF(smoothAt.X + (p.X - smoothAt.X) * k, smoothAt.Y + (p.Y - smoothAt.Y) * k); p = smoothAt;
+                    }
                     float ddx = p.X - last.X, ddy = p.Y - last.Y;
                     if (ddx * ddx + ddy * ddy < 2.25f) { inputAt = -1; return; }
-                    if (current.Press != null) current.Press.Add(PenPressureFresh ? penPressure : current.Press[current.Press.Count - 1]);
                     // natte inkt: alleen het stuk dat verandert (het vorige stukje buigt een beetje mee)
                     Rectangle before = n >= 2 ? WetBox(current, n - 2) : WetBox(current, -1);
                     current.Pts.Add(p);
+                    if (current.Press != null) current.Press.Add(PenPressureFresh ? penPressure : current.Press[current.Press.Count - 1]);   // direct na het punt: dan kloppen de maten
                     wetArea = U(wetArea, U(before, U(WetBox(current, n - 1), n >= 2 ? WetBox(current, n - 2) : Rectangle.Empty)));
                     break;
                 }
@@ -3204,8 +3210,19 @@ namespace NexusPen
             // vloeiende lijn: het laatste stukje tot waar je echt losliet
             if (Cfg.Smooth && (current.Tool == Tool.Pen || current.Tool == Tool.Marker) && current.Pts.Count > 1)
             {
-                PointF endP = smoothAt, last = current.Pts[current.Pts.Count - 1];
-                if (Math.Abs(endP.X - last.X) + Math.Abs(endP.Y - last.Y) > 1.5f) { current.Pts.Add(endP); if (current.Press != null) current.Press.Add(current.Press[current.Press.Count - 1]); }
+                PointF endP = drawLoupe != null ? ClampActive(LoupePoint(e.Location)) : ClampActive(e.Location);   // de echte plek waar je losliet
+                PointF last = current.Pts[current.Pts.Count - 1];
+                float gap = Math.Abs(endP.X - last.X) + Math.Abs(endP.Y - last.Y);
+                if (gap > 1.5f)
+                {
+                    int steps = Math.Max(1, Math.Min(6, (int)(gap / 12)));   // een paar tussenpuntjes: geen hoekje aan het eind
+                    for (int si = 1; si <= steps; si++)
+                    {
+                        float t = si / (float)steps;
+                        current.Pts.Add(new PointF(last.X + (endP.X - last.X) * t, last.Y + (endP.Y - last.Y) * t));
+                        if (current.Press != null) current.Press.Add(current.Press[current.Press.Count - 1]);
+                    }
+                }
             }
             Stroke s = current;
             current = null;
@@ -3241,7 +3258,7 @@ namespace NexusPen
                 if (!Cfg.Usage || (Cfg.UsageCats & Usage.Strokes) == 0) return;
                 double len = 0;
                 for (int i = 1; i < s.Pts.Count; i++) len += Dist(s.Pts[i - 1], s.Pts[i]);
-                string tool = s.Tool.ToString() + ((s.Style & Stroke.Chalk) != 0 ? "/krijt" : "");
+                string tool = s.Tool.ToString() + ((s.Style & Stroke.Chalk) != 0 ? "/krijt" : "") + ((s.Style & Stroke.Callig) != 0 ? "/kalligrafie" : "") + (Render.HasPress(s) ? "/druk" : "") + (Cfg.Smooth && s.Tool == Tool.Pen ? "/vloeiend" : "");
                 int ms = (int)Math.Min(600000, (DateTime.Now - strokeStartAt).TotalMilliseconds);
                 Usage.Log("streep", tool + "|kleur " + ColorIndex + "|dikte " + s.Width.ToString(System.Globalization.CultureInfo.InvariantCulture)
                     + "|" + ms + " ms|" + ((int)Math.Round(len / 10) * 10) + " px|" + (BoardMode == Board.None ? "scherm" : "bord " + BoardMode)
