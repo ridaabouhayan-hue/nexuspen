@@ -97,6 +97,10 @@ namespace NexusPen
                 }
                 sb.Append('|').Append(st.Outline ? "1" : "0").Append('|').Append(B64(st.FontName))
                   .Append('|').Append(st.OutlineWidth).Append('|').Append(st.OutlineColor).Append('|').Append(st.Style);
+                // drukgevoeligheid: een getal per punt (oudere versies lezen dit veld gewoon niet)
+                sb.Append('|');
+                if (st.Press != null && st.Press.Count == st.Pts.Count)
+                    for (int i = 0; i < st.Press.Count; i++) { if (i > 0) sb.Append(' '); sb.Append(st.Press[i].ToString("0.##", C)); }
                 sb.AppendLine();
             }
             string tmp = path + ".tmp";
@@ -153,6 +157,12 @@ namespace NexusPen
                     if (f.Length > 6) st.Outline = f[6] == "1";
                     if (f.Length > 7) st.FontName = UnB64(f[7]);
                     if (f.Length > 10) { st.OutlineWidth = int.Parse(f[8], C); st.OutlineColor = int.Parse(f[9], C); st.Style = int.Parse(f[10], C); }
+                    if (f.Length > 11 && f[11].Length > 0)
+                    {
+                        List<float> pr = new List<float>();
+                        foreach (string v in f[11].Split(' ')) { float pv; if (float.TryParse(v, System.Globalization.NumberStyles.Float, C, out pv) && Ok(pv)) pr.Add(Math.Max(0, Math.Min(1, pv))); }
+                        if (pr.Count == st.Pts.Count) st.Press = pr;
+                    }
                     if (st.Pts.Count > 0) list.Add(st);
                 }
                 catch { }

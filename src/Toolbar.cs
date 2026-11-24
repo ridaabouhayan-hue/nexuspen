@@ -811,6 +811,7 @@ namespace NexusPen
         void ShowButtonMenu(Item it)
         {
             MenuPopup m = new MenuPopup(ov);
+            m.Title = NameOf(it.Key);   // kopje: bij welke knop dit menu hoort
             if (it.Key == "loep")
             {
                 m.AddCheck(L.T("Rechthoek (om te lezen)"), ov.Cfg.LoupeShape == 0, delegate { ov.SetLoupeShape(0); });
@@ -848,10 +849,18 @@ namespace NexusPen
             switch (key)
             {
                 case "pen": case "krijt":
-                    m.AddCheck(L.T("Krijt"), c.Chalk, delegate { c.Chalk = !c.Chalk; save(); o.SetTool(Tool.Pen); });
+                    // soort pen: gewoon, kalligrafie (dik en dun zoals een schuine penpunt) of krijt
+                    m.AddCheck(L.T("Gewone pen"), !c.Chalk && c.PenStyle == 0, delegate { c.Chalk = false; c.PenStyle = 0; save(); o.SetTool(Tool.Pen); });
+                    m.AddCheck(L.T("Kalligrafiepen"), !c.Chalk && c.PenStyle == 1, delegate { c.Chalk = false; c.PenStyle = 1; save(); o.SetTool(Tool.Pen); });
+                    m.AddCheck(L.T("Krijt"), c.Chalk, delegate { c.Chalk = true; c.PenStyle = 0; save(); o.SetTool(Tool.Pen); });
+                    m.AddSeparator();
+                    m.AddCheck(L.T("Vloeiende lijn (rustiger hand)"), c.Smooth, delegate { c.Smooth = !c.Smooth; save(); });
+                    m.AddCheck(L.T("Drukgevoeligheid (tabletpen)"), c.Pressure, delegate { c.Pressure = !c.Pressure; save(); });
                     m.AddCheck(L.T("Rand om lijnen en vormen"), c.LineOutline, delegate { c.LineOutline = !c.LineOutline; save(); });
                     m.AddSeparator();
                     AddWidths(m, Tool.Pen, new float[] { 2, 4, 8, 14 });
+                    m.AddSeparator();
+                    m.AddIcon(L.T("Peninstellingen openen..."), "instellingen", delegate { o.ShowSettings("Pen"); });
                     return true;
                 case "markeer":
                     AddWidths(m, Tool.Marker, new float[] { 3, 6, 10, 16 });

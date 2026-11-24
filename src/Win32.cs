@@ -83,6 +83,20 @@ namespace NexusPen
         [DllImport("user32.dll")] public static extern bool UnhookWindowsHookEx(IntPtr hook);
         [DllImport("user32.dll")] public static extern IntPtr CallNextHookEx(IntPtr hook, int nCode, IntPtr wParam, IntPtr lParam);
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr GetModuleHandle(string name);
+        // Pen van een tablet of touchscreen: hoe hard je drukt (Windows 8 en nieuwer)
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINTER_INFO
+        {
+            public uint pointerType, pointerId, frameId, pointerFlags;
+            public IntPtr sourceDevice, hwndTarget;
+            public POINT ptPixelLocation, ptHimetricLocation, ptPixelLocationRaw, ptHimetricLocationRaw;
+            public uint dwTime, historyCount; public int InputData; public uint dwKeyStates; public ulong PerformanceCount; public int ButtonChangeType;
+        }
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINTER_PEN_INFO { public POINTER_INFO pointerInfo; public uint penFlags, penMask, pressure, rotation; public int tiltX, tiltY; }
+        [DllImport("user32.dll")] public static extern bool GetPointerType(uint pointerId, out uint type);
+        [DllImport("user32.dll")] public static extern bool GetPointerPenInfo(uint pointerId, ref POINTER_PEN_INFO info);
+
         [StructLayout(LayoutKind.Sequential)] public struct MSG { public IntPtr hwnd; public uint message; public IntPtr wParam, lParam; public uint time; public int ptX, ptY; }
         [DllImport("user32.dll")] public static extern int GetMessage(out MSG msg, IntPtr hwnd, uint min, uint max);
         [DllImport("user32.dll")] public static extern bool PostThreadMessage(uint threadId, uint msg, IntPtr wParam, IntPtr lParam);

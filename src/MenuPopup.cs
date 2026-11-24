@@ -11,7 +11,10 @@ namespace NexusPen
     // onder de muis, een rustig vinkje. Sluit bij een klik ergens anders of met Esc.
     class MenuPopup : BarForm
     {
-        class Entry { public string Text, Hint, Font; public Action Click; public bool Check, HasCheck, Sep; }
+        class Entry { public string Text, Hint, Font, Icon; public Action Click; public bool Check, HasCheck, Sep; }
+
+        // Een kopje bovenaan in kleine grijze letters (bijv. "Pen"), zodat je ziet bij welke knop het menu hoort
+        public string Title;
 
         readonly List<Entry> entries = new List<Entry>();
         readonly System.Windows.Forms.Timer watch = new System.Windows.Forms.Timer();
@@ -34,22 +37,36 @@ namespace NexusPen
         public void AddCheckFont(string text, string font, bool on, Action click) { AddCheck(text, on, click); entries[entries.Count - 1].Font = font; }
 
         public void AddSeparator() { Entry e = new Entry(); e.Sep = true; entries.Add(e); }
+        // met een icoontje vooraan (op de plek van het vinkje), bijv. "Instellingen openen..."
+        public void AddIcon(string text, string icon, Action click) { Add(text, click); entries[entries.Count - 1].Icon = icon; }
 
-        // Maten (in pixels bij 100%): rand 6, regel 36, tekst 12 van het vlakje, scheidingslijn 9
-        const float Pad = 6, RowH = 36, TextPad = 12, SepH = 9, CheckW = 22;
+        // Maten (in pixels bij 100%): rand 8, regel 38, tekst 14 van het vlakje, scheidingslijn 13, kopje 32
+        const float Pad = 8, RowH = 38, TextPad = 14, SepH = 13, CheckW = 26, TitleH = 32;
 
         protected override void Build()
         {
             bool checks = false;
-            foreach (Entry e in entries) if (e.HasCheck) checks = true;
+            foreach (Entry e in entries) if (e.HasCheck || e.Icon != null) checks = true;
             float textX = Pad + TextPad + (checks ? CheckW : 0);
             float maxW = 0;
             float hintW = 0;
-            foreach (Entry e in entries) if (!e.Sep) maxW = Math.Max(maxW, e.Font != null ? TextWidthFont(e.Text, e.Font, 15) : TextWidthPlain(e.Text, 14));
-            foreach (Entry e in entries) if (!e.Sep && e.Hint != null) hintW = Math.Max(hintW, TextWidthPlain(e.Hint, 13));
+            foreach (Entry e in entries) if (!e.Sep) maxW = Math.Max(maxW, e.Font != null ? TextWidthFont(e.Text, e.Font, 15) : TextWidthPlain(e.Text, 15));
+            foreach (Entry e in entries) if (!e.Sep && e.Hint != null) hintW = Math.Max(hintW, TextWidthHint(e.Hint));
+            if (Title != null) maxW = Math.Max(maxW, TextWidthPlain(Title, 13) - (checks ? CheckW * S : 0));
             if (hintW > 0) maxW += hintW + 28 * S;
             float w = Math.Max(180 * S, textX * S + maxW + (TextPad + Pad + 6) * S);
             float y = Pad * S;
+            if (Title != null)
+            {
+                string title = Title;
+                Item ti = Add(new RectangleF(Pad * S, y, w - Pad * 2 * S, TitleH * S), null, null);
+                ti.Paint = delegate(Graphics g, Item item, bool hv)
+                {
+                    g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
+                    Label(g, title, new RectangleF(item.R.X + TextPad * S, item.R.Y + 2 * S, item.R.Width - TextPad * 2 * S, item.R.Height), T.Muted, 13, false, StringAlignment.Near);
+                };
+                y += TitleH * S;
+            }
             foreach (Entry en in entries)
             {
                 Entry e = en;
@@ -62,12 +79,11 @@ namespace NexusPen
                     Theme t = T;
                     // de achtergrond van het menu is helemaal dicht: dan kan de scherpe ClearType-tekst van Windows (zoals in Verkenner)
                     g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-                    if (hv && e.Click != null) using (SolidBrush b = new SolidBrush(t.Hover)) using (GraphicsPath gp = Svg.RoundRect(item.R, 7 * S)) g.FillPath(b, gp);
-                    if (e.HasCheck && e.Check)
-                    {
-                        float cs = 16 * S;
-                        Icons.Draw(g, "vink", new RectangleF(item.R.X + TextPad * S - 2 * S, item.R.Y + (item.R.Height - cs) / 2, cs, cs), cs, t.Accent, 2.2f);
-                    }
+                    if (hv && e.Click != null) using (SolidBrush b = new SolidBrush(t.IsLight ? Color.FromArgb(22, 0, 0, 0) : Color.FromArgb(34, 255, 255, 255))) using (GraphicsPath gp = Svg.RoundRect(item.R, 9 * S)) g.FillPath(b, gp);
+                    float cs = 17 * S;
+                    RectangleF ir = new RectangleF(item.R.X + TextPad * S - 3 * S, item.R.Y + (item.R.Height - cs) / 2, cs, cs);
+                    if (e.HasCheck && e.Check) Icons.Draw(g, "vink", ir, cs, t.Accent, 2.2f);
+                    else if (e.Icon != null) Icons.Draw(g, e.Icon, ir, cs, t.Muted, 1.9f);
                     if (e.Font != null)
                     {
                         using (Font f = Fonts.Make(e.Font, 15 * S, FontStyle.Regular))
@@ -78,8 +94,8 @@ namespace NexusPen
                             g.DrawString(e.Text, f, b, new RectangleF(tx, item.R.Y, item.R.Right - tx - TextPad * S, item.R.Height), sf);
                         }
                     }
-                    else Label(g, e.Text, new RectangleF(tx, item.R.Y, item.R.Right - tx - TextPad * S, item.R.Height), e.Click != null ? t.Text : t.Muted, 14, false, StringAlignment.Near);
-                    if (e.Hint != null) Label(g, e.Hint, new RectangleF(tx, item.R.Y, item.R.Right - tx - TextPad * S, item.R.Height), t.Muted, 13, false, StringAlignment.Far);
+                    else Label(g, e.Text, new RectangleF(tx, item.R.Y, item.R.Right - tx - TextPad * S, item.R.Height), e.Click != null ? t.Text : t.Muted, 15, false, StringAlignment.Near);
+                    if (e.Hint != null) PaintHint(g, e.Hint, new RectangleF(tx, item.R.Y, item.R.Right - tx - TextPad * S, item.R.Height), t.Muted);
                 };
                 y += RowH * S;
             }
@@ -91,6 +107,26 @@ namespace NexusPen
         {
             float one = Math.Max(1, Px(S));
             using (SolidBrush b = new SolidBrush(T.Sep)) g.FillRectangle(b, Px(it.R.X + (Pad + 8) * S), Px(it.R.Y + it.R.Height / 2), Px(it.R.Width - (Pad + 8) * 2 * S), one);
+        }
+
+        // sneltoetsen rechts in een rustig, gelijkmatig lettertype (zoals Ctrl+C in Windows Terminal)
+        static string HintFont { get { return Fonts.Has("Cascadia Mono") ? "Cascadia Mono" : "Consolas"; } }
+
+        void PaintHint(Graphics g, string hint, RectangleF r, Color c)
+        {
+            using (Font f = Fonts.Make(HintFont, 12.5f * S, FontStyle.Regular))
+            using (SolidBrush b = new SolidBrush(c))
+            using (StringFormat sf = new StringFormat(StringFormatFlags.NoWrap))
+            {
+                sf.Alignment = StringAlignment.Far; sf.LineAlignment = StringAlignment.Center;
+                g.DrawString(hint, f, b, r, sf);
+            }
+        }
+
+        float TextWidthHint(string text)
+        {
+            using (Font f = Fonts.Make(HintFont, 12.5f * S, FontStyle.Regular))
+            using (Graphics g = CreateGraphics()) return g.MeasureString(text ?? "", f).Width;
         }
 
         float TextWidthFont(string text, string font, float px)

@@ -1956,6 +1956,7 @@ namespace NexusPen
                 W.SetCursor(overlayCursor.Handle); m.Result = new IntPtr(1); return;
             }
             if (m.Msg == W.WM_DPICHANGED) { m.Result = IntPtr.Zero; BeginInvoke((MethodInvoker)delegate { FitToScreens(false); }); return; } // de tekenlaag zelf nooit laten schalen, wel weer passend maken
+            if (m.Msg >= 0x0245 && m.Msg <= 0x0247) ReadPenPressure(m.WParam);   // pen bewogen, neergezet of opgetild: druk onthouden (daarna maakt Windows er gewone muis van)
             if (m.Msg == W.WM_TABLET_QUERYSYSTEMGESTURESTATUS) { m.Result = new IntPtr(W.TABLET_FLAGS); return; }
             if (m.Msg == W.WM_DISPLAYCHANGE) OnDisplayChanged(this, EventArgs.Empty);
             if (m.Msg == W.WM_HOTKEY)
@@ -2115,6 +2116,25 @@ namespace NexusPen
         // ---------- vergrootglas
         Loupe followLoupe;
         readonly List<Loupe> pinnedLoupes = new List<Loupe>();
+        // ---- pen van een tablet: hoe hard je drukt, en de vloeiende lijn
+        float penPressure = 0.5f; int penPressureAt = -100000;
+        PointF smoothAt;
+        bool PenPressureFresh { get { return Environment.TickCount - penPressureAt < 120; } }
+
+        void ReadPenPressure(IntPtr wParam)
+        {
+            try
+            {
+                uint id = (uint)(wParam.ToInt64() & 0xFFFF), type;
+                if (!W.GetPointerType(id, out type) || type != 3) return;   // 3 = pen
+                W.POINTER_PEN_INFO info = new W.POINTER_PEN_INFO();
+                if (!W.GetPointerPenInfo(id, ref info) || (info.penMask & 1) == 0) return;   // deze pen meet geen druk
+                penPressure = Math.Max(0, Math.Min(1, info.pressure / 1024f));
+                penPressureAt = Environment.TickCount;
+            }
+            catch { }
+        }
+
         Loupe drawLoupe;   // je tekent nu in dit vastgezette glas
         W.RECT drawLoupeSrc;
 
@@ -3029,8 +3049,12 @@ namespace NexusPen
             current.Width = PenWidth;
             if (drawLoupe != null) current.Width = Math.Max(0.6f, PenWidth / Math.Max(1f, drawLoupe.Zoom));   // in het glas even dik als gewoon, dus op het scherm dunner
             if (Cfg.Chalk && CurrentTool == Tool.Pen) current.Style |= Stroke.Chalk;
+            else if (Cfg.PenStyle == 1 && CurrentTool == Tool.Pen) current.Style |= Stroke.Callig;
+            // drukgevoeligheid: alleen als er net een echte pen op het scherm kwam (met de muis blijft de lijn gewoon even dik)
+            if (Cfg.Pressure && CurrentTool == Tool.Pen && PenPressureFresh) current.Press = new List<float> { penPressure };
+            smoothAt = p;
             // rand om lijnen en vormen (niet bij krijt: de rand schijnt door de krijtkorrels)
-            if (Cfg.LineOutline && Render.CanOutline(CurrentTool) && (current.Style & Stroke.Chalk) == 0) { current.Outline = true; current.OutlineWidth = Cfg.OutlineWidth; current.OutlineColor = Cfg.OutlineColor; }
+            if (Cfg.LineOutline && Render.CanOutline(CurrentTool) && (current.Style & Stroke.Chalk) == 0 && !Render.IsVarWidth(current)) { current.Outline = true; current.OutlineWidth = Cfg.OutlineWidth; current.OutlineColor = Cfg.OutlineColor; }
             strokeStartAt = DateTime.Now;
             current.Pts.Add(p);
             if (IsShape(CurrentTool)) current.Pts.Add(p);
@@ -3097,8 +3121,11 @@ namespace NexusPen
                 {
                     int n = current.Pts.Count;
                     PointF last = current.Pts[n - 1];
+                    // vloeiende lijn: elk nieuw punt komt maar een stukje richting de muis (een trillende hand wordt rustig)
+                    if (Cfg.Smooth && current.Tool != Tool.Laser) { smoothAt = new PointF(smoothAt.X + (p.X - smoothAt.X) * 0.35f, smoothAt.Y + (p.Y - smoothAt.Y) * 0.35f); p = smoothAt; }
                     float ddx = p.X - last.X, ddy = p.Y - last.Y;
                     if (ddx * ddx + ddy * ddy < 2.25f) { inputAt = -1; return; }
+                    if (current.Press != null) current.Press.Add(PenPressureFresh ? penPressure : current.Press[current.Press.Count - 1]);
                     // natte inkt: alleen het stuk dat verandert (het vorige stukje buigt een beetje mee)
                     Rectangle before = n >= 2 ? WetBox(current, n - 2) : WetBox(current, -1);
                     current.Pts.Add(p);
@@ -3174,6 +3201,12 @@ namespace NexusPen
                 return;
             }
             if (current == null) return;
+            // vloeiende lijn: het laatste stukje tot waar je echt losliet
+            if (Cfg.Smooth && (current.Tool == Tool.Pen || current.Tool == Tool.Marker) && current.Pts.Count > 1)
+            {
+                PointF endP = smoothAt, last = current.Pts[current.Pts.Count - 1];
+                if (Math.Abs(endP.X - last.X) + Math.Abs(endP.Y - last.Y) > 1.5f) { current.Pts.Add(endP); if (current.Press != null) current.Press.Add(current.Press[current.Press.Count - 1]); }
+            }
             Stroke s = current;
             current = null;
             lastDot = s; lastDotAt = DateTime.Now;   // voor dubbelklik: de eerste klik kan een puntje zijn

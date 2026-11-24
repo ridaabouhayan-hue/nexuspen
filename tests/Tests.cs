@@ -201,10 +201,15 @@ static class Tests {
     Shortcuts.Cfg = new Settings();
 
     // 14. Nieuw in 1.2.1: natte inkt (alleen het nieuwste stukje tekenen) geeft precies dezelfde lijn als alles in een keer
-    foreach (Tool wt in new[]{Tool.Pen, Tool.Marker, Tool.Laser}) {
+    // 1.3.26: ook de kalligrafiepen (3), drukgevoeligheid (4) en krijt met druk (5)
+    foreach (int wv in new[]{0, 1, 2, 3, 4, 5}) {
+      Tool wt = wv == 1 ? Tool.Marker : wv == 2 ? Tool.Laser : Tool.Pen;
       var rnd = new Random(7);
       var ws = new Stroke{Tool=wt, Color=Color.FromArgb(255, 41, 98, 255), Width=wt == Tool.Marker ? 6 : 5};
-      PointF cur = new PointF(200, 200); ws.Pts.Add(cur);
+      if (wv == 3) ws.Style = Stroke.Callig;
+      if (wv == 5) ws.Style = Stroke.Chalk;
+      if (wv >= 4) ws.Press = new List<float>();
+      PointF cur = new PointF(200, 200); ws.Pts.Add(cur); if (ws.Press != null) ws.Press.Add(0.5f);
       using (var wetBmp = new Bitmap(500, 420, PixelFormat.Format32bppPArgb))
       using (var dryBmp = new Bitmap(500, 420, PixelFormat.Format32bppPArgb)) {
         using (var g = Graphics.FromImage(wetBmp)) {
@@ -213,10 +218,10 @@ static class Tests {
             int n = ws.Pts.Count;
             RectangleF before = n >= 2 ? Render.SegmentBox(ws.Pts, n - 2) : new RectangleF(ws.Pts[0], SizeF.Empty);
             cur = new PointF(Math.Max(20, Math.Min(480, cur.X + rnd.Next(-14, 15))), Math.Max(20, Math.Min(400, cur.Y + rnd.Next(-14, 15))));
-            ws.Pts.Add(cur);
+            ws.Pts.Add(cur); if (ws.Press != null) ws.Press.Add((float)rnd.NextDouble());
             RectangleF a = RectangleF.Union(before, Render.SegmentBox(ws.Pts, n - 1));
             if (n >= 2) a = RectangleF.Union(a, Render.SegmentBox(ws.Pts, n - 2));
-            float pad = (wt == Tool.Marker ? Render.MarkerWidth(ws.Width) : wt == Tool.Laser ? Render.LaserWidest(ws.Width) : ws.Width) / 2 + 3;
+            float pad = (wt == Tool.Marker ? Render.MarkerWidth(ws.Width) : wt == Tool.Laser ? Render.LaserWidest(ws.Width) : Render.PenWidest(ws)) / 2 + 3;
             a.Inflate(pad, pad);
             Rectangle ai = Rectangle.FromLTRB((int)Math.Floor(a.Left), (int)Math.Floor(a.Top), (int)Math.Ceiling(a.Right), (int)Math.Ceiling(a.Bottom));
             ai.Intersect(new Rectangle(0, 0, 500, 420));
@@ -237,8 +242,18 @@ static class Tests {
         }
         // Tijdens het schrijven mag een randpixel een fractie anders zijn (mono tekent iets anders dan Windows).
         // Bij loslaten wordt de lijn een keer helemaal getekend ('droog'), dan is hij precies gelijk.
-        Check(big == 0 && diff * 200 < inked, "Natte inkt is gelijk aan de hele lijn (" + wt + ", " + diff + " van " + inked + " pixels een fractie anders)");
+        string wname = wv == 3 ? "Kalligrafie" : wv == 4 ? "Pen met druk" : wv == 5 ? "Krijt met druk" : wt.ToString();
+        Check(big == 0 && diff * 200 < inked, "Natte inkt is gelijk aan de hele lijn (" + wname + ", " + diff + " van " + inked + " pixels een fractie anders)");
       }
+    }
+    // drukgevoeligheid en kalligrafie blijven bewaard (en oude bestanden zonder druk laden gewoon)
+    {
+      var ps = new Stroke{Tool=Tool.Pen, Color=Color.Black, Width=4, Style=Stroke.Callig, Press=new List<float>{0.2f, 0.9f, 0.55f}};
+      ps.Pts.Add(new PointF(1, 2)); ps.Pts.Add(new PointF(30, 40)); ps.Pts.Add(new PointF(60, 10));
+      string pPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "np_druk.dat");
+      StrokeStore.Save(new List<Stroke>{ps}, pPath); var pl = StrokeStore.Load(pPath);
+      Check(pl.Count == 1 && pl[0].Style == Stroke.Callig && pl[0].Press != null && pl[0].Press.Count == 3 && Math.Abs(pl[0].Press[1] - 0.9f) < 0.01f, "Kalligrafie en drukgevoeligheid blijven bewaard");
+      var pc = ps.Clone(); pc.Press[0] = 1f; Check(Math.Abs(ps.Press[0] - 0.2f) < 0.001f, "Kopie van een lijn met druk is los van het origineel");
     }
     var bs = new Stroke{Tool=Tool.Text, Text="Hallo", FontSize=30}; bs.Pts.Add(new PointF(10, 10));
     RectangleF bb1 = Render.Bounds(bs); Render.Move(bs, 50, 0); RectangleF bb2 = Render.Bounds(bs);

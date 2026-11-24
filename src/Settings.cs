@@ -33,6 +33,9 @@ namespace NexusPen
         public float Width = 4;
         public Tool Tool = Tool.Pen;
         public bool WheelWidth = true, PerToolWidth = true, Chalk, Fade;
+        public int PenStyle;                    // 0 gewone pen, 1 kalligrafiepen (krijt is Chalk)
+        public bool Smooth;                     // vloeiende lijn: een trillende hand wordt rustiger
+        public bool Pressure = true;            // drukgevoeligheid met een tabletpen (met de muis verandert er niets)
         public string ToolWidths = "";
         public float FocusRadius = 160;
         public int FocusShape = 0;              // spotlicht: 0 rond, 1 rechthoek (om zinnen te lezen), 2 vierkant
@@ -203,6 +206,7 @@ namespace NexusPen
             if (!Enum.IsDefined(typeof(Tool), Tool)) Tool = Tool.Pen;
             Width = Math.Max(1, Math.Min(MaxWidth, Width));
             FocusShape = Math.Max(0, Math.Min(2, FocusShape));
+            PenStyle = Math.Max(0, Math.Min(1, PenStyle));
             ActiveStyle = Math.Max(0, Math.Min(1, ActiveStyle));
             LaserMode = Math.Max(0, Math.Min(2, LaserMode));
             if (float.IsNaN(LoupeZoom) || float.IsInfinity(LoupeZoom)) LoupeZoom = 2f;

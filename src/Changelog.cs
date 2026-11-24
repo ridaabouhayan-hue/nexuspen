@@ -11,6 +11,10 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.26", "24 November 2026",
+                I("pen", "Calligraphy pen: thick and thin strokes, like a slanted nib"),
+                I("pen", "Pressure sensitivity with a tablet pen, and a smooth line option for a steadier hand"),
+                I("muis", "Cleaner right-click menus with a heading and calmer shortcut hints")),
             V("1.3.25", "23 November 2026",
                 I("toetsen", "While drawing, every shortcut works whichever program is in front (and, if you turn it on, also in other programs)"),
                 I("kleuren", "Pick a colour and you draw again right away with your last tool"),

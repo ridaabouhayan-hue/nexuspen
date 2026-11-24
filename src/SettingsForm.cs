@@ -766,7 +766,10 @@ namespace NexusPen
                 Icons.Draw(g, "terugzetten", c0, 14 * S, T.Muted, 2f);
             });
             y += ((total + perRow - 1) / perRow) * cell + 14 * S;
-            y = Toggle(y, L.T("Krijtstreep"), null, delegate { return c.Chalk; }, delegate(bool v) { c.Chalk = v; });
+            y = Segments(y, L.T("Soort pen"), L.T("Kalligrafie: dik en dun, zoals een schuine penpunt"), new string[] { L.T("Gewone pen"), L.T("Kalligrafiepen"), L.T("Krijt") },
+                delegate { return c.Chalk ? 2 : c.PenStyle == 1 ? 1 : 0; }, delegate(int i) { c.Chalk = i == 2; c.PenStyle = i == 1 ? 1 : 0; });
+            y = Toggle(y, L.T("Vloeiende lijn (rustiger hand)"), L.T("Een trillende hand of muis geeft toch een rustige lijn"), delegate { return c.Smooth; }, delegate(bool v) { c.Smooth = v; });
+            y = Toggle(y, L.T("Drukgevoeligheid (tabletpen)"), L.T("Met een pen op een tablet of touchscreen: licht drukken is dun, stevig drukken is dik. Met de muis verandert er niets."), delegate { return c.Pressure; }, delegate(bool v) { c.Pressure = v; });
             // voorbeeld: links een gewone lijn, rechts dezelfde lijn als krijt, op een bord
             float py = y + 6 * S, ph = 64 * S;
             Later(delegate(Graphics g)

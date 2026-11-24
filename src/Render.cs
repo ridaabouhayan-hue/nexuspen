@@ -262,6 +262,7 @@ namespace NexusPen
         // Het resultaat in 'area' is pixel voor pixel gelijk aan de hele lijn tekenen.
         public static void DrawWet(Graphics g, Stroke s, Rectangle area)
         {
+            if (s.Tool == Tool.Pen && IsVarWidth(s)) { DrawVar(g, s, s.Color, area); return; }   // alleen de stukken die hier vallen
             if (s.Pts.Count < 2 || (s.Tool != Tool.Pen && s.Tool != Tool.Marker && s.Tool != Tool.Laser)) { Draw(g, s, 1f); return; }
             float ow = OutlineWidth(s);
             float widest = (s.Tool == Tool.Marker ? MarkerWidth(s.Width) : s.Tool == Tool.Laser ? LaserWidest(s.Width) : PenWidest(s)) + 2 * ow;
@@ -332,7 +333,102 @@ namespace NexusPen
         }
 
         // Hoe breed een lijn op het scherm komt (krijt heeft een stoffig randje)
-        public static float PenWidest(Stroke s) { return (s.Style & Stroke.Chalk) != 0 ? s.Width * 1.35f + 1.5f : s.Width; }
+        public static float PenWidest(Stroke s)
+        {
+            if (s.Tool == Tool.Pen && IsVarWidth(s)) return s.Width * ((s.Style & Stroke.Callig) != 0 ? CalligK : 1f) * (HasPress(s) ? 1.5f : 1f) + 1;
+            return (s.Style & Stroke.Chalk) != 0 ? s.Width * 1.35f + 1.5f : s.Width;
+        }
+
+        // ---- Lijnen met wisselende dikte: kalligrafiepen (dik of dun, net als een schuine penpunt) en drukgevoeligheid
+        const float CalligK = 1.8f;          // penpunt van de kalligrafiepen: zo veel keer de gekozen dikte
+        static readonly float NibX = 0.7071f, NibY = -0.7071f;   // de penpunt staat schuin (45 graden), zoals bij een echte kalligrafiepen
+        public static bool HasPress(Stroke s) { return s.Press != null && s.Press.Count == s.Pts.Count; }
+        public static bool IsVarWidth(Stroke s) { return (s.Style & Stroke.Callig) != 0 || HasPress(s); }
+
+        static float WidthAt(Stroke s, int i)
+        {
+            float w = s.Width;
+            if (HasPress(s)) w *= 0.3f + 1.2f * Math.Max(0, Math.Min(1, s.Press[i]));   // licht drukken = dun, stevig drukken = dik
+            if ((s.Style & Stroke.Callig) != 0) w *= CalligK;
+            return Math.Max(0.5f, w);
+        }
+
+        static PointF CatmullRom(PointF a, PointF b, PointF c, PointF d, float t)
+        {
+            float t2 = t * t, t3 = t2 * t;
+            return new PointF(0.5f * (2 * b.X + (-a.X + c.X) * t + (2 * a.X - 5 * b.X + 4 * c.X - d.X) * t2 + (-a.X + 3 * b.X - 3 * c.X + d.X) * t3),
+                              0.5f * (2 * b.Y + (-a.Y + c.Y) * t + (2 * a.Y - 5 * b.Y + 4 * c.Y - d.Y) * t2 + (-a.Y + 3 * b.Y - 3 * c.Y + d.Y) * t3));
+        }
+
+        // De vorm van de hele lijn (of alleen de stukken die 'area' raken: binnen 'area' precies hetzelfde)
+        static GraphicsPath VarPath(Stroke s, RectangleF area)
+        {
+            GraphicsPath gp = new GraphicsPath(FillMode.Winding);
+            List<PointF> pts = s.Pts;
+            int n = pts.Count;
+            bool callig = (s.Style & Stroke.Callig) != 0;
+            float reach = PenWidest(s) / 2 + 2;
+            bool all = area.IsEmpty;
+            if (n == 1) { AddPiece(gp, pts[0], pts[0], WidthAt(s, 0), WidthAt(s, 0), callig, true); return gp; }
+            for (int i = 0; i < n - 1; i++)
+            {
+                PointF p0 = pts[i], p1 = pts[i + 1];
+                PointF pm = i > 0 ? pts[i - 1] : p0, pn = i + 2 < n ? pts[i + 2] : p1;
+                if (!all)
+                {
+                    float x0 = Math.Min(Math.Min(pm.X, p0.X), Math.Min(p1.X, pn.X)) - reach, x1 = Math.Max(Math.Max(pm.X, p0.X), Math.Max(p1.X, pn.X)) + reach;
+                    float y0 = Math.Min(Math.Min(pm.Y, p0.Y), Math.Min(p1.Y, pn.Y)) - reach, y1 = Math.Max(Math.Max(pm.Y, p0.Y), Math.Max(p1.Y, pn.Y)) + reach;
+                    if (x1 < area.Left || x0 > area.Right || y1 < area.Top || y0 > area.Bottom) continue;
+                }
+                float w0 = WidthAt(s, i), w1 = WidthAt(s, i + 1);
+                float dx = p1.X - p0.X, dy = p1.Y - p0.Y;
+                int k = Math.Max(1, Math.Min(6, (int)(Math.Sqrt(dx * dx + dy * dy) / 5)));   // tussenpuntjes: een vloeiende bocht
+                PointF prev = p0; float wp = w0;
+                for (int j = 1; j <= k; j++)
+                {
+                    float t = j / (float)k;
+                    PointF q = j == k ? p1 : CatmullRom(pm, p0, p1, pn, t);
+                    float wq = w0 + (w1 - w0) * t;
+                    AddPiece(gp, prev, q, wp, wq, callig, i == 0 && j == 1);
+                    prev = q; wp = wq;
+                }
+            }
+            return gp;
+        }
+
+        static void AddPiece(GraphicsPath gp, PointF a, PointF b, float wa, float wb, bool callig, bool first)
+        {
+            if (callig)
+            {
+                // schuine penpunt: het stuk dat de punt "veegt", plus een dun lijntje zodat de dunne kant nooit verdwijnt
+                float ha = wa / 2, hb = wb / 2;
+                PointF[] nib = { new PointF(a.X + NibX * ha, a.Y + NibY * ha), new PointF(b.X + NibX * hb, b.Y + NibY * hb), new PointF(b.X - NibX * hb, b.Y - NibY * hb), new PointF(a.X - NibX * ha, a.Y - NibY * ha) };
+                // alle stukjes dezelfde draairichting als de rest: anders heffen overlappende stukjes elkaar op (een wit naadje)
+                float area2 = 0;
+                for (int i = 0; i < 4; i++) { PointF u = nib[i], v = nib[(i + 1) % 4]; area2 += u.X * v.Y - v.X * u.Y; }
+                if (area2 > 0) Array.Reverse(nib);
+                gp.AddPolygon(nib);
+                wa *= 0.14f; wb *= 0.14f;
+            }
+            float dx = b.X - a.X, dy = b.Y - a.Y, len = (float)Math.Sqrt(dx * dx + dy * dy);
+            if (first) gp.AddEllipse(a.X - wa / 2, a.Y - wa / 2, wa, wa);
+            if (len > 0.01f)
+            {
+                float nx = -dy / len, ny = dx / len;
+                gp.AddPolygon(new PointF[] { new PointF(a.X + nx * wa / 2, a.Y + ny * wa / 2), new PointF(b.X + nx * wb / 2, b.Y + ny * wb / 2), new PointF(b.X - nx * wb / 2, b.Y - ny * wb / 2), new PointF(a.X - nx * wa / 2, a.Y - ny * wa / 2) });
+            }
+            gp.AddEllipse(b.X - wb / 2, b.Y - wb / 2, wb, wb);   // ronde overgang naar het volgende stuk
+        }
+
+        static void DrawVar(Graphics g, Stroke s, Color c, RectangleF area)
+        {
+            using (GraphicsPath gp = VarPath(s, area))
+            {
+                if (gp.PointCount == 0) return;
+                if ((s.Style & Stroke.Chalk) != 0) g.FillPath(ChalkBrush(c), gp);
+                else using (SolidBrush b = new SolidBrush(c)) g.FillPath(b, gp);
+            }
+        }
 
         // Krijt: eerst een heel zacht stoffig randje (net iets breder), dan de korrelige streep zelf.
         // De korrel ligt vast op het scherm (net als de structuur van een echt bord), dus natte en droge inkt zijn gelijk.
@@ -561,7 +657,8 @@ namespace NexusPen
                 case Tool.Pen:
                 {
                     Color pc = alpha >= 1f ? s.Color : Color.FromArgb(Math.Max(0, Math.Min(255, (int)(s.Color.A * alpha))), s.Color);
-                    if ((s.Style & Stroke.Chalk) != 0) FreeChalk(g, s.Pts, pc, s.Width); else Free(g, s.Pts, pc, s.Width);
+                    if (IsVarWidth(s)) DrawVar(g, s, pc, RectangleF.Empty);
+                    else if ((s.Style & Stroke.Chalk) != 0) FreeChalk(g, s.Pts, pc, s.Width); else Free(g, s.Pts, pc, s.Width);
                     break;
                 }
                 case Tool.Marker: Free(g, s.Pts, Color.FromArgb(Math.Max(0, Math.Min(255, (int)(110 * alpha))), s.Color), MarkerWidth(s.Width)); break;

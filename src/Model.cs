@@ -32,9 +32,10 @@ namespace NexusPen
         public bool Outline;         // tekst met rand
         public int OutlineWidth = 1; // 0 dun, 1 middel, 2 dik
         public int OutlineColor = 0; // 0 zwart, 1 wit, 2 automatisch
-        public int Style;            // 1 = krijtstreep
+        public int Style;            // 1 = krijtstreep, 2 = kalligrafiepen
+        public List<float> Press;    // drukgevoeligheid per punt (0 tot 1), alleen bij een echte pen; anders leeg
 
-        public const int Chalk = 1;
+        public const int Chalk = 1, Callig = 2;
 
         // Onthouden omtrek (zie Render.Bounds). Klopt zolang punten, dikte en tekst niet veranderen.
         internal RectangleF BCache;
@@ -63,6 +64,7 @@ namespace NexusPen
         {
             Stroke s = (Stroke)MemberwiseClone();
             s.Pts = new List<PointF>(Pts);
+            if (Press != null) s.Press = new List<float>(Press);
             return s;
         }
     }
