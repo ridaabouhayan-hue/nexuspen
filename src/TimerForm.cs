@@ -607,7 +607,7 @@ namespace NexusPen
         void PaintBigButton(Graphics g, Item it, bool h, string icon, bool primary)
         {
             Theme t = T;
-            Color back = primary ? t.Accent : Color.FromArgb(h ? (t.IsLight ? 40 : 60) : (t.IsLight ? 20 : 34), t.Text);
+            Color back = primary ? (h ? ControlPaint.Light(t.Accent, 0.15f) : t.Accent) : Color.FromArgb(h ? (t.IsLight ? 40 : 60) : (t.IsLight ? 20 : 34), t.Text);
             using (SolidBrush b = new SolidBrush(back)) g.FillEllipse(b, it.R);
             Icons.Draw(g, icon, it.R, 18 * S, primary ? t.OnAccent : t.Text, 2f);
         }

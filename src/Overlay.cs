@@ -153,9 +153,12 @@ namespace NexusPen
         {
             try
             {
-                DateTime last;
-                if (quietLogged.TryGetValue(where, out last) && (DateTime.Now - last).TotalSeconds < 60) return;
-                quietLogged[where] = DateTime.Now;
+                lock (quietLogged)   // kan ook vanaf een andere draad komen (bijwerken)
+                {
+                    DateTime last;
+                    if (quietLogged.TryGetValue(where, out last) && (DateTime.Now - last).TotalSeconds < 60) return;
+                    quietLogged[where] = DateTime.Now;
+                }
                 Log.Error(where, ex);
             }
             catch { }

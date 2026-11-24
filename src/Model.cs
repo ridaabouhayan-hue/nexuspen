@@ -38,6 +38,7 @@ namespace NexusPen
         // onthouden vorm van een lijn met wisselende dikte (zie Render.FullVarPath)
         internal System.Drawing.Drawing2D.GraphicsPath VCache;
         internal int vCount, vStyle; internal PointF vFirst, vLast; internal float vWidth;
+        internal LinkedListNode<Stroke> vNode;
 
         public const int Chalk = 1, Callig = 2;
 
@@ -69,7 +70,7 @@ namespace NexusPen
             Stroke s = (Stroke)MemberwiseClone();
             s.Pts = new List<PointF>(Pts);
             if (Press != null) s.Press = new List<float>(Press);
-            s.VCache = null;   // de kopie maakt een eigen vorm (anders ruimt de een de vorm van de ander op)
+            s.VCache = null; s.vNode = null;   // de kopie maakt een eigen vorm (anders ruimt de een de vorm van de ander op)
             return s;
         }
     }

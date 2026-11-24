@@ -221,12 +221,10 @@ namespace NexusPen
         W.LowLevelKeyboardProc keyProc;
         volatile IntPtr keyHook = IntPtr.Zero;
         System.Threading.Thread keyThread;
-        volatile uint keyThreadId;
         // toetsen die NexusPen nu vasthoudt, met het moment dat we ze het laatst zagen (alleen op de draad van de haak).
         // Een ingeslikte toets telt Windows niet als ingedrukt, dus herhalingen herkennen we zelf aan de tijd.
         readonly Dictionary<int, int> keysHeld = new Dictionary<int, int>();
         static readonly Action NoOp = delegate { };
-        System.Threading.ManualResetEvent keyReady;
 
         public void ApplyKeyHook()
         {
@@ -235,53 +233,74 @@ namespace NexusPen
             {
                 if (want && keyThread == null)
                 {
-                    keyReady = new System.Threading.ManualResetEvent(false);
+                    KeyThreadState st = new KeyThreadState();
                     keyThread = new System.Threading.Thread(KeyThreadRun);
                     keyThread.IsBackground = true;
                     keyThread.Name = "NexusPen sneltoetsen";
-                    keyThread.Start();
-                    keyReady.WaitOne(2000);   // wachten tot de draad klaar is: dan kan hij ook altijd weer netjes stoppen
+                    keyState = st;
+                    keyThread.Start(st);
+                    st.Ready.WaitOne(2000);   // wachten tot de draad klaar is: dan kan hij ook altijd weer netjes stoppen
                 }
                 else if (!want && keyThread != null) RemoveKeyHook();
             }
             catch (Exception ex) { Log.Error("Sneltoetsen overal", ex); }
         }
 
-        void KeyThreadRun()
+        // Alles van een draad bij elkaar: zo kan een oude draad nooit de spullen van een nieuwe aanraken
+        class KeyThreadState
         {
+            public readonly System.Threading.ManualResetEvent Ready = new System.Threading.ManualResetEvent(false);
+            public volatile bool Stop;
+            public volatile uint ThreadId;
+        }
+        KeyThreadState keyState;
+
+        void KeyThreadRun(object arg)
+        {
+            KeyThreadState st = (KeyThreadState)arg;
+            System.Threading.Thread me = System.Threading.Thread.CurrentThread;
+            IntPtr hook = IntPtr.Zero;
             try
             {
                 W.MSG m;
                 W.PeekMessage(out m, IntPtr.Zero, 0, 0, 0);   // zo heeft deze draad een berichtenrij (anders komt het stopbericht niet aan)
-                keyThreadId = W.GetCurrentThreadId();
+                st.ThreadId = W.GetCurrentThreadId();
+                if (st.Stop) return;   // intussen al uitgezet
                 keyProc = KeyHookProc;   // vasthouden, anders ruimt .NET hem op terwijl Windows hem nog gebruikt
-                keyHook = W.SetWindowsHookEx(13, keyProc, W.GetModuleHandle(null), 0);
-                System.Threading.ManualResetEvent ready = keyReady;
-                if (keyHook == IntPtr.Zero)
+                hook = W.SetWindowsHookEx(13, keyProc, W.GetModuleHandle(null), 0);
+                if (hook == IntPtr.Zero)
                 {
                     Log.Info("Sneltoetsen overal: kon niet worden aangezet (" + Marshal.GetLastWin32Error() + ")");
-                    BeginInvoke((MethodInvoker)delegate { keyThread = null; keyThreadId = 0; });   // de volgende keer opnieuw proberen
-                    if (ready != null) ready.Set();
+                    try { BeginInvoke((MethodInvoker)delegate { if (keyThread == me) { keyThread = null; keyState = null; } }); } catch { }   // de volgende keer opnieuw proberen
                     return;
                 }
-                if (ready != null) ready.Set();
+                keyHook = hook;
+                st.Ready.Set();
+                if (st.Stop) return;   // uitgezet net voordat de haak er was: meteen weer weg
                 while (W.GetMessage(out m, IntPtr.Zero, 0, 0) > 0) { }   // alleen wachten; Windows roept de haak vanzelf aan
             }
             catch (Exception ex) { Log.Error("Sneltoetsen overal", ex); }
             finally
             {
-                try { if (keyHook != IntPtr.Zero) W.UnhookWindowsHookEx(keyHook); } catch { }
-                keyHook = IntPtr.Zero;
+                try { st.Ready.Set(); } catch { }
+                try { if (hook != IntPtr.Zero) W.UnhookWindowsHookEx(hook); } catch { }
+                if (keyHook == hook) keyHook = IntPtr.Zero;
                 lock (keysHeld) keysHeld.Clear();
+                try { st.Ready.Close(); } catch { }
             }
         }
 
         void RemoveKeyHook()
         {
             System.Threading.Thread t = keyThread;
-            try { if (keyThreadId != 0) W.PostThreadMessage(keyThreadId, 0x0012, IntPtr.Zero, IntPtr.Zero); } catch { }   // WM_QUIT: de draad stopt en haalt de haak weg
+            KeyThreadState st = keyState;
+            if (st != null)
+            {
+                st.Stop = true;   // ook als de draad nog niet zover was: dan stopt hij zelf zodra hij kan
+                try { if (st.ThreadId != 0) W.PostThreadMessage(st.ThreadId, 0x0012, IntPtr.Zero, IntPtr.Zero); } catch { }   // WM_QUIT: de draad stopt en haalt de haak weg
+            }
             try { if (t != null) t.Join(1000); } catch { }   // echt weg voordat er eventueel een nieuwe komt (anders twee haken: alles dubbel)
-            keyThread = null; keyThreadId = 0;
+            keyThread = null; keyState = null;
         }
 
         IntPtr KeyHookProc(int nCode, IntPtr wParam, IntPtr lParam)
@@ -301,8 +320,8 @@ namespace NexusPen
                         if (down)
                         {
                             int now = Environment.TickCount, seen;
-                            // nog vast (herhaling komt elke 30 tot 500 ms); na meer dan een seconde stilte is het loslaten gemist: een nieuwe druk
-                            if (keysHeld.TryGetValue(vk, out seen) && now - seen > 1000) keysHeld.Remove(vk);
+                            // nog vast (herhaling komt elke 30 ms tot 1 s); na meer dan twee seconden stilte is het loslaten gemist: een nieuwe druk
+                            if (keysHeld.TryGetValue(vk, out seen) && now - seen > 2000) keysHeld.Remove(vk);   // ruim boven de langste herhaalvertraging van Windows (1 s)
                             if (keysHeld.ContainsKey(vk))
                             {
                                 keysHeld[vk] = now;

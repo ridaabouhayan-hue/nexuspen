@@ -441,19 +441,26 @@ namespace NexusPen
         // De hele vorm onthouden zolang de lijn niet verandert (opnieuw tekenen bij ongedaan maken, selecteren of vervagen gaat dan snel)
         // Hooguit zoveel vormen tegelijk onthouden; de oudste wordt opgeruimd (ook van lijnen die al weg zijn)
         static readonly LinkedList<Stroke> varCached = new LinkedList<Stroke>();
-        const int MaxVarCached = 80;
+        const int MaxVarCached = 600;   // ruim meer dan er meestal op een pagina staat (anders wordt alles steeds opnieuw opgebouwd)
 
         static GraphicsPath FullVarPath(Stroke s)
         {
             int n = s.Pts.Count;
-            if (s.VCache != null && s.vCount == n && s.vFirst == s.Pts[0] && s.vLast == s.Pts[n - 1] && s.vWidth == s.Width && s.vStyle == s.Style) return s.VCache;
-            if (s.VCache != null) { s.VCache.Dispose(); s.VCache = null; varCached.Remove(s); }
+            if (s.VCache != null && s.vCount == n && s.vFirst == s.Pts[0] && s.vLast == s.Pts[n - 1] && s.vWidth == s.Width && s.vStyle == s.Style)
+            {
+                // net gebruikt: achteraan (de lijn die het langst niet gebruikt is, gaat er als eerste uit)
+                if (s.vNode != null && s.vNode.List == varCached && s.vNode != varCached.Last) { varCached.Remove(s.vNode); varCached.AddLast(s.vNode); }
+                return s.VCache;
+            }
+            if (s.VCache != null) { s.VCache.Dispose(); s.VCache = null; }
+            if (s.vNode != null && s.vNode.List == varCached) varCached.Remove(s.vNode);
             while (varCached.Count >= MaxVarCached)
             {
                 Stroke old = varCached.First.Value; varCached.RemoveFirst();
                 if (old.VCache != null) { old.VCache.Dispose(); old.VCache = null; }
+                old.vNode = null;
             }
-            varCached.AddLast(s);
+            s.vNode = varCached.AddLast(s);
             s.VCache = VarPath(s, RectangleF.Empty);
             s.vCount = n; s.vFirst = s.Pts[0]; s.vLast = s.Pts[n - 1]; s.vWidth = s.Width; s.vStyle = s.Style;
             return s.VCache;

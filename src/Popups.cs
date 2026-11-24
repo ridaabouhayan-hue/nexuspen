@@ -85,7 +85,8 @@ namespace NexusPen
                 Item it = Add(new RectangleF(pad + 3 * S + i * pw, y + 3 * S, pw, 28 * S), penTips[i], delegate
                 {
                     o.Cfg.Chalk = idx == 2; o.Cfg.PenStyle = idx == 1 ? 1 : 0; o.Cfg.Save();
-                    o.SetTool(Tool.Pen); Invalidate(); if (o.Bar != null) o.Bar.Refresh2(); o.RefreshSettingsWindow();
+                    if (!o.HasSelection) o.SetTool(Tool.Pen);   // iets geselecteerd (om te kleuren)? Dan blijft de selectie staan
+                    Invalidate(); if (o.Bar != null) o.Bar.Refresh2(); o.RefreshSettingsWindow();
                 });
                 it.Paint = delegate(Graphics g, Item item, bool h)
                 {
