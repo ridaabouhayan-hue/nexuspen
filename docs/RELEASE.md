@@ -1,12 +1,16 @@
-NexusPen 1.3.28 for Windows 10 and 11.
+NexusPen 1.3.29 for Windows 10 and 11.
 
 **Install:** update with one click (Settings > Updates). Or download `NexusPen-Setup.exe` and open it. Your drawings and settings stay.
 
-**New in 1.3.28**
+**New in 1.3.29**
+- **Text settings scroll again:** the example at the bottom of Settings > Text no longer falls off the window, and the page scrolls all the way down.
+- **Customising the toolbar is calmer:** a normal mouse pointer instead of the four-way arrow, and no tooltip over a button whose name is already shown underneath. Hover the name itself to see it in full when it is cut off.
+
+**Also in 1.3.28**
 - **Steady timer digits:** on the full screen timer the digits keep exactly the same size and place while the time runs (a 1 is narrower than a 0, that no longer makes them jump).
 - **Collapsed logo:** the tile is exactly as wide as the toolbar, edge to edge, with the logo in the very same spot.
 
-**Also in 1.3.27**
+**Earlier: 1.3.27**
 - **Pen type in the colour panel:** choose Pen, Calligraphy or Chalk right next to the colours, the same choice as in the pen's right-click menu.
 - **Full screen timer:** bigger round buttons with a light background, easy to hit on a smartboard, and a clear button for the view (circle, digits or bar).
 - **Calmer shortcuts:** holding a shortcut a bit too long no longer repeats it (no flickering board or a row of screenshots), and switching shortcuts off always works right away.

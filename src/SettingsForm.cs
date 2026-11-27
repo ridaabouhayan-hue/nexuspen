@@ -618,6 +618,16 @@ namespace NexusPen
             y = Segments(y + 4 * S, L.T("Stand"), null, new string[] { L.T("Liggend"), L.T("Staand") }, delegate { return c.Vertical ? 1 : 0; }, delegate(int i) { c.Vertical = i == 1; });
         }
 
+        // de naam onder een knop op de Werkbalk-pagina (het vlakje onder het icoontje)
+        Item labelHover;
+        Item KeyLabelAt(Point p)
+        {
+            foreach (Item it in items)
+                if (it.Key != null && (it.Key.StartsWith("bar:") || it.Key.StartsWith("tray:")) && !it.Key.EndsWith(":|"))
+                    if (new RectangleF(it.R.X - 12 * S, it.R.Bottom, it.R.Width + 24 * S, 22 * S).Contains(p)) return it;
+            return null;
+        }
+
         // klein rondje rechtsboven op een knop: kruisje (weghalen) of plusje (erbij)
         RectangleF KeyBadge(RectangleF r) { float d = 18 * S; return new RectangleF(r.Right - d + 5 * S, r.Y - 5 * S, d, d); }
 
@@ -908,8 +918,10 @@ namespace NexusPen
             y = Segments(y, L.T("Randkleur"), null, new string[] { L.T("Zwart"), L.T("Wit"), L.T("Automatisch") }, delegate { return c.OutlineColor; }, delegate(int i) { c.OutlineColor = i; });
             y = Segments(y, L.T("Standaardgrootte"), null, new string[] { "24", "36", "48", "64" }, delegate { int[] v = { 24, 36, 48, 64 }; int b = 1; for (int i = 0; i < 4; i++) if (Math.Abs(v[i] - c.TextSize) < 1) b = i; return b; },
                 delegate(int i) { int[] v = { 24, 36, 48, 64 }; c.TextSize = v[i]; });
-            RectangleF prev = new RectangleF(contentX, y + 10 * S, contentW, Math.Max(64 * S, ClientSize.Height - y - 40 * S));
+            // voorbeeld met een vaste hoogte: dan telt het mee voor scrollen en valt het nooit onder de rand
+            RectangleF prev = new RectangleF(contentX, y + 10 * S, contentW, 110 * S);
             Later(delegate(Graphics g) { PaintPreview(g, prev); });
+            Mark(prev.Bottom);
         }
 
         // Voorbeeld op drie achtergronden, in het gekozen lettertype en met de gekozen rand
@@ -1730,19 +1742,25 @@ namespace NexusPen
             if (pressed != null)
             {
                 if (!dragActive && (Math.Abs(e.X - pressAt.X) > 4 || Math.Abs(e.Y - pressAt.Y) > 4)) dragActive = true;
-                if (dragActive) { dragPos = e.Location; Cursor = Cursors.SizeAll; Invalidate(); }
+                if (dragActive) { dragPos = e.Location; Cursor = Cursors.Default; Invalidate(); }   // gewone muiswijzer, ook tijdens het slepen
                 return;
             }
             Item it = ItemAt(e.Location);
-            if (it != hover)
+            // knoppen op de Werkbalk-pagina: de naam staat er al onder. Alleen als je over die naam gaat (die kan te lang zijn
+            // en afgekapt), komt de hele naam in een tipje.
+            Item label = it == null ? KeyLabelAt(e.Location) : null;
+            if (it != hover || label != labelHover)
             {
-                hover = it;
+                hover = it; labelHover = label;
                 Invalidate();
+                bool keyTile = it != null && it.Key != null && (it.Key.StartsWith("bar:") || it.Key.StartsWith("tray:"));
                 // alleen bij kleine knopjes met alleen een icoontje: bij al het andere staat de uitleg er al
                 bool small = it != null && it.R.Width <= 56 * S && it.R.Height <= 56 * S;
-                if (it != null && it.Tip != null && small) tip.Show(it.Tip, this, (int)it.R.X, (int)(it.R.Bottom + 6 * S), 2500); else tip.Hide(this);
+                if (label != null && label.Tip != null) tip.Show(label.Tip, this, (int)(label.R.X - 10 * S), (int)(label.R.Bottom + 22 * S), 2500);
+                else if (it != null && it.Tip != null && small && !keyTile) tip.Show(it.Tip, this, (int)it.R.X, (int)(it.R.Bottom + 6 * S), 2500);
+                else tip.Hide(this);
             }
-            Cursor = it != null ? (it.Key != null ? Cursors.SizeAll : Cursors.Hand) : Cursors.Default;
+            Cursor = it != null ? (it.Key != null ? Cursors.Default : Cursors.Hand) : Cursors.Default;   // slepen kan gewoon met de muiswijzer
         }
 
         protected override void OnMouseUp(MouseEventArgs e)
