@@ -121,6 +121,7 @@ namespace NexusPen
 
         public void SetTool(Tool t)
         {
+            if (t != Tool.Mouse) tapDot = null;   // een ander tekengereedschap gekozen: dan was de stip wel bedoeld
             if (typing != null) CloseTextInput(true);
             if (t == Tool.Mouse)
             {

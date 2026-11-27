@@ -733,7 +733,11 @@ namespace NexusPen
         {
             Point c = TileCenter;
             Rebuild();
-            Location = new Point(c.X - Width / 2, c.Y - Height / 2);
+            Screen on = null;
+            foreach (Screen sc in Screen.AllScreens) if (sc.Bounds.Contains(c)) on = sc;
+            Rectangle wa = (on ?? Screen.PrimaryScreen).WorkingArea;   // altijd helemaal in beeld
+            int x = c.X - Width / 2, y = c.Y - Height / 2;
+            Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, x)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, y)));
         }
 
         // naar een scherm met een andere schaal: het midden onthouden (het venster verschuift anders een beetje bij het groter of kleiner worden)

@@ -803,7 +803,7 @@ namespace NexusPen
                     GraphicsState gs = g.Save();
                     Render.Setup(g); Render.Draw(g, st, 1f);
                     g.Restore(gs);
-                    Txt(g, side == 0 ? L.T("Gewoon") : side == 1 ? L.T("Kalligrafie") : L.T("Krijt"), new RectangleF(x1 + 10 * S, box.Y, 88 * S, ph), Color.FromArgb(220, 255, 255, 255), 12, true, StringAlignment.Near, false, Overlay.ChalkGreen);
+                    Txt(g, side == 0 ? L.T("Gewoon") : side == 1 ? L.T("Kalligrafie") : L.T("Krijt"), new RectangleF(x1 + 10 * S, box.Y, box.X + (side + 1) * half - x1 - 14 * S, ph), Color.FromArgb(220, 255, 255, 255), 12, true, StringAlignment.Near, false, Overlay.ChalkGreen);
                 }
             });
             Mark(py + ph);

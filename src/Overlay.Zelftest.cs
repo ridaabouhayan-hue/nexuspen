@@ -502,9 +502,15 @@ namespace NexusPen
                 {
                     int before = strokes.Count, undoBefore = undo.Count;
                     Stroke dot = new Stroke(); dot.Tool = Tool.Pen; dot.Color = Color.Red; dot.Width = 26; dot.Pts.Add(new PointF(300, 300));
-                    Checkpoint(); strokes.Add(dot); tapDot = dot; tapDotAt = DateTime.Now;
+                    Checkpoint(); List<Stroke> snap = undo[undo.Count - 1]; strokes.Add(dot); tapDot = dot; tapDotAt = DateTime.Now; tapUndoTop = snap;
                     DropTapDot("zelftest");
                     bool ok = strokes.Count == before && undo.Count == undoBefore && !strokes.Contains(dot);
+                    // gumde je intussen iets (een eigen stap), dan blijft de stip staan en de stap van het gummen ook
+                    Stroke dot2 = dot.Clone(); Checkpoint(); List<Stroke> snap2 = undo[undo.Count - 1]; strokes.Add(dot2); tapDot = dot2; tapDotAt = DateTime.Now; tapUndoTop = snap2;
+                    Checkpoint(); int undoMid = undo.Count;   // zoals gummen of verplaatsen: een stap zonder nieuwe streep
+                    DropTapDot("zelftest");
+                    ok = ok && strokes.Contains(dot2) && undo.Count == undoMid;
+                    strokes.Remove(dot2); undo.RemoveAt(undo.Count - 1); undo.RemoveAt(undo.Count - 1);
                     // een echte stip waar je daarna nog iets bij tekende, blijft staan
                     Stroke keep = new Stroke(); keep.Tool = Tool.Pen; keep.Color = Color.Red; keep.Width = 26; keep.Pts.Add(new PointF(320, 300));
                     Stroke after = new Stroke(); after.Tool = Tool.Pen; after.Color = Color.Red; after.Width = 4; after.Pts.Add(new PointF(340, 300)); after.Pts.Add(new PointF(380, 320));

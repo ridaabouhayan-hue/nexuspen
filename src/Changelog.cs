@@ -12,7 +12,7 @@ namespace NexusPen
 
         public static readonly Version[] All = {
             V("1.3.30", "27 November 2026",
-                I("pen", "A quick pen tap followed by the mouse pointer, Esc or collapsing is seen as a misclick and removed"),
+                I("pen", "A stray dot on its own, followed by the mouse pointer, Esc or collapsing, is removed as a misclick (with Put back)"),
                 I("vormen", "Tapping with a shape tool no longer leaves an empty shape behind"),
                 I("instellingen", "The pen example in Settings also shows the calligraphy pen")),
             V("1.3.29", "27 November 2026",

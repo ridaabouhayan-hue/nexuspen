@@ -347,14 +347,19 @@ namespace NexusPen
             if (IsShape(s.Tool) && s.Pts.Count >= 2 && Dist(s.Pts[0], s.Pts[s.Pts.Count - 1]) < 3)
             {
                 pendingDirty = U(pendingDirty, StrokeBounds(s));
+                lastDot = null; tapDot = null;   // geen oud puntje laten liggen voor een dubbelklik
                 Usage.Log("tik", "vorm niet getekend", s.Tool.ToString());
                 dirty = true;
                 return;
             }
             lastDot = s; lastDotAt = DateTime.Now;   // voor dubbelklik: de eerste klik kan een puntje zijn
             // een korte tik met de pen (een stip): als je daarna meteen naar de wijzer gaat, was het een misklik
-            bool tap = (s.Tool == Tool.Pen || s.Tool == Tool.Marker) && (DateTime.Now - strokeStartAt).TotalMilliseconds < 300 && Render.Bounds(s).Width <= Render.PenWidest(s) + 6 && Render.Bounds(s).Height <= Render.PenWidest(s) + 6;
-            tapDot = tap ? s : null; tapDotAt = DateTime.Now;
+            // alleen een stip die helemaal los staat: vlak ervoor niets getekend, en niets in de buurt
+            // (een punt aan het eind van een zin, een i-puntje of een trema blijft dus altijd staan)
+            bool tap = (s.Tool == Tool.Pen || s.Tool == Tool.Marker) && (DateTime.Now - strokeStartAt).TotalMilliseconds < 300 && Render.Bounds(s).Width <= Render.PenWidest(s) + 6 && Render.Bounds(s).Height <= Render.PenWidest(s) + 6
+                && (strokeStartAt - lastStrokeEndAt).TotalSeconds > 1.5 && !Near(s, 60);
+            lastStrokeEndAt = DateTime.Now;
+            tapDot = tap ? s : null; tapDotAt = DateTime.Now; tapUndoTop = null;
             if (s.Tool == Tool.Laser)
             {
                 s.Born = DateTime.Now;
@@ -369,6 +374,7 @@ namespace NexusPen
             else
             {
                 Checkpoint();
+                if (tapDot == s && undo.Count > 0) tapUndoTop = undo[undo.Count - 1];   // de stap die bij deze stip hoort
                 strokes.Add(s);
                 CommitToLayer(s);
                 lastStrokeAt = DateTime.Now;
@@ -379,19 +385,37 @@ namespace NexusPen
 
         // ---- per ongeluk getikte stippen: een korte tik met de pen blijft eerst gewoon staan (het kan een punt of trema zijn).
         // Ga je binnen 3 seconden naar de wijzer, klap je in of druk je op Esc, dan wilde je klikken en niet tekenen: dan gaat hij weg.
-        Stroke tapDot; DateTime tapDotAt;
+        Stroke tapDot; DateTime tapDotAt; List<Stroke> tapUndoTop;
+        DateTime lastStrokeEndAt = DateTime.MinValue;
+
+        // staat er iets binnen 'r' pixels van deze streep?
+        bool Near(Stroke s, float r)
+        {
+            RectangleF b = Render.Bounds(s); b.Inflate(r, r);
+            foreach (Stroke o in strokes) if (o != s && Render.Bounds(o).IntersectsWith(b)) return true;
+            return false;
+        }
 
         void DropTapDot(string why)
         {
             Stroke d = tapDot; tapDot = null;
             if (d == null || (DateTime.Now - tapDotAt).TotalSeconds > 3) return;
-            // alleen als het echt de laatste streep is (niet als je er intussen iets anders bij tekende)
-            bool last = (strokes.Count > 0 && strokes[strokes.Count - 1] == d) || (fading.Count > 0 && fading[fading.Count - 1] == d);
-            if (!last) return;
-            lastDot = d;
+            bool inFading = fading.Count > 0 && fading[fading.Count - 1] == d;
+            // alleen als het echt de laatste streep is en de laatste stap in de geschiedenis die van deze stip is
+            // (niet als je er intussen iets anders bij tekende, gumde of verplaatste)
+            bool inStrokes = strokes.Count > 0 && strokes[strokes.Count - 1] == d && undo.Count > 0 && tapUndoTop != null && undo[undo.Count - 1] == tapUndoTop;
+            if (!inFading && !inStrokes) return;
             RemoveDot(d);
             Usage.Log("tik", "stip weggehaald", why);
             RenderSoon();
+            // laten zien wat er gebeurde, met een knop om de stip terug te zetten
+            if (toolbar != null && !Program.SelfTest)
+                toolbar.ShowToastAction(L.T("Losse stip weggehaald (misklik)"), L.T("Terugzetten"), "undo", delegate
+                {
+                    if (strokes.Contains(d) || fading.Contains(d)) return;
+                    Checkpoint(); strokes.Add(d); CommitToLayer(d); RenderSoon();
+                    Usage.Log("tik", "stip teruggezet", "");
+                });
         }
 
         // Per streep een paar getallen voor het gebruik (alleen op deze pc): nooit de plek, de vorm of de tekst

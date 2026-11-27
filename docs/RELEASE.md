@@ -3,7 +3,7 @@ NexusPen 1.3.30 for Windows 10 and 11.
 **Install:** update with one click (Settings > Updates). Or download `NexusPen-Setup.exe` and open it. Your drawings and settings stay.
 
 **New in 1.3.30**
-- **No more accidental dots:** a quick tap with the pen stays at first (it can be a full stop or a trema). If you go to the mouse pointer, press Esc or collapse within 3 seconds, NexusPen sees it as a misclick and removes the dot.
+- **No more accidental dots:** a dot that stands completely on its own (nothing drawn just before it and nothing nearby) is seen as a misclick when you go to the mouse pointer, press Esc or collapse within 3 seconds. NexusPen removes it and shows a message with **Put back**. A full stop, an i-dot or a trema next to your writing always stays.
 - **No empty shapes:** tapping with the rectangle, line, arrow or circle without dragging no longer leaves a shape of 0 pixels behind.
 - The pen example in Settings > Pen and colours now shows the regular pen, the calligraphy pen and chalk side by side.
 - The collapsed logo stays exactly in place when you change the toolbar size or theme.
