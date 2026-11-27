@@ -683,8 +683,8 @@ namespace NexusPen
         {
             S = Math.Max(0.1f, scale); side = tileSide / S; logo = logoSize / S;
             bool exact = origin.X != int.MinValue;
-            logoDX = exact ? (center.X - origin.X - tileSide / 2f) / S : 0;
-            logoDY = exact ? (center.Y - origin.Y - tileSide / 2f) / S : 0;
+            // plek van het logo in het tegeltje, in hele pixels (dan komt de balk bij uitklappen altijd precies terug)
+            hasOff = exact; logoOff = exact ? new Point(center.X - origin.X, center.Y - origin.Y) : Point.Empty; offScale = S;
             // was de balk tijdelijk kleiner (scherm te klein)? Dan blijft het logo op dit scherm ook zo klein
             placedWa = Screen.FromPoint(center).WorkingArea;
             fitRatio = Math.Min(1f, S / Math.Max(0.1f, W.UiScaleAt(center) * ov.Cfg.BarZoom));
@@ -694,9 +694,23 @@ namespace NexusPen
             Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, x)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, y)));
         }
 
-        float logoDX, logoDY;   // waar het logo staat ten opzichte van het midden (zoals in de balk), zonder schaal
+        // waar het midden van het logo in het tegeltje staat (vanaf linksboven), zoals in de balk
+        Point logoOff; bool hasOff; float offScale = 1f;
+        Point LogoOffset
+        {
+            get
+            {
+                if (!hasOff) return new Point(Width / 2, Height / 2);
+                if (offScale != S)   // andere schaal (ander scherm): de plek een keer mee schalen
+                {
+                    logoOff = new Point((int)Math.Round(logoOff.X * S / offScale), (int)Math.Round(logoOff.Y * S / offScale));
+                    offScale = S;
+                }
+                return logoOff;
+            }
+        }
         Point TileCenter { get { return new Point(Left + Width / 2, Top + Height / 2); } }
-        public Point LogoCenter { get { return new Point(Left + Width / 2 + (int)Math.Round(logoDX * S), Top + Height / 2 + (int)Math.Round(logoDY * S)); } }
+        public Point LogoCenter { get { Point o = LogoOffset; return new Point(Left + o.X, Top + o.Y); } }
 
         // Schermen veranderd: de schaal van het scherm waar het logo staat, op dezelfde plek, en altijd in beeld
         public void FitScreen()
@@ -734,7 +748,8 @@ namespace NexusPen
                 Theme t = T;
                 if (h) using (SolidBrush b = new SolidBrush(t.Hover)) g.FillRectangle(b, item.R);
                 float z = logo > 0 ? logo * S : 34 * S;
-                float lx = (float)Math.Round((item.R.Width - z) / 2 + logoDX * S), ly = (float)Math.Round((item.R.Height - z) / 2 + logoDY * S);
+                Point o = LogoOffset;
+                float lx = (float)Math.Round(o.X - z / 2), ly = (float)Math.Round(o.Y - z / 2);
                 Logo.Draw(g, new RectangleF(lx, ly, z, z), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
             };
         }

@@ -1332,7 +1332,7 @@ namespace NexusPen
             // het tegeltje precies zo breed als de balk, rand op rand, met het logo op exact dezelfde plek
             if (Visible && logoItem != null)
             {
-                Point origin = vertical ? new Point(Left, c.Y - tileSide / 2) : new Point(c.X - tileSide / 2, Top);
+                Point origin = Location;   // het logo is de eerste knop: linksboven van de balk is ook linksboven van het tegeltje
                 tile.PlaceAt(c, S, tileSide, logoSize, origin);
             }
             else tile.PlaceAt(c, S, tileSide, logoSize);

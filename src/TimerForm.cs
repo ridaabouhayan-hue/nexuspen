@@ -405,7 +405,6 @@ namespace NexusPen
             }
         }
 
-        // Tekst zo groot als past in het vak, in het midden
         // Tekst zo groot als past in het vak, in het midden. De grootte hangt nooit af van welke cijfers er staan
         // (een 1 is smaller dan een 0): we meten met het breedste cijfer en zetten elk cijfer in een vakje van gelijke breedte.
         // Zo blijven de cijfers precies even groot en schuiven ze niet heen en weer terwijl de tijd loopt.
@@ -414,7 +413,8 @@ namespace NexusPen
             if (box.Width < 4 || box.Height < 4 || string.IsNullOrEmpty(text)) return;
             using (StringFormat sf = (StringFormat)StringFormat.GenericTypographic.Clone())
             {
-                sf.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
+                System.Drawing.Text.TextRenderingHint keep = g.TextRenderingHint;
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;   // meten en tekenen op dezelfde manier
                 // breedte van een cijfer en van de dubbele punt, gemeten op een vaste grootte
                 const float probe = 100f;
                 float digitW = 0, colonW, h;
@@ -425,19 +425,17 @@ namespace NexusPen
                     h = g.MeasureString("0", fp, PointF.Empty, sf).Height;
                 }
                 float total = 0;
-                foreach (char ch in text) total += char.IsDigit(ch) ? digitW : colonW;
+                foreach (char ch in text) total += ch >= '0' && ch <= '9' ? digitW : colonW;
                 float k = Math.Min(box.Width / Math.Max(1, total), box.Height * 0.9f / Math.Max(1, h));
                 float px = Math.Max(4, probe * k);
-                float dw = digitW * k, cw = colonW * k;
-                float x = box.X + (box.Width - total * k) / 2;
+                float kk = px / probe, dw = digitW * kk, cw = colonW * kk;
+                float x = box.X + (box.Width - total * kk) / 2;
                 sf.Alignment = StringAlignment.Center; sf.LineAlignment = StringAlignment.Center;
-                System.Drawing.Text.TextRenderingHint keep = g.TextRenderingHint;
-                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
                 using (Font f = UiFont.Make(px, true))
                 using (SolidBrush b = new SolidBrush(c))
                     foreach (char ch in text)
                     {
-                        float cell = char.IsDigit(ch) ? dw : cw;
+                        float cell = ch >= '0' && ch <= '9' ? dw : cw;
                         g.DrawString(ch.ToString(), f, b, new RectangleF(x, box.Y, cell, box.Height), sf);
                         x += cell;
                     }
