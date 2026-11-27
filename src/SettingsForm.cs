@@ -210,7 +210,7 @@ namespace NexusPen
             if (Math.Abs(scroll - before) < 0.5f) return;
             BuildItems();
             tip.Hide(this);
-            hover = ItemAt(PointToClient(Control.MousePosition));
+            hover = ItemAt(PointToClient(Control.MousePosition)); labelHover = null;
             Invalidate();
         }
 
@@ -622,9 +622,10 @@ namespace NexusPen
         Item labelHover;
         Item KeyLabelAt(Point p)
         {
+            if (p.X <= 236 * S || (scroll > 1 && p.Y < 60 * S)) return null;   // zijbalk en vaste kop: daar staan geen namen
             foreach (Item it in items)
                 if (it.Key != null && (it.Key.StartsWith("bar:") || it.Key.StartsWith("tray:")) && !it.Key.EndsWith(":|"))
-                    if (new RectangleF(it.R.X - 12 * S, it.R.Bottom, it.R.Width + 24 * S, 22 * S).Contains(p)) return it;
+                    if (new RectangleF(it.R.X - 9 * S, it.R.Bottom, it.R.Width + 18 * S, 20 * S).Contains(p)) return it;   // precies waar de naam staat
             return null;
         }
 
@@ -1751,12 +1752,13 @@ namespace NexusPen
             Item label = it == null ? KeyLabelAt(e.Location) : null;
             if (it != hover || label != labelHover)
             {
+                if (it != hover) Invalidate();
                 hover = it; labelHover = label;
-                Invalidate();
                 bool keyTile = it != null && it.Key != null && (it.Key.StartsWith("bar:") || it.Key.StartsWith("tray:"));
                 // alleen bij kleine knopjes met alleen een icoontje: bij al het andere staat de uitleg er al
                 bool small = it != null && it.R.Width <= 56 * S && it.R.Height <= 56 * S;
-                if (label != null && label.Tip != null) tip.Show(label.Tip, this, (int)(label.R.X - 10 * S), (int)(label.R.Bottom + 22 * S), 2500);
+                // alleen als de naam niet helemaal past (afgekapt): anders staat hij er al
+                if (label != null && label.Tip != null && Measure(label.Tip, 10, false) > label.R.Width + 18 * S) tip.Show(label.Tip, this, (int)(label.R.X - 9 * S), (int)(label.R.Bottom + 20 * S), 2500);
                 else if (it != null && it.Tip != null && small && !keyTile) tip.Show(it.Tip, this, (int)it.R.X, (int)(it.R.Bottom + 6 * S), 2500);
                 else tip.Hide(this);
             }
@@ -1786,6 +1788,6 @@ namespace NexusPen
             if (!Capture && (panning || barDragging)) { panning = barDragging = false; Invalidate(); }
         }
 
-        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hover = null; Invalidate(); }
+        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hover = null; labelHover = null; tip.Hide(this); Invalidate(); }
     }
 }
