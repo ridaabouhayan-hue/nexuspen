@@ -1329,7 +1329,13 @@ namespace NexusPen
             else if (docked && lipje != null) c = new Point(lipje.Left + lipje.Width / 2, lipje.Top + lipje.Height / 2);
             else if (ov.Cfg.TileX != -1 || ov.Cfg.TileY != -1) c = new Point(ov.Cfg.TileX + tileSide / 2, ov.Cfg.TileY + tileSide / 2);
             else c = new Point(Left + tileSide / 2, Top + tileSide / 2);
-            tile.PlaceAt(c, S, tileSide, logoSize);
+            // het tegeltje precies zo breed als de balk, rand op rand, met het logo op exact dezelfde plek
+            if (Visible && logoItem != null)
+            {
+                Point origin = vertical ? new Point(Left, c.Y - tileSide / 2) : new Point(c.X - tileSide / 2, Top);
+                tile.PlaceAt(c, S, tileSide, logoSize, origin);
+            }
+            else tile.PlaceAt(c, S, tileSide, logoSize);
             tile.Show();
             Hide();
         }

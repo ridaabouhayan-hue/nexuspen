@@ -676,24 +676,32 @@ namespace NexusPen
         protected override float ExtraScale { get { return ov.Cfg.BarZoom; } }
 
         // Precies op de plek en in de maat van het logo in de balk: 'center' is het midden van het logo
-        public void PlaceAt(Point center, float scale, int tileSide, int logoSize)
+        public void PlaceAt(Point center, float scale, int tileSide, int logoSize) { PlaceAt(center, scale, tileSide, logoSize, new Point(int.MinValue, 0)); }
+
+        // origin: linksboven van het tegeltje (zodat het rand op rand met de balk ligt); het logo staat dan op zijn eigen plek erin
+        public void PlaceAt(Point center, float scale, int tileSide, int logoSize, Point origin)
         {
             S = Math.Max(0.1f, scale); side = tileSide / S; logo = logoSize / S;
+            bool exact = origin.X != int.MinValue;
+            logoDX = exact ? (center.X - origin.X - tileSide / 2f) / S : 0;
+            logoDY = exact ? (center.Y - origin.Y - tileSide / 2f) / S : 0;
             // was de balk tijdelijk kleiner (scherm te klein)? Dan blijft het logo op dit scherm ook zo klein
             placedWa = Screen.FromPoint(center).WorkingArea;
             fitRatio = Math.Min(1f, S / Math.Max(0.1f, W.UiScaleAt(center) * ov.Cfg.BarZoom));
             Rebuild();
             Rectangle wa = Screen.FromPoint(center).WorkingArea;
-            int x = center.X - Width / 2, y = center.Y - Height / 2;
+            int x = exact ? origin.X : center.X - Width / 2, y = exact ? origin.Y : center.Y - Height / 2;
             Location = new Point(Math.Max(wa.Left, Math.Min(wa.Right - Width, x)), Math.Max(wa.Top, Math.Min(wa.Bottom - Height, y)));
         }
 
-        public Point LogoCenter { get { return new Point(Left + Width / 2, Top + Height / 2); } }
+        float logoDX, logoDY;   // waar het logo staat ten opzichte van het midden (zoals in de balk), zonder schaal
+        Point TileCenter { get { return new Point(Left + Width / 2, Top + Height / 2); } }
+        public Point LogoCenter { get { return new Point(Left + Width / 2 + (int)Math.Round(logoDX * S), Top + Height / 2 + (int)Math.Round(logoDY * S)); } }
 
         // Schermen veranderd: de schaal van het scherm waar het logo staat, op dezelfde plek, en altijd in beeld
         public void FitScreen()
         {
-            Point c = dpiCenter.IsEmpty ? LogoCenter : dpiCenter;
+            Point c = dpiCenter.IsEmpty ? TileCenter : dpiCenter;
             dpiCenter = Point.Empty;
             Screen on = null;
             foreach (Screen sc in Screen.AllScreens) if (sc.Bounds.Contains(c)) on = sc;
@@ -712,7 +720,7 @@ namespace NexusPen
         Rectangle placedWa; float fitRatio = 1f;
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == W.WM_DPICHANGED && dpiCenter.IsEmpty && IsHandleCreated) dpiCenter = LogoCenter;
+            if (m.Msg == W.WM_DPICHANGED && dpiCenter.IsEmpty && IsHandleCreated) dpiCenter = TileCenter;
             base.WndProc(ref m);
         }
 
@@ -726,7 +734,8 @@ namespace NexusPen
                 Theme t = T;
                 if (h) using (SolidBrush b = new SolidBrush(t.Hover)) g.FillRectangle(b, item.R);
                 float z = logo > 0 ? logo * S : 34 * S;
-                Logo.Draw(g, new RectangleF((item.R.Width - z) / 2, (item.R.Height - z) / 2, z, z), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
+                float lx = (float)Math.Round((item.R.Width - z) / 2 + logoDX * S), ly = (float)Math.Round((item.R.Height - z) / 2 + logoDY * S);
+                Logo.Draw(g, new RectangleF(lx, ly, z, z), t.Accent, Logo.LetterColor(t.Accent, t.OnAccent));
             };
         }
 

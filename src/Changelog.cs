@@ -11,6 +11,9 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.28", "27 November 2026",
+                I("timer", "The big timer digits keep exactly the same size while the time runs"),
+                I("groter", "The collapsed logo is exactly as wide as the toolbar, edge to edge")),
             V("1.3.27", "24 November 2026",
                 I("kleuren", "Choose pen, calligraphy or chalk right in the colour panel"),
                 I("timer", "Bigger round buttons under the full screen timer, easy to hit on a smartboard"),

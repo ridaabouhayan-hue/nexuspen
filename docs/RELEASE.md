@@ -1,8 +1,12 @@
-NexusPen 1.3.27 for Windows 10 and 11.
+NexusPen 1.3.28 for Windows 10 and 11.
 
 **Install:** update with one click (Settings > Updates). Or download `NexusPen-Setup.exe` and open it. Your drawings and settings stay.
 
-**New in 1.3.27**
+**New in 1.3.28**
+- **Steady timer digits:** on the full screen timer the digits keep exactly the same size and place while the time runs (a 1 is narrower than a 0, that no longer makes them jump).
+- **Collapsed logo:** the tile is exactly as wide as the toolbar, edge to edge, with the logo in the very same spot.
+
+**Also in 1.3.27**
 - **Pen type in the colour panel:** choose Pen, Calligraphy or Chalk right next to the colours, the same choice as in the pen's right-click menu.
 - **Full screen timer:** bigger round buttons with a light background, easy to hit on a smartboard, and a clear button for the view (circle, digits or bar).
 - **Calmer shortcuts:** holding a shortcut a bit too long no longer repeats it (no flickering board or a row of screenshots), and switching shortcuts off always works right away.
@@ -10,7 +14,7 @@ NexusPen 1.3.27 for Windows 10 and 11.
 - **Smaller fixes:** closing the colour panel no longer switches your tool, the eraser on chalk works as before, menus have a calm heading, and NexusPen uses less memory with long pen lines.
 - Behind the scenes the code is split into smaller parts, and small errors that used to stay silent now go to the error log, so problems are easier to find.
 
-**Also in 1.3.26**
+**Earlier: 1.3.26**
 - **Calligraphy pen:** thick and thin strokes, like writing with a slanted nib. Right-click the pen button and choose Calligraphy pen (or in Settings > Pen and colours).
 - **Pressure sensitivity:** with a pen on a tablet or touchscreen, press lightly for a thin line and firmly for a thick one. With the mouse nothing changes. On by default.
 - **Smooth line:** a shaky hand or mouse still gives a calm line. Turn it on in the pen's right-click menu.

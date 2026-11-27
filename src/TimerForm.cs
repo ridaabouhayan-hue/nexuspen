@@ -406,24 +406,41 @@ namespace NexusPen
         }
 
         // Tekst zo groot als past in het vak, in het midden
+        // Tekst zo groot als past in het vak, in het midden. De grootte hangt nooit af van welke cijfers er staan
+        // (een 1 is smaller dan een 0): we meten met het breedste cijfer en zetten elk cijfer in een vakje van gelijke breedte.
+        // Zo blijven de cijfers precies even groot en schuiven ze niet heen en weer terwijl de tijd loopt.
         void BigText(Graphics g, string text, RectangleF box, Color c)
         {
-            if (box.Width < 4 || box.Height < 4) return;
-            float px = box.Height * 0.9f;
-            using (Font f0 = UiFont.Make(px, true))
-            {
-                SizeF sz = g.MeasureString(text, f0, PointF.Empty, StringFormat.GenericTypographic);
-                if (sz.Width > box.Width) px *= box.Width / sz.Width;
-                if (sz.Height > box.Height) px = Math.Min(px, box.Height * 0.9f * box.Height / sz.Height);
-            }
-            using (Font f = UiFont.Make(Math.Max(4, px), true))
-            using (SolidBrush b = new SolidBrush(c))
+            if (box.Width < 4 || box.Height < 4 || string.IsNullOrEmpty(text)) return;
             using (StringFormat sf = (StringFormat)StringFormat.GenericTypographic.Clone())
             {
+                sf.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
+                // breedte van een cijfer en van de dubbele punt, gemeten op een vaste grootte
+                const float probe = 100f;
+                float digitW = 0, colonW, h;
+                using (Font fp = UiFont.Make(probe, true))
+                {
+                    for (char d = '0'; d <= '9'; d++) digitW = Math.Max(digitW, g.MeasureString(d.ToString(), fp, PointF.Empty, sf).Width);
+                    colonW = g.MeasureString(":", fp, PointF.Empty, sf).Width;
+                    h = g.MeasureString("0", fp, PointF.Empty, sf).Height;
+                }
+                float total = 0;
+                foreach (char ch in text) total += char.IsDigit(ch) ? digitW : colonW;
+                float k = Math.Min(box.Width / Math.Max(1, total), box.Height * 0.9f / Math.Max(1, h));
+                float px = Math.Max(4, probe * k);
+                float dw = digitW * k, cw = colonW * k;
+                float x = box.X + (box.Width - total * k) / 2;
                 sf.Alignment = StringAlignment.Center; sf.LineAlignment = StringAlignment.Center;
                 System.Drawing.Text.TextRenderingHint keep = g.TextRenderingHint;
                 g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAlias;
-                g.DrawString(text, f, b, box, sf);
+                using (Font f = UiFont.Make(px, true))
+                using (SolidBrush b = new SolidBrush(c))
+                    foreach (char ch in text)
+                    {
+                        float cell = char.IsDigit(ch) ? dw : cw;
+                        g.DrawString(ch.ToString(), f, b, new RectangleF(x, box.Y, cell, box.Height), sf);
+                        x += cell;
+                    }
                 g.TextRenderingHint = keep;
             }
         }
