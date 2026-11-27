@@ -64,6 +64,7 @@ namespace NexusPen
         // ---------- modus en gereedschap
         void SetDrawMode(bool on)
         {
+            if (!on) DropTapDot("wijzer");
             if (on && allHidden) { collapsedDraw = false; ExpandAll(); }   // je kiest zelf een gereedschap: dat gaat voor
             if (on && !DrawMode) RememberOtherWindow();
             bool giveBack = !on && DrawMode;
@@ -128,6 +129,7 @@ namespace NexusPen
                 {
                     Deselect(); FadeLasersNow(); StopFollowLoupe();
                     if (CurrentTool == Tool.Focus) { fullDirty = true; dirty = true; }
+                    DropTapDot("wijzer");
                     CurrentTool = Tool.Mouse; Usage.ToolChanged("Mouse");
                     UpdateCursor(); RefreshUi();
                     return;

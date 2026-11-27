@@ -781,19 +781,20 @@ namespace NexusPen
                 delegate { return c.Chalk ? 2 : c.PenStyle == 1 ? 1 : 0; }, delegate(int i) { c.Chalk = i == 2; c.PenStyle = i == 1 ? 1 : 0; });
             y = Toggle(y, L.T("Vloeiende lijn (rustiger hand)"), L.T("Een trillende hand of muis geeft toch een rustige lijn"), delegate { return c.Smooth; }, delegate(bool v) { c.Smooth = v; });
             y = Toggle(y, L.T("Drukgevoeligheid (tabletpen)"), L.T("Met een pen op een tablet of touchscreen: licht drukken is dun, stevig drukken is dik. Met de muis verandert er niets."), delegate { return c.Pressure; }, delegate(bool v) { c.Pressure = v; });
-            // voorbeeld: links een gewone lijn, rechts dezelfde lijn als krijt, op een bord
+            // voorbeeld: dezelfde lijn gewoon, met de kalligrafiepen en als krijt, op een bord
             float py = y + 6 * S, ph = 64 * S;
             Later(delegate(Graphics g)
             {
                 Theme t = T;
                 RectangleF box = new RectangleF(contentX, py, contentW, ph);
                 using (SolidBrush b = new SolidBrush(Overlay.ChalkGreen)) using (GraphicsPath gp = Svg.RoundRect(box, 10 * S)) g.FillPath(b, gp);
-                float half = box.Width / 2;
-                for (int side = 0; side < 2; side++)
+                float half = box.Width / 3;   // drie stukken: gewoon, kalligrafie en krijt
+                for (int side = 0; side < 3; side++)
                 {
-                    float x0 = box.X + side * half + 24 * S, x1 = box.X + (side + 1) * half - 120 * S;
+                    float x0 = box.X + side * half + 20 * S, x1 = box.X + (side + 1) * half - 100 * S;
                     Stroke st = new Stroke(); st.Tool = Tool.Pen; st.Width = 5 * S; st.Color = Color.White;
-                    if (side == 1) st.Style |= Stroke.Chalk;
+                    if (side == 1) st.Style |= Stroke.Callig;
+                    if (side == 2) st.Style |= Stroke.Chalk;
                     for (int i = 0; i <= 40; i++)
                     {
                         float f = i / 40f;
@@ -802,7 +803,7 @@ namespace NexusPen
                     GraphicsState gs = g.Save();
                     Render.Setup(g); Render.Draw(g, st, 1f);
                     g.Restore(gs);
-                    Txt(g, side == 0 ? L.T("Gewoon") : L.T("Krijt"), new RectangleF(x1 + 14 * S, box.Y, 90 * S, ph), Color.FromArgb(220, 255, 255, 255), 12, true, StringAlignment.Near, false, Overlay.ChalkGreen);
+                    Txt(g, side == 0 ? L.T("Gewoon") : side == 1 ? L.T("Kalligrafie") : L.T("Krijt"), new RectangleF(x1 + 10 * S, box.Y, 88 * S, ph), Color.FromArgb(220, 255, 255, 255), 12, true, StringAlignment.Near, false, Overlay.ChalkGreen);
                 }
             });
             Mark(py + ph);

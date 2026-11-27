@@ -343,7 +343,18 @@ namespace NexusPen
             }
             Stroke s = current;
             current = null;
+            // een vorm waar je alleen op tikte (rechthoek, lijn, pijl of cirkel van 0 pixels) is nooit bedoeld: niet tekenen
+            if (IsShape(s.Tool) && s.Pts.Count >= 2 && Dist(s.Pts[0], s.Pts[s.Pts.Count - 1]) < 3)
+            {
+                pendingDirty = U(pendingDirty, StrokeBounds(s));
+                Usage.Log("tik", "vorm niet getekend", s.Tool.ToString());
+                dirty = true;
+                return;
+            }
             lastDot = s; lastDotAt = DateTime.Now;   // voor dubbelklik: de eerste klik kan een puntje zijn
+            // een korte tik met de pen (een stip): als je daarna meteen naar de wijzer gaat, was het een misklik
+            bool tap = (s.Tool == Tool.Pen || s.Tool == Tool.Marker) && (DateTime.Now - strokeStartAt).TotalMilliseconds < 300 && Render.Bounds(s).Width <= Render.PenWidest(s) + 6 && Render.Bounds(s).Height <= Render.PenWidest(s) + 6;
+            tapDot = tap ? s : null; tapDotAt = DateTime.Now;
             if (s.Tool == Tool.Laser)
             {
                 s.Born = DateTime.Now;
@@ -364,6 +375,23 @@ namespace NexusPen
             }
             dirty = true;
             LogStroke(s);   // pas na het tekenen: het wegschrijven mag de streep niet ophouden
+        }
+
+        // ---- per ongeluk getikte stippen: een korte tik met de pen blijft eerst gewoon staan (het kan een punt of trema zijn).
+        // Ga je binnen 3 seconden naar de wijzer, klap je in of druk je op Esc, dan wilde je klikken en niet tekenen: dan gaat hij weg.
+        Stroke tapDot; DateTime tapDotAt;
+
+        void DropTapDot(string why)
+        {
+            Stroke d = tapDot; tapDot = null;
+            if (d == null || (DateTime.Now - tapDotAt).TotalSeconds > 3) return;
+            // alleen als het echt de laatste streep is (niet als je er intussen iets anders bij tekende)
+            bool last = (strokes.Count > 0 && strokes[strokes.Count - 1] == d) || (fading.Count > 0 && fading[fading.Count - 1] == d);
+            if (!last) return;
+            lastDot = d;
+            RemoveDot(d);
+            Usage.Log("tik", "stip weggehaald", why);
+            RenderSoon();
         }
 
         // Per streep een paar getallen voor het gebruik (alleen op deze pc): nooit de plek, de vorm of de tekst

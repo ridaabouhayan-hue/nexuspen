@@ -729,6 +729,13 @@ namespace NexusPen
 
         protected override void AfterDpiChange() { FitScreen(); }
 
+        public void RebuildKeepCenter()
+        {
+            Point c = TileCenter;
+            Rebuild();
+            Location = new Point(c.X - Width / 2, c.Y - Height / 2);
+        }
+
         // naar een scherm met een andere schaal: het midden onthouden (het venster verschuift anders een beetje bij het groter of kleiner worden)
         Point dpiCenter;
         Rectangle placedWa; float fitRatio = 1f;

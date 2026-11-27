@@ -1,12 +1,18 @@
-NexusPen 1.3.29 for Windows 10 and 11.
+NexusPen 1.3.30 for Windows 10 and 11.
 
 **Install:** update with one click (Settings > Updates). Or download `NexusPen-Setup.exe` and open it. Your drawings and settings stay.
 
-**New in 1.3.29**
+**New in 1.3.30**
+- **No more accidental dots:** a quick tap with the pen stays at first (it can be a full stop or a trema). If you go to the mouse pointer, press Esc or collapse within 3 seconds, NexusPen sees it as a misclick and removes the dot.
+- **No empty shapes:** tapping with the rectangle, line, arrow or circle without dragging no longer leaves a shape of 0 pixels behind.
+- The pen example in Settings > Pen and colours now shows the regular pen, the calligraphy pen and chalk side by side.
+- The collapsed logo stays exactly in place when you change the toolbar size or theme.
+
+**Also in 1.3.29**
 - **Text settings scroll again:** the example at the bottom of Settings > Text no longer falls off the window, and the page scrolls all the way down.
 - **Customising the toolbar is calmer:** a normal mouse pointer instead of the four-way arrow, and no tooltip over a button whose name is already shown underneath. Hover the name itself to see it in full when it is cut off.
 
-**Also in 1.3.28**
+**Earlier: 1.3.28**
 - **Steady timer digits:** on the full screen timer the digits keep exactly the same size and place while the time runs (a 1 is narrower than a 0, that no longer makes them jump).
 - **Collapsed logo:** the tile is exactly as wide as the toolbar, edge to edge, with the logo in the very same spot.
 

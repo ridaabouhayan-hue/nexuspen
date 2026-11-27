@@ -498,6 +498,23 @@ namespace NexusPen
                     Console.WriteLine("Sneltoetsen in een ander programma: pen " + penOk + ", kleur " + colorOk + ", Ctrl+Z en Ctrl+S vrij " + undoFree + ", gewone letter vrij " + plainFree);
                     if (!ok) { Program.SelfTestErrors++; Console.Error.WriteLine("Sneltoetsen in een ander programma kloppen niet"); }
                 }
+                // misklik met de pen: een stip die je meteen gevolgd door de wijzer zette, gaat weg (en de geschiedenis klopt nog)
+                {
+                    int before = strokes.Count, undoBefore = undo.Count;
+                    Stroke dot = new Stroke(); dot.Tool = Tool.Pen; dot.Color = Color.Red; dot.Width = 26; dot.Pts.Add(new PointF(300, 300));
+                    Checkpoint(); strokes.Add(dot); tapDot = dot; tapDotAt = DateTime.Now;
+                    DropTapDot("zelftest");
+                    bool ok = strokes.Count == before && undo.Count == undoBefore && !strokes.Contains(dot);
+                    // een echte stip waar je daarna nog iets bij tekende, blijft staan
+                    Stroke keep = new Stroke(); keep.Tool = Tool.Pen; keep.Color = Color.Red; keep.Width = 26; keep.Pts.Add(new PointF(320, 300));
+                    Stroke after = new Stroke(); after.Tool = Tool.Pen; after.Color = Color.Red; after.Width = 4; after.Pts.Add(new PointF(340, 300)); after.Pts.Add(new PointF(380, 320));
+                    strokes.Add(keep); tapDot = keep; tapDotAt = DateTime.Now; strokes.Add(after);
+                    DropTapDot("zelftest");
+                    ok = ok && strokes.Contains(keep);
+                    strokes.Remove(keep); strokes.Remove(after); tapDot = null;
+                    Console.WriteLine("Misklik-stip weggehaald, echte stip blijft: " + ok);
+                    if (!ok) { Program.SelfTestErrors++; Console.Error.WriteLine("Misklik-stip wordt niet goed weggehaald"); }
+                }
                 // klopt het streepje met de getekende letters? per lettertype: verschil tussen de positie na elke letter en de inkt
                 foreach (string fn in new string[] { "Nunito", "Andika", "Lexend", "Segoe UI" })
                 {

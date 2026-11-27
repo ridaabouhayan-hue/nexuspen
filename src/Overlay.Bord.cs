@@ -177,6 +177,7 @@ namespace NexusPen
         public void CollapseAll()
         {
             if (allHidden) return;
+            DropTapDot("inklappen");
             collapsedDraw = DrawMode; collapsedTool = CurrentTool;
             // alles weg: ook de vergrootglazen; de timer loopt door maar is even onzichtbaar
             CloseAllLoupes();

@@ -261,6 +261,7 @@ namespace NexusPen
             if (esc && !lastEsc && DrawMode && pinnedLoupes.Count > 0) { CloseAllLoupes(); lastEsc = true; return; }   // dan de vergrootglazen (alleen als je met NexusPen werkt)
             if (esc && !lastEsc && DrawMode && typing == null)
             {
+                DropTapDot("Esc");
                 // Esc: eerst de selectie weg, dan een gewone wijzer, dan het bord dicht (net als op de bordknop klikken).
                 // Alles verbergen gaat alleen met inklappen (het logo), alles weghalen alleen met de prullenbak.
                 if (selected != null) Deselect();

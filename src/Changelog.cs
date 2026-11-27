@@ -11,6 +11,10 @@ namespace NexusPen
         static string[] I(string icon, string text) { return new string[] { icon, text }; }
 
         public static readonly Version[] All = {
+            V("1.3.30", "27 November 2026",
+                I("pen", "A quick pen tap followed by the mouse pointer, Esc or collapsing is seen as a misclick and removed"),
+                I("vormen", "Tapping with a shape tool no longer leaves an empty shape behind"),
+                I("instellingen", "The pen example in Settings also shows the calligraphy pen")),
             V("1.3.29", "27 November 2026",
                 I("tekst", "The Text settings page scrolls all the way down again"),
                 I("muis", "Customising the toolbar: a normal mouse pointer, and no tooltip over the buttons (the name is already underneath)")),

@@ -205,7 +205,7 @@ namespace NexusPen
             foreach (BarForm f in new BarForm[] { lipje, tile, miniBar, widthTip, toast, colorPopup, shapePopup, stampPopup, boardPopup, eraserPopup, overflowPopup })
                 if (f != null && !f.IsDisposed) { f.ApplyCaptureSetting(); f.S = S; }
             if (lipje != null && lipje.Visible) lipje.Restyle();
-            if (tile != null && tile.Visible) tile.Rebuild();
+            if (tile != null && tile.Visible) tile.RebuildKeepCenter();   // andere grootte of thema: het logo blijft op zijn plek
         }
 
         public void Refresh2()
